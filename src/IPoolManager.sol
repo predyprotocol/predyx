@@ -8,8 +8,9 @@ interface IPoolManager {
     
     struct SignedOrder {
         uint256 vaultId;
-        uint256 tradeAmount;
-        uint256 limitPrice;
+        bytes data;
+        // uint256 tradeAmount;
+        // uint256 limitPrice;
         uint256 deadline;
     }
 

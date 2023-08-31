@@ -3,14 +3,13 @@ pragma solidity ^0.8.19;
 
 import "./IPoolManager.sol";
 import "./IHook.sol";
+import "./IExecutor.sol";
 
-/*
-contract Currency {
-    function updatePosition() {
+interface IERC20 {
+    function transfer(address to, uint256 amount) external ;
 
-    }
+    function balanceOf(address account) external view returns (uint256);
 }
-*/
 
 contract PoolManager is IPoolManager {
     struct Pair {
@@ -20,6 +19,8 @@ contract PoolManager is IPoolManager {
     IPoolManager.LockData public lockData;
 
     mapping(address locker => mapping(address currency => int256 currencyDelta)) public currencyDelta;
+
+    mapping(address currency => uint256) public reservesOf;
 
     modifier onlyByLocker() {
         address locker = lockData.locker;
@@ -32,13 +33,20 @@ contract PoolManager is IPoolManager {
     }
 
     function lock(
-        IPoolManager.SignedOrder[] memory orders
+        IPoolManager.SignedOrder[] memory orders,
+        bytes memory callbackData
     ) public {
         // TODO: push lock
         lockData.locker = msg.sender;
 
-        // TODO: call lock aquired
-        IHook(msg.sender).lockAquired(orders);
+        for(uint256 i;i < orders.length;i++) {
+            // TODO: check signature
+
+            // TODO: call lock aquired
+            IHook(msg.sender).lockAquired(orders[i]);
+        }
+
+        IExecutor(msg.sender).settleCallback(callbackData);
 
         // TODO: pop lock data
         lockData.locker = address(0);
@@ -50,7 +58,6 @@ contract PoolManager is IPoolManager {
 
             validate(vaultId);
         }
-
     }
 
     function updatePerpPosition(
@@ -60,26 +67,56 @@ contract PoolManager is IPoolManager {
         int256 entryUpdate
     ) public onlyByLocker {
         // TODO: updatePosition
-
         updateAccountDelta(currency0, tradeAmount);
         updateAccountDelta(currency1, entryUpdate);
     }
 
+    function addDelta(
+        uint256 a,
+        int256 b
+    ) internal returns (uint256) {
+        if(b >= 0) {
+            return a + uint256(b);
+        } else {
+            return a + uint256(-b);
+        }
+    }
 
     function take(
         address currency,
+        address to,
         uint256 amount
     ) public onlyByLocker {
-        updateAccountDelta(currency, amount);
+        updateAccountDelta(currency, int256(amount));
+        reservesOf[currency] -= amount;
+        IERC20(currency).transfer(to, amount);
     }
 
     function settle(
+        address currency
+    ) public onlyByLocker returns (uint256 paid) {
+        uint256 reservesBefore = reservesOf[currency];
+        reservesOf[currency] = IERC20(currency).balanceOf(address(this));
+
+        paid = reservesOf[currency] - reservesBefore;
+
+        updateAccountDelta(currency, -int256(paid));
+    }
+
+
+    function supply(
         address currency,
         uint256 amount
     ) public onlyByLocker {
-        updateAccountDelta(currency, -int256(amount));
+        reservesOf[currency] += amount;
     }
 
+    function withdraw(
+        address currency,
+        uint256 amount
+    ) public onlyByLocker {
+        reservesOf[currency] -= amount;
+    }
 
     function validate(
         uint256 _vaultId
@@ -115,14 +152,6 @@ contract PoolManager is IPoolManager {
         // pool.mint() or pool.burn()
     }
 
-    function supply(
-    ) public onlyByLocker {
-    }
-
-    function withdraw(
-    ) public onlyByLocker {
-    }
-
     // TODO: mint power perp
     function mint(
     ) public onlyByLocker {
@@ -147,13 +176,18 @@ contract PredyXHook {
     }
 
     function lockAquired(
-        IPoolManager.SignedOrder[] memory orders
+        IPoolManager.SignedOrder memory order
     ) public {
-        lockAquiredTrade(orders);
+        lockAquiredTrade(order);
+    }
+
+    function settleCallback(
+        bytes memory callbackData
+    ) public {
     }
 
     function lockAquiredTrade(
-        IPoolManager.SignedOrder[] memory orders
+        IPoolManager.SignedOrder memory order
     ) internal {
         /*
         for(uint256 i;i < orders.length;i++) {
@@ -162,6 +196,7 @@ contract PredyXHook {
         }
 
         swap();
+        // ここでlimit orderで手に入れたトークンを使っても良い。
 
         controller.take();
         controller.settle();
