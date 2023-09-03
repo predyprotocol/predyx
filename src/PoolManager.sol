@@ -5,9 +5,12 @@ import "./interfaces/IPoolManager.sol";
 import "./interfaces/IHook.sol";
 import "./interfaces/IExecutor.sol";
 import "./libraries/Math.sol";
+import "forge-std/console.sol";
 
 interface IERC20 {
     function transfer(address to, uint256 amount) external;
+
+    function transferFrom(address from, address to, uint256 amount) external;
 
     function balanceOf(address account) external view returns (uint256);
 }
@@ -53,9 +56,10 @@ contract PoolManager is IPoolManager {
         pairs[pairId] = PairStatus(pairId, pool, PoolStatus(quoteToken), PoolStatus(baseToken));
     }
 
-    function lock(uint256 pairId, IPoolManager.SignedOrder[] memory orders, bytes memory callbackData) external {
+    function lockForTrade(uint256 pairId, IPoolManager.SignedOrder[] memory orders, bytes memory callbackData) external {
         // TODO: push lock
         lockData.locker = msg.sender;
+        if(pairId <= 0 || pairId > pairCount) revert PairNotFound();
         lockData.pairId = pairId;
         lockData.baseReserveBefore = IERC20(pairs[lockData.pairId].baseAsset.tokenAddress).balanceOf(address(this));
         lockData.quoteReserveBefore = IERC20(pairs[lockData.pairId].quoteAsset.tokenAddress).balanceOf(address(this));
@@ -63,24 +67,30 @@ contract PoolManager is IPoolManager {
         for (uint256 i; i < orders.length; i++) {
             // TODO: check signature and nonce
             // TODO: create nonce management contract?
-            lockData.vaultId = orders[i].vaultId;
 
-            // TODO: call lock aquired
-            // trader choose a hook
-            IHook(msg.sender).lockAquired(orders[i]);
+            // TODO: ここではpre trade処理をする
+            prepareTradePerpPosition(orders[i]);
         }
 
         // unlock vault
         lockData.vaultId = 0;
 
-        // filler choose an ececutor
+        // filler choose an executor
+        int256 averagePrice = lockData.baseDelta;
+        // TODO: take and settle
         IExecutor(msg.sender).settleCallback(callbackData, lockData);
+        if(averagePrice != 0) {
+            averagePrice = lockData.quoteDelta * 1e18 / averagePrice;
+        }
 
         // fill
         for (uint256 i; i < orders.length; i++) {
+            postTradePerpPosition(orders[i], averagePrice);
+
+            // TODO:ここで自由にかけるpost trade
             lockData.vaultId = orders[i].vaultId;
 
-            IHook(msg.sender).postLockAquired(orders[i], lockData);
+            IHook(msg.sender).lockAquired(orders[i]);
         }
 
         // TODO: pop lock data
@@ -95,16 +105,14 @@ contract PoolManager is IPoolManager {
         }
     }
 
-    function prepareTradePerpPosition(uint256 vaultId, int256 tradeAmount) public onlyByLocker {
-        require(vaultId == lockData.vaultId);
-
+    function prepareTradePerpPosition(IPoolManager.SignedOrder memory order) public onlyByLocker {
         // TODO: updatePosition
-        updateAccountDelta(false, tradeAmount);
+        updateAccountDelta(false, order.tradeAmount);
         // updateAccountDelta(true, entryUpdate);
     }
 
-    function postTradePerpPosition(uint256 vaultId, int256 entryUpdate) public onlyByLocker {
-        require(vaultId == lockData.vaultId);
+    function postTradePerpPosition(IPoolManager.SignedOrder memory order, int256 averagePrice) public onlyByLocker {
+        int256 entryUpdate = -averagePrice * int256(order.tradeAmount) / 1e18;
 
         // TODO: updatePosition
         // updateAccountDelta(false, tradeAmount);
@@ -160,12 +168,30 @@ contract PoolManager is IPoolManager {
         updateAccountDelta(isQuoteAsset, -int256(paid));
     }
 
-    function supply(bool isQuoteAsset, uint256 amount) public onlyByLocker {
-        updateAccountDelta(isQuoteAsset, int256(amount));
+    function supply(uint256 pairId, bool isQuoteAsset, uint256 amount) public {
+        if(pairId <= 0 || pairId > pairCount) revert PairNotFound();
+
+        address currency;
+
+        if (isQuoteAsset) {
+            currency = pairs[pairId].quoteAsset.tokenAddress;
+        } else {
+            currency = pairs[pairId].baseAsset.tokenAddress;
+        }
+
+        IERC20(currency).transferFrom(msg.sender, address(this), amount);
     }
 
-    function withdraw(bool isQuoteAsset, uint256 amount) public onlyByLocker {
-        updateAccountDelta(isQuoteAsset, -int256(amount));
+    function withdraw(uint256 pairId, bool isQuoteAsset, uint256 amount) public {
+        address currency;
+
+        if (isQuoteAsset) {
+            currency = pairs[pairId].quoteAsset.tokenAddress;
+        } else {
+            currency = pairs[pairId].baseAsset.tokenAddress;
+        }
+
+        IERC20(currency).transfer(msg.sender, amount);
     }
 
     function validate(uint256 _vaultId) internal view {
@@ -178,6 +204,8 @@ contract PoolManager is IPoolManager {
         address locker = lockData.locker;
         int256 current = isQuoteAsset ? lockData.quoteDelta : lockData.baseDelta;
         int256 next = current + delta;
+
+        // TODO: minus is valid
 
         if (next == 0) {
             lockData.deltaCount--;

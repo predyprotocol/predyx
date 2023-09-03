@@ -8,6 +8,7 @@ contract SupplyHook {
     PoolManager public poolManager;
 
     struct SupplySignedOrder {
+        uint256 pairId;
         bool isQuoteAsset;
         address tokenAddress;
         uint256 supplyAmount;
@@ -18,32 +19,24 @@ contract SupplyHook {
     }
 
     function supply(uint256 pairId, bool isQuoteAsset, address tokenAddress, uint256 supplyAmount) external {
-        IPoolManager.SignedOrder[] memory orders = new IPoolManager.SignedOrder[](1);
-
-        orders[0] = IPoolManager.SignedOrder(
-            0, abi.encode(SupplyHook.SupplySignedOrder(isQuoteAsset, tokenAddress, supplyAmount)), 0
-        );
-
-        bytes memory callbackData = abi.encode(SupplyHook.SupplySignedOrder(isQuoteAsset, tokenAddress, supplyAmount));
+        /*
+        bytes memory callbackData = abi.encode(SupplyHook.SupplySignedOrder(pairId, isQuoteAsset, tokenAddress, supplyAmount));
 
         MockERC20(tokenAddress).transferFrom(msg.sender, address(this), supplyAmount);
 
-        poolManager.lock(pairId, orders, callbackData);
+        poolManager.lockForSupply(pairId, callbackData);
+        */
     }
 
-    function lockAquired(IPoolManager.SignedOrder memory order) external {
-        SupplySignedOrder memory supplyOrder = abi.decode(order.data, (SupplySignedOrder));
+    function lockAquired(bytes memory data) external {
+        /*
+        SupplySignedOrder memory supplyOrder = abi.decode(data, (SupplySignedOrder));
 
-        poolManager.supply(supplyOrder.isQuoteAsset, supplyOrder.supplyAmount);
-    }
-
-    function settleCallback(bytes memory callbackData, IPoolManager.LockData memory lockData) public {
-        SupplySignedOrder memory supplyOrder = abi.decode(callbackData, (SupplySignedOrder));
+        poolManager.supply(supplyOrder.pairId, supplyOrder.isQuoteAsset, supplyOrder.supplyAmount);
 
         MockERC20(supplyOrder.tokenAddress).transfer(address(poolManager), supplyOrder.supplyAmount);
 
         poolManager.settle(supplyOrder.isQuoteAsset);
+        */
     }
-
-    function postLockAquired(IPoolManager.SignedOrder memory order, IPoolManager.LockData memory lockData) external {}
 }

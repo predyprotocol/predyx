@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {SupplyHook} from "./mocks/SupplyHook.sol";
 import {TradeHook} from "./mocks/TradeHook.sol";
@@ -33,15 +34,25 @@ contract PoolManagerTest is Test {
         currency1.transfer(address(tradeHook), 1000);
     }
 
-    function testSupply() public {
-        currency0.approve(address(supplyHook), 1000);
-        currency1.approve(address(supplyHook), 1000);
+    function testSupplyFailsIfPairNotFound() public {
+        currency0.approve(address(poolManager), 1000);
 
-        supplyHook.supply(1, false, address(currency0), 1000);
-        supplyHook.supply(1, true, address(currency1), 1000);
+        vm.expectRevert(abi.encodeWithSelector(IPoolManager.PairNotFound.selector));
+        poolManager.supply(0, false, 1000);
+    }
+
+    function testSupplySucceeds() public {
+        currency0.approve(address(poolManager), 1000);
+        poolManager.supply(1, false, 1000);
+    }
+
+    function testTradeSucceeds() public {
+        currency0.approve(address(poolManager), 1000);
+        currency1.approve(address(poolManager), 1000);
+
+        poolManager.supply(1, false, 1000);
+        poolManager.supply(1, true, 1000);
 
         tradeHook.trade(1, 1, 100, address(currency0), address(currency1));
-
-        // assertEq(a, 1);
     }
 }

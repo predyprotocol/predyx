@@ -7,11 +7,6 @@ import "../../src/PoolManager.sol";
 contract TradeHook {
     PoolManager public poolManager;
 
-    struct TradeSignedOrder {
-        int256 tradeAmount;
-        uint256 limitPrice;
-    }
-
     struct SettleCallbackParams {
         address currency0;
         address currency1;
@@ -26,25 +21,15 @@ contract TradeHook {
     {
         IPoolManager.SignedOrder[] memory orders = new IPoolManager.SignedOrder[](1);
 
-        TradeSignedOrder memory tradeOrder = TradeHook.TradeSignedOrder(tradeAmount, 0);
-
-        orders[0] = IPoolManager.SignedOrder(vaultId, abi.encode(tradeOrder), 0);
+        orders[0] = IPoolManager.SignedOrder(vaultId, tradeAmount, 0, 0);
 
         bytes memory callbackData = abi.encode(TradeHook.SettleCallbackParams(currency0, currency1));
 
-        poolManager.lock(pairId, orders, callbackData);
+        poolManager.lockForTrade(pairId, orders, callbackData);
     }
 
     function lockAquired(IPoolManager.SignedOrder memory order) external {
-        TradeSignedOrder memory tradeOrder = abi.decode(order.data, (TradeSignedOrder));
-
-        poolManager.prepareTradePerpPosition(order.vaultId, tradeOrder.tradeAmount);
-    }
-
-    function postLockAquired(IPoolManager.SignedOrder memory order, IPoolManager.LockData memory lockData) external {
-        TradeSignedOrder memory tradeOrder = abi.decode(order.data, (TradeSignedOrder));
-
-        poolManager.postTradePerpPosition(order.vaultId, -lockData.quoteDelta);
+        // nothing todo
     }
 
     function settleCallback(bytes memory callbackData, IPoolManager.LockData memory lockData) public {

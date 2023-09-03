@@ -5,6 +5,4 @@ import "./IPoolManager.sol";
 
 interface IHook {
     function lockAquired(IPoolManager.SignedOrder memory order) external;
-
-    function postLockAquired(IPoolManager.SignedOrder memory order, IPoolManager.LockData memory lockData) external;
 }
