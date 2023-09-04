@@ -7,7 +7,10 @@ import "../../src/PoolManager.sol";
 contract TradeHook {
     PoolManager public poolManager;
 
+    uint256 taleMockAmount;
+
     struct SettleCallbackParams {
+        uint256 pairId;
         address currency0;
         address currency1;
     }
@@ -16,14 +19,18 @@ contract TradeHook {
         poolManager = _poolManager;
     }
 
-    function trade(uint256 pairId, uint256 vaultId, int256 tradeAmount, address currency0, address currency1)
+    function setTakeMockAmount(uint256 _mockData) external {
+        taleMockAmount = _mockData;
+    }
+
+    function trade(uint256 pairId, uint256 vaultId, int256 tradeAmount, int256 limitPrice, address currency0, address currency1)
         external
     {
         IPoolManager.SignedOrder[] memory orders = new IPoolManager.SignedOrder[](1);
 
-        orders[0] = IPoolManager.SignedOrder(vaultId, tradeAmount, 0, 0);
+        orders[0] = IPoolManager.SignedOrder(pairId, vaultId, tradeAmount, limitPrice, 0);
 
-        bytes memory callbackData = abi.encode(TradeHook.SettleCallbackParams(currency0, currency1));
+        bytes memory callbackData = abi.encode(TradeHook.SettleCallbackParams(pairId, currency0, currency1));
 
         poolManager.lockForTrade(pairId, orders, callbackData);
     }
@@ -32,19 +39,38 @@ contract TradeHook {
         // nothing todo
     }
 
-    function settleCallback(bytes memory callbackData, IPoolManager.LockData memory lockData) public {
+    function settleCallback(bytes memory callbackData, int256 baseAmountDelta) public {
         SettleCallbackParams memory settleCallbackParams = abi.decode(callbackData, (SettleCallbackParams));
 
-        int256 amount0 = lockData.baseDelta;
+        if(baseAmountDelta > 0) {
+            uint256 settleAmount = uint256(baseAmountDelta);
 
-        // TODO: swap
-        int256 amount1 = amount0;
+            uint256 takeAmount = settleAmount;
 
-        // TODO: with buffer
-        poolManager.take(true, address(this), uint256(amount1));
+            // TODO: with buffer
+            if(taleMockAmount > 0) {
+                takeAmount = taleMockAmount;
+            }
+            poolManager.take(true, address(this), takeAmount);
 
-        MockERC20(settleCallbackParams.currency0).transfer(address(poolManager), uint256(amount0));
+            MockERC20(settleCallbackParams.currency0).transfer(address(poolManager), settleAmount);
 
-        poolManager.settle(false);
+            poolManager.settle(settleCallbackParams.pairId, false);
+        } else {
+            uint256 takeAmount = uint256(-baseAmountDelta);
+
+            uint256 settleAmount = takeAmount;
+
+            // TODO: with buffer
+            if(taleMockAmount > 0) {
+                settleAmount = taleMockAmount;
+            }
+
+            poolManager.take(false, address(this), takeAmount);
+
+            MockERC20(settleCallbackParams.currency1).transfer(address(poolManager), settleAmount);
+
+            poolManager.settle(settleCallbackParams.pairId, true);
+        }
     }
 }

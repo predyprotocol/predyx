@@ -34,25 +34,56 @@ contract PoolManagerTest is Test {
         currency1.transfer(address(tradeHook), 1000);
     }
 
-    function testSupplyFailsIfPairNotFound() public {
-        currency0.approve(address(poolManager), 1000);
-
-        vm.expectRevert(abi.encodeWithSelector(IPoolManager.PairNotFound.selector));
+    function testSupplyFailsIfLockWasNotGotten() public {
+        vm.expectRevert(abi.encodeWithSelector(IPoolManager.LockedBy.selector, address(0)));
         poolManager.supply(0, false, 1000);
     }
 
+    function testSupplyFailsIfPairNotFound() public {
+        currency0.approve(address(supplyHook), 1000);
+
+        vm.expectRevert(abi.encodeWithSelector(IPoolManager.PairNotFound.selector));
+        supplyHook.supply(0, false, address(currency0), 1000);
+    }
+
     function testSupplySucceeds() public {
-        currency0.approve(address(poolManager), 1000);
-        poolManager.supply(1, false, 1000);
+        currency0.approve(address(supplyHook), 1000);
+        supplyHook.supply(1, false, address(currency0), 1000);
+    }
+
+    function testTradeFailsIfPriceGreaterThanLimit() public {
+        currency0.approve(address(supplyHook), 1000);
+        currency1.approve(address(supplyHook), 1000);
+
+        supplyHook.supply(1, false, address(currency0), 1000);
+        supplyHook.supply(1, true, address(currency1), 1000);
+
+        tradeHook.setTakeMockAmount(110);
+
+        vm.expectRevert(abi.encodeWithSelector(IPoolManager.PriceGreaterThanLimit.selector));
+        tradeHook.trade(1, 1, 100, 1e18, address(currency0), address(currency1));
+    }
+
+    function testTradeFailsIfPriceLessThanLimit() public {
+        currency0.approve(address(supplyHook), 1000);
+        currency1.approve(address(supplyHook), 1000);
+
+        supplyHook.supply(1, false, address(currency0), 1000);
+        supplyHook.supply(1, true, address(currency1), 1000);
+
+        tradeHook.setTakeMockAmount(90);
+        
+        vm.expectRevert(abi.encodeWithSelector(IPoolManager.PriceLessThanLimit.selector));
+        tradeHook.trade(1, 1, -100, 1e18, address(currency0), address(currency1));
     }
 
     function testTradeSucceeds() public {
-        currency0.approve(address(poolManager), 1000);
-        currency1.approve(address(poolManager), 1000);
+        currency0.approve(address(supplyHook), 1000);
+        currency1.approve(address(supplyHook), 1000);
 
-        poolManager.supply(1, false, 1000);
-        poolManager.supply(1, true, 1000);
+        supplyHook.supply(1, false, address(currency0), 1000);
+        supplyHook.supply(1, true, address(currency1), 1000);
 
-        tradeHook.trade(1, 1, 100, address(currency0), address(currency1));
+        tradeHook.trade(1, 1, 100, 1e18, address(currency0), address(currency1));
     }
 }

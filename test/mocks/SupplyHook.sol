@@ -19,24 +19,20 @@ contract SupplyHook {
     }
 
     function supply(uint256 pairId, bool isQuoteAsset, address tokenAddress, uint256 supplyAmount) external {
-        /*
         bytes memory callbackData = abi.encode(SupplyHook.SupplySignedOrder(pairId, isQuoteAsset, tokenAddress, supplyAmount));
 
         MockERC20(tokenAddress).transferFrom(msg.sender, address(this), supplyAmount);
 
-        poolManager.lockForSupply(pairId, callbackData);
-        */
+        poolManager.lockForSupply(callbackData);
     }
 
     function lockAquired(bytes memory data) external {
-        /*
         SupplySignedOrder memory supplyOrder = abi.decode(data, (SupplySignedOrder));
 
         poolManager.supply(supplyOrder.pairId, supplyOrder.isQuoteAsset, supplyOrder.supplyAmount);
 
         MockERC20(supplyOrder.tokenAddress).transfer(address(poolManager), supplyOrder.supplyAmount);
 
-        poolManager.settle(supplyOrder.isQuoteAsset);
-        */
+        poolManager.settle(supplyOrder.pairId, supplyOrder.isQuoteAsset);
     }
 }

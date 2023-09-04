@@ -6,3 +6,7 @@ import "./IPoolManager.sol";
 interface IHook {
     function lockAquired(IPoolManager.SignedOrder memory order) external;
 }
+
+interface ISupplyHook {
+    function lockAquired(bytes memory callbackData) external;
+}

@@ -8,10 +8,15 @@ interface IPoolManager {
 
     error CurrencyNotSettled();
 
+    error PriceGreaterThanLimit();
+
+    error PriceLessThanLimit();
+
     struct SignedOrder {
+        uint256 pairId;
         uint256 vaultId;
         int256 tradeAmount;
-        uint256 limitPrice;
+        int256 limitPrice;
         uint256 deadline;
     }
 
@@ -20,9 +25,5 @@ interface IPoolManager {
         uint256 deltaCount;
         uint256 pairId;
         uint256 vaultId;
-        int256 quoteDelta;
-        int256 baseDelta;
-        uint256 quoteReserveBefore;
-        uint256 baseReserveBefore;
     }
 }
