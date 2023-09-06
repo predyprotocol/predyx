@@ -32,6 +32,12 @@ contract PoolManagerTest is Test {
         // TODO: swap
         currency0.transfer(address(tradeHook), 1000);
         currency1.transfer(address(tradeHook), 1000);
+
+        currency0.approve(address(supplyHook), 1000);
+        currency1.approve(address(supplyHook), 1000);
+
+        supplyHook.supply(1, false, address(currency0), 1000);
+        supplyHook.supply(1, true, address(currency1), 1000);
     }
 
     function testSupplyFailsIfLockWasNotGotten() public {
@@ -52,12 +58,6 @@ contract PoolManagerTest is Test {
     }
 
     function testTradeFailsIfPriceGreaterThanLimit() public {
-        currency0.approve(address(supplyHook), 1000);
-        currency1.approve(address(supplyHook), 1000);
-
-        supplyHook.supply(1, false, address(currency0), 1000);
-        supplyHook.supply(1, true, address(currency1), 1000);
-
         tradeHook.setTakeMockAmount(110);
 
         vm.expectRevert(abi.encodeWithSelector(IPoolManager.PriceGreaterThanLimit.selector));
@@ -65,12 +65,6 @@ contract PoolManagerTest is Test {
     }
 
     function testTradeFailsIfPriceLessThanLimit() public {
-        currency0.approve(address(supplyHook), 1000);
-        currency1.approve(address(supplyHook), 1000);
-
-        supplyHook.supply(1, false, address(currency0), 1000);
-        supplyHook.supply(1, true, address(currency1), 1000);
-
         tradeHook.setTakeMockAmount(90);
         
         vm.expectRevert(abi.encodeWithSelector(IPoolManager.PriceLessThanLimit.selector));
@@ -78,12 +72,6 @@ contract PoolManagerTest is Test {
     }
 
     function testTradeSucceeds() public {
-        currency0.approve(address(supplyHook), 1000);
-        currency1.approve(address(supplyHook), 1000);
-
-        supplyHook.supply(1, false, address(currency0), 1000);
-        supplyHook.supply(1, true, address(currency1), 1000);
-
         tradeHook.trade(1, 1, 100, 1e18, address(currency0), address(currency1));
     }
 }

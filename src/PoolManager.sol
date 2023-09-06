@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./interfaces/IPoolManager.sol";
-import "./interfaces/IHook.sol";
+import "./interfaces/IHooks.sol";
 import "./interfaces/IExecutor.sol";
 import "./libraries/Math.sol";
 import "forge-std/console.sol";
@@ -76,6 +76,8 @@ contract PoolManager is IPoolManager {
         if(pairId <= 0 || pairId > pairCount) revert PairNotFound();
         lockData.pairId = pairId;
 
+        // TODO: trade context
+
         for (uint256 i; i < orders.length; i++) {
             // TODO: check signature and nonce
             // TODO: create nonce management contract?
@@ -102,7 +104,7 @@ contract PoolManager is IPoolManager {
             // TODO:ここで自由にかけるpost trade
             lockData.vaultId = orders[i].vaultId;
 
-            IHook(msg.sender).lockAquired(orders[i]);
+            IHooks(msg.sender).afterTrade(orders[i]);
         }
 
         // TODO: pop lock data
@@ -124,7 +126,6 @@ contract PoolManager is IPoolManager {
         reservesOf[currency] = IERC20(currency).balanceOf(address(this));
     }
 
-
     function prepareTradePerpPosition(IPoolManager.SignedOrder memory order) public onlyByLocker {
         // TODO: updatePosition
         updateAccountDelta(order.pairId, false, order.tradeAmount);
@@ -132,7 +133,10 @@ contract PoolManager is IPoolManager {
     }
 
     function postTradePerpPosition(IPoolManager.SignedOrder memory order, int256 averagePrice) public onlyByLocker {
+        // quote amount for perp
         int256 entryUpdate = -averagePrice * order.tradeAmount / 1e18;
+        // TODO: quote amount for sqrt perp
+        // TODO: quote amount for premium
 
         // TODO: updatePosition
         updateAccountDelta(order.pairId, true, entryUpdate);

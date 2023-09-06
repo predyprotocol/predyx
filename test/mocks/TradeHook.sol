@@ -35,10 +35,6 @@ contract TradeHook {
         poolManager.lockForTrade(pairId, orders, callbackData);
     }
 
-    function lockAquired(IPoolManager.SignedOrder memory order) external {
-        // nothing todo
-    }
-
     function settleCallback(bytes memory callbackData, int256 baseAmountDelta) public {
         SettleCallbackParams memory settleCallbackParams = abi.decode(callbackData, (SettleCallbackParams));
 
@@ -72,5 +68,9 @@ contract TradeHook {
 
             poolManager.settle(settleCallbackParams.pairId, true);
         }
+    }
+
+    function afterTrade(IPoolManager.SignedOrder memory order) external {
+        // nothing todo
     }
 }
