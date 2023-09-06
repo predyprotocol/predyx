@@ -23,9 +23,14 @@ contract TradeHook {
         taleMockAmount = _mockData;
     }
 
-    function trade(uint256 pairId, uint256 vaultId, int256 tradeAmount, int256 limitPrice, address currency0, address currency1)
-        external
-    {
+    function trade(
+        uint256 pairId,
+        uint256 vaultId,
+        int256 tradeAmount,
+        int256 limitPrice,
+        address currency0,
+        address currency1
+    ) external {
         IPoolManager.SignedOrder[] memory orders = new IPoolManager.SignedOrder[](1);
 
         orders[0] = IPoolManager.SignedOrder(pairId, vaultId, tradeAmount, limitPrice, 0);
@@ -38,13 +43,13 @@ contract TradeHook {
     function settleCallback(bytes memory callbackData, int256 baseAmountDelta) public {
         SettleCallbackParams memory settleCallbackParams = abi.decode(callbackData, (SettleCallbackParams));
 
-        if(baseAmountDelta > 0) {
+        if (baseAmountDelta > 0) {
             uint256 settleAmount = uint256(baseAmountDelta);
 
             uint256 takeAmount = settleAmount;
 
             // TODO: with buffer
-            if(taleMockAmount > 0) {
+            if (taleMockAmount > 0) {
                 takeAmount = taleMockAmount;
             }
             poolManager.take(true, address(this), takeAmount);
@@ -58,7 +63,7 @@ contract TradeHook {
             uint256 settleAmount = takeAmount;
 
             // TODO: with buffer
-            if(taleMockAmount > 0) {
+            if (taleMockAmount > 0) {
                 settleAmount = taleMockAmount;
             }
 

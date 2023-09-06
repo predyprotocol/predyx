@@ -66,7 +66,7 @@ contract PoolManagerTest is Test {
 
     function testTradeFailsIfPriceLessThanLimit() public {
         tradeHook.setTakeMockAmount(90);
-        
+
         vm.expectRevert(abi.encodeWithSelector(IPoolManager.PriceLessThanLimit.selector));
         tradeHook.trade(1, 1, -100, 1e18, address(currency0), address(currency1));
     }

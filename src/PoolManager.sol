@@ -70,10 +70,12 @@ contract PoolManager is IPoolManager {
         if (lockData.deltaCount != 0) revert CurrencyNotSettled();
     }
 
-    function lockForTrade(uint256 pairId, IPoolManager.SignedOrder[] memory orders, bytes memory callbackData) external {
+    function lockForTrade(uint256 pairId, IPoolManager.SignedOrder[] memory orders, bytes memory callbackData)
+        external
+    {
         // TODO: push lock
         lockData.locker = msg.sender;
-        if(pairId <= 0 || pairId > pairCount) revert PairNotFound();
+        if (pairId <= 0 || pairId > pairCount) revert PairNotFound();
         lockData.pairId = pairId;
 
         // TODO: trade context
@@ -93,8 +95,9 @@ contract PoolManager is IPoolManager {
         int256 averagePrice = currencyDelta[lockData.locker][pairs[lockData.pairId].baseAsset.tokenAddress];
         // TODO: take and settle
         IExecutor(msg.sender).settleCallback(callbackData, averagePrice);
-        if(averagePrice != 0) {
-            averagePrice = currencyDelta[lockData.locker][pairs[lockData.pairId].quoteAsset.tokenAddress] * 1e18 / averagePrice;
+        if (averagePrice != 0) {
+            averagePrice =
+                currencyDelta[lockData.locker][pairs[lockData.pairId].quoteAsset.tokenAddress] * 1e18 / averagePrice;
         }
 
         // fill
@@ -141,9 +144,9 @@ contract PoolManager is IPoolManager {
         // TODO: updatePosition
         updateAccountDelta(order.pairId, true, entryUpdate);
 
-        if(order.tradeAmount > 0 && order.limitPrice < averagePrice) {
+        if (order.tradeAmount > 0 && order.limitPrice < averagePrice) {
             revert PriceGreaterThanLimit();
-        } else if(order.tradeAmount < 0 && order.limitPrice > averagePrice) {
+        } else if (order.tradeAmount < 0 && order.limitPrice > averagePrice) {
             revert PriceLessThanLimit();
         }
     }
@@ -176,8 +179,6 @@ contract PoolManager is IPoolManager {
             currency = pairs[lockData.pairId].baseAsset.tokenAddress;
         }
         IERC20(currency).transfer(to, amount);
-
-
     }
 
     function settle(uint256 pairId, bool isQuoteAsset) public onlyByLocker returns (uint256 paid) {
@@ -201,13 +202,13 @@ contract PoolManager is IPoolManager {
     }
 
     function supply(uint256 pairId, bool isQuoteAsset, uint256 amount) public onlyByLocker {
-        if(pairId <= 0 || pairId > pairCount) revert PairNotFound();
+        if (pairId <= 0 || pairId > pairCount) revert PairNotFound();
 
         updateAccountDelta(pairId, isQuoteAsset, int256(amount));
     }
 
     function withdraw(uint256 pairId, bool isQuoteAsset, uint256 amount) public onlyByLocker {
-        if(pairId <= 0 || pairId > pairCount) revert PairNotFound();
+        if (pairId <= 0 || pairId > pairCount) revert PairNotFound();
 
         updateAccountDelta(pairId, isQuoteAsset, -int256(amount));
     }
@@ -226,7 +227,6 @@ contract PoolManager is IPoolManager {
         } else {
             currency = pairs[pairId].baseAsset.tokenAddress;
         }
-
 
         address locker = lockData.locker;
         int256 current = currencyDelta[locker][currency];

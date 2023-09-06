@@ -19,7 +19,8 @@ contract SupplyHook {
     }
 
     function supply(uint256 pairId, bool isQuoteAsset, address tokenAddress, uint256 supplyAmount) external {
-        bytes memory callbackData = abi.encode(SupplyHook.SupplySignedOrder(pairId, isQuoteAsset, tokenAddress, supplyAmount));
+        bytes memory callbackData =
+            abi.encode(SupplyHook.SupplySignedOrder(pairId, isQuoteAsset, tokenAddress, supplyAmount));
 
         MockERC20(tokenAddress).transferFrom(msg.sender, address(this), supplyAmount);
 
