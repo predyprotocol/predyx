@@ -5,7 +5,3 @@ interface IAssetHooks {
     function compose(bytes memory data) external;
     function addDebt(bytes memory data, int256 averagePrice) external;
 }
-
-interface ISettlementHook {
-    function settlementCallback(bytes memory data, int256 quoteAmountDelta, int256 baseAmountDelta) external;
-}

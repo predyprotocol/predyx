@@ -5,13 +5,17 @@ import "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import "../src/Exchange.sol";
+import "../src/assets/PerpAssetHooks.sol";
+import "../src/assets/LendingAssetHooks.sol";
+import "../src/settlements/SettlementHooks.sol";
+import "../src/settlements/DepositSettlementHooks.sol";
 
 contract ExchangeTest is Test {
     Exchange public exchange;
     PerpAssetHooks perpAssetHooks;
     LendingAssetHooks lendingAssetHooks;
-    SettlementHook settlementHook;
-    DepositSettlementHook depositSettlementHook;
+    SettlementHooks settlementHook;
+    DepositSettlementHooks depositSettlementHook;
     MockERC20 currency0;
     MockERC20 currency1;
 
@@ -24,12 +28,14 @@ contract ExchangeTest is Test {
         currency1.mint(address(this), 1e10);
 
         exchange = new Exchange();
-        exchange.registerPair(address(0), address(currency1), address(currency0));
+        exchange.registerPair(
+            address(0), address(currency1), address(currency0)
+        );
 
         perpAssetHooks = new PerpAssetHooks(exchange);
         lendingAssetHooks = new LendingAssetHooks(exchange);
-        settlementHook = new SettlementHook(exchange);
-        depositSettlementHook = new DepositSettlementHook(exchange);
+        settlementHook = new SettlementHooks(exchange);
+        depositSettlementHook = new DepositSettlementHooks(exchange);
 
         currency0.transfer(address(settlementHook), 1000);
         currency1.transfer(address(settlementHook), 1000);
@@ -41,22 +47,42 @@ contract ExchangeTest is Test {
     }
 
     function supply(bool isQuoteAsset, uint256 supplyAmount) public {
-        bytes memory data = abi.encode(LendingAssetHooks.LendingAssetComposeParams(1, isQuoteAsset, supplyAmount));
-
-        bytes memory callbackData = abi.encode(
-            DepositSettlementHook.SettleCallbackParams(1, isQuoteAsset, address(isQuoteAsset ? currency1 : currency0))
+        bytes memory data = abi.encode(
+            LendingAssetHooks.LendingAssetComposeParams(1, isQuoteAsset, supplyAmount)
         );
 
-        exchange.trade(1, address(lendingAssetHooks), address(depositSettlementHook), data, callbackData);
+        bytes memory callbackData = abi.encode(
+            DepositSettlementHooks.SettleCallbackParams(
+                1, isQuoteAsset, address(isQuoteAsset ? currency1 : currency0)
+            )
+        );
+
+        exchange.trade(
+            1,
+            address(lendingAssetHooks),
+            address(depositSettlementHook),
+            data,
+            callbackData
+        );
     }
 
     function testTradeSucceeds() public {
         uint256 pairId = 1;
-        bytes memory data = abi.encode(PerpAssetHooks.PerpAssetComposeParams(pairId, 100, 1e18));
+        bytes memory data =
+            abi.encode(PerpAssetHooks.PerpAssetComposeParams(pairId, 100, 1e18));
 
-        bytes memory callbackData =
-            abi.encode(SettlementHook.SettleCallbackParams(pairId, address(currency0), address(currency1)));
+        bytes memory callbackData = abi.encode(
+            SettlementHooks.SettleCallbackParams(
+                pairId, address(currency0), address(currency1)
+            )
+        );
 
-        exchange.trade(pairId, address(perpAssetHooks), address(settlementHook), data, callbackData);
+        exchange.trade(
+            pairId,
+            address(perpAssetHooks),
+            address(settlementHook),
+            data,
+            callbackData
+        );
     }
 }

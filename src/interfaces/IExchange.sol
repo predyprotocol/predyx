@@ -34,7 +34,10 @@ interface IExchange {
         uint256 vaultId;
     }
 
-    function updatePosition(uint256 pairId, bool isQuoteAsset, int256 delta) external;
+    function updatePosition(uint256 pairId, bool isQuoteAsset, int256 delta)
+        external;
     function take(bool isQuoteAsset, address to, uint256 amount) external;
-    function settle(uint256 pairId, bool isQuoteAsset) external returns (uint256 paid);
+    function settle(uint256 pairId, bool isQuoteAsset)
+        external
+        returns (uint256 paid);
 }
