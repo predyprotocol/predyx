@@ -6,16 +6,22 @@ import "./interfaces/IHooks.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/console.sol";
 
+import "./libraries/Perp.sol";
+import "./libraries/logic/AddPairLogic.sol";
+import "./libraries/logic/SupplyLogic.sol";
+import "./libraries/logic/TradeLogic.sol";
+
+
 contract PredyPool is IPredyPool {
+    GlobalDataLibrary.GlobalData public globalData;
+
     IPredyPool.LockData public lockData;
+
+    mapping(address => bool) public allowedUniswapPools;
 
     mapping(address currency => uint256) public reservesOf;
 
     mapping(address currency => int256 currencyDelta) public currencyDelta;
-
-    uint256 pairCount;
-
-    mapping(uint256 pairId => PairStatus) public pairs;
 
     modifier onlyByLocker() {
         address locker = lockData.locker;
@@ -23,51 +29,53 @@ contract PredyPool is IPredyPool {
         _;
     }
 
-    function registerPair(address pool, address quoteToken, address baseToken) external {
-        uint256 pairId = ++pairCount;
-        pairs[pairId] = PairStatus(pairId, pool, quoteToken, baseToken);
+    constructor(address uniswapFactory) {
+        globalData.uniswapFactory = uniswapFactory;
+        AddPairLogic.initializeGlobalData(globalData);
     }
 
-    function supply(uint256 pairId, bool isQuoteAsset, uint256 supplyAmount, uint256 maxSupplyAmount) external returns (uint256 finalSuppliedAmount){
-        /*
-        IERC20(isQuoteAsset?pairs[pairId].quoteAsset:pairs[pairId].baseAsset).transferFrom(
-            msg.sender,
-            address(this),
-            supplyAmount
+    function registerPair(AddPairLogic.AddPairParams memory addPairParam) external {
+        AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
+    }
+
+    function supply(uint256 pairId, bool isQuoteAsset, uint256 supplyAmount)
+        external
+        returns (uint256 finalSuppliedAmount)
+    {
+        return SupplyLogic.supply(globalData, pairId, supplyAmount, isQuoteAsset);
+    }
+
+    function withdraw(uint256 pairId, bool isQuoteAsset, uint256 withdrawAmount)
+        external
+        returns (uint256 finalBurnAmount, uint256 finalWithdrawAmount)
+    {
+        return SupplyLogic.withdraw(globalData, pairId, withdrawAmount, isQuoteAsset);
+    }
+
+    function reallocate(uint256 pairId) external {}
+
+    function trade(uint256 pairId, TradeParams memory tradeParams, bytes memory settlementData)
+        external
+        returns (TradeResult memory tradeResult)
+    {
+        return TradeLogic.trade(
+            globalData, pairId, tradeParams, settlementData
         );
-
-        saveReserveOf(pairs[pairId].baseAsset);
-        saveReserveOf(pairs[pairId].quoteAsset);
-        */
     }
 
-    function withdraw(uint256 pairId, bool isQuoteAsset, uint256 withdrawAmount, uint256 minWithdrawAmount) external returns (uint256 finalWithdrawnAmount) {
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData) external {}
+
+    function take(uint256 pairId, bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {}
+
+    function settle(uint256 pairId, bool isQuoteAsset) external onlyByLocker {}
+
+    function updateMargin(uint256 vaultId, int256 marginAmount) external onlyByLocker {}
+
+    function getSqrtIndexPrice(uint256 pairId) external view returns (uint256) {}
+
+    function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory) {
+        return globalData.pairs[pairId];
     }
 
-    function reallocate(uint256 pairId) external {
-    }
-
-    function trade(uint256 pairId, TradeParams memory tradeParams, bytes memory settlementData) external returns (TradeResult memory tradeResult) {
-    }
-
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData) external {
-    }
-
-    function take(uint256 pairId, bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
-    }
-
-    function settle(uint256 pairId, bool isQuoteAsset) external onlyByLocker {
-    }
-
-    function updateMargin(uint256 vaultId, int256 marginAmount) external onlyByLocker {
-    }
-
-    function getSqrtIndexPrice(uint256 pairId) external view returns (uint256) {
-    }
-
-    function getPairStatus(uint256 pairId) external view returns (PairStatus memory) {
-    }
-
-    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {
-    }
+    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {}
 }

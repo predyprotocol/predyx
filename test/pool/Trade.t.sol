@@ -4,11 +4,26 @@ pragma solidity ^0.8.19;
 import "./Setup.t.sol";
 
 contract TestTrade is TestPool {
-
     function setUp() public override {
         TestPool.setUp();
+
+        registerPair(address(currency1));
+
+        currency0.approve(address(predyPool), type(uint256).max);
+        currency1.approve(address(predyPool), type(uint256).max);
+
+        predyPool.supply(1, true, 1e6);
+        predyPool.supply(1, false, 1e6);
     }
 
+    function testTradeSucceeds() public {
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
+            1, 1, 0, 0, ""
+        );
+
+        predyPool.trade(1, tradeParams, "");
+    }
+    
     // trade succeeds for open
     // trade succeeds for close
     // trade succeeds for update

@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 import "./Setup.t.sol";
 
 contract TestReallocate is TestPool {
-
     function setUp() public override {
         TestPool.setUp();
     }

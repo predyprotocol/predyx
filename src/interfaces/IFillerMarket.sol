@@ -22,5 +22,4 @@ interface IFillerMarket {
         uint256 marginRatio;
         uint256 nonce;
     }
-
 }

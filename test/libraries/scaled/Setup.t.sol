@@ -11,7 +11,7 @@ contract TestScaledAsset is Test {
     ScaledAsset.UserStatus internal userStatus2;
 
     function setUp() public virtual {
-        assetStatus = ScaledAsset.createTokenStatus();
+        assetStatus = ScaledAsset.createAssetStatus();
         userStatus0 = ScaledAsset.createUserStatus();
         userStatus1 = ScaledAsset.createUserStatus();
         userStatus2 = ScaledAsset.createUserStatus();

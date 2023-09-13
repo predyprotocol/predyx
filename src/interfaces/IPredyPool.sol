@@ -2,40 +2,13 @@
 pragma solidity ^0.8.19;
 
 interface IPredyPool {
-    error PairNotFound();
-
     error LockedBy(address locker);
 
     error CurrencyNotSettled();
 
-    error SupplyAmountExceedsMax();
-
     error InvalidAmount();
 
-    struct PairStatus {
-        uint256 id;
-        address marginId;
-        AssetPoolStatus stablePool;
-        AssetPoolStatus underlyingPool;
-        AssetRiskParams riskParams;
-        Perp.SqrtPerpAssetStatus sqrtAssetStatus;
-        bool isMarginZero;
-        bool isIsolatedMode;
-        uint256 lastUpdateTimestamp;
-    }
-
-    struct AssetPoolStatus {
-        address token;
-        address supplyTokenAddress;
-        ScaledAsset.TokenStatus tokenStatus;
-        InterestRateModel.IRMParams irmParams;
-    }
-
-    struct AssetRiskParams {
-        uint256 riskRatio;
-        int24 rangeSize;
-        int24 rebalanceThreshold;
-    }
+    error InvalidPairId();
 
     struct LockData {
         address locker;
@@ -71,5 +44,4 @@ interface IPredyPool {
         uint256 id;
         int256 margin;
     }
-
 }
