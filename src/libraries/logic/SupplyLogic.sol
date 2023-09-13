@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ISupplyToken.sol";
 import "../DataType.sol";

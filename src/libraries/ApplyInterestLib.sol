@@ -19,11 +19,9 @@ library ApplyInterestLib {
     function applyInterestForVault(DataType.Vault memory _vault, mapping(uint256 => Perp.PairStatus) storage _pairs)
         internal
     {
-        for (uint256 i = 0; i < _vault.openPositions.length; i++) {
-            uint256 pairId = _vault.openPositions[i].pairId;
+        uint256 pairId = _vault.openPosition.pairId;
 
-            applyInterestForToken(_pairs, pairId);
-        }
+        applyInterestForToken(_pairs, pairId);
     }
 
     function applyInterestForToken(mapping(uint256 => Perp.PairStatus) storage _pairs, uint256 _pairId) internal {

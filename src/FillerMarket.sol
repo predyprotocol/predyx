@@ -7,9 +7,7 @@ import "./interfaces/IHooks.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract FillerMarket is IFillerMarket, IHooks {
-    function predySettlementCallback(bytes memory settlementData, int256 quoteAmountDelta, int256 baseAmountDelta)
-        external
-    {}
+    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external {}
 
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,

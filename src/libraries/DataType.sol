@@ -9,7 +9,7 @@ library DataType {
         address marginId;
         address owner;
         int256 margin;
-        Perp.UserStatus[] openPositions;
+        Perp.UserStatus openPosition;
     }
 
     struct RebalanceFeeGrowthCache {

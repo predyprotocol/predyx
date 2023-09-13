@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
+import {Perp} from "../libraries/Perp.sol";
+
 interface IPredyPool {
     error LockedBy(address locker);
 
@@ -9,13 +11,6 @@ interface IPredyPool {
     error InvalidAmount();
 
     error InvalidPairId();
-
-    struct LockData {
-        address locker;
-        uint256 deltaCount;
-        uint256 pairId;
-        uint256 vaultId;
-    }
 
     struct TradeParams {
         uint256 pairId;
@@ -26,22 +21,20 @@ interface IPredyPool {
     }
 
     struct TradeResult {
-        Payoff payoff;
+        Perp.Payoff payoff;
         int256 fee;
         int256 minDeposit;
-    }
-
-    struct Payoff {
-        int256 perpEntryUpdate;
-        int256 sqrtEntryUpdate;
-        int256 sqrtRebalanceEntryUpdateUnderlying;
-        int256 sqrtRebalanceEntryUpdateStable;
-        int256 perpPayoff;
-        int256 sqrtPayoff;
     }
 
     struct VaultStatus {
         uint256 id;
         int256 margin;
     }
+
+    function trade(uint256 pairId, TradeParams memory tradeParams, bytes memory settlementData)
+        external
+        returns (TradeResult memory tradeResult);
+
+    function take(uint256 pairId, bool isQuoteAsset, address to, uint256 amount) external;
+    function settle(uint256 pairId, bool isQuoteAsset) external returns (uint256 paid);
 }

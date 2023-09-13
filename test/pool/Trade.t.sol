@@ -2,8 +2,11 @@
 pragma solidity ^0.8.19;
 
 import "./Setup.t.sol";
+import "../mocks/TestTradeMarket.sol";
 
 contract TestTrade is TestPool {
+    TestTradeMarket tradeMarket;
+
     function setUp() public override {
         TestPool.setUp();
 
@@ -14,16 +17,23 @@ contract TestTrade is TestPool {
 
         predyPool.supply(1, true, 1e6);
         predyPool.supply(1, false, 1e6);
+
+        tradeMarket = new TestTradeMarket(predyPool);
+
+        currency0.transfer(address(tradeMarket), 1e6);
+        currency1.transfer(address(tradeMarket), 1e6);
     }
 
     function testTradeSucceeds() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 1, 0, 0, ""
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(1, 1, -900, 1000, "");
+
+        IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
+            1, tradeParams, abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
         );
 
-        predyPool.trade(1, tradeParams, "");
+        assertEq(tradeResult.payoff.perpEntryUpdate, 100);
     }
-    
+
     // trade succeeds for open
     // trade succeeds for close
     // trade succeeds for update
