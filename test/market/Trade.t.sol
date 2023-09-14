@@ -6,9 +6,41 @@ import "./Setup.t.sol";
 contract TestTrade is TestMarket {
     function setUp() public override {
         TestMarket.setUp();
+
+        registerPair(address(currency1));
+
+        predyPool.supply(1, true, 1e8);
+        predyPool.supply(1, false, 1e8);
     }
 
     // trade succeeds for open(pnl, interest, premium, borrow fee)
+    function testTradeSucceeds() public {
+        IFillerMarket.Order memory order = IFillerMarket.Order(
+            1,
+            1,
+            -1000,
+            900,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(
+            order,
+            ""
+        );
+
+        IPredyPool.TradeResult memory tradeResult = fillerMarket.trade(
+            signedOrder, abi.encode(FillerMarket.SettlementParams(address(currency1), address(currency0)))
+        );
+
+        assertEq(tradeResult.payoff.perpEntryUpdate, 900);
+        assertEq(tradeResult.payoff.sqrtEntryUpdate, -2000);
+        assertEq(tradeResult.payoff.perpPayoff, 0);
+        assertEq(tradeResult.payoff.sqrtPayoff, 0);
+    }
+
     // trade succeeds for close
     // trade succeeds with market order
     // trade succeeds with limit order

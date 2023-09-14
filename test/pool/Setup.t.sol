@@ -39,6 +39,9 @@ contract TestPool is Test {
         uniswapPool.mint(address(this), -2000, 2000, 1e18, bytes(""));
 
         predyPool = new PredyPool(factory);
+
+        currency0.approve(address(predyPool), type(uint256).max);
+        currency1.approve(address(predyPool), type(uint256).max);
     }
 
     /**

@@ -1,13 +1,27 @@
-// SPDX-License-Identifier: agpl-3.0
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../interfaces/IPredyPool.sol";
-import "../../interfaces/IHooks.sol";
-import "../../types/GlobalData.sol";
-import "../PerpFee.sol";
+import "@solmate/utils/FixedPointMathLib.sol";
+import {IPredyPool} from "../../interfaces/IPredyPool.sol";
+import {IHooks} from "../../interfaces/IHooks.sol";
+import {ApplyInterestLib} from "../ApplyInterestLib.sol";
+import {DataType} from "../DataType.sol";
+import {Perp} from "../Perp.sol";
+import {PerpFee} from "../PerpFee.sol";
+import {GlobalDataLibrary} from "../../types/GlobalData.sol";
+import {LockDataLibrary} from "../../types/LockData.sol";
 
 library TradeLogic {
+    using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
+    using LockDataLibrary for LockDataLibrary.LockData;
+
+    struct SwapStableResult {
+        int256 amountPerp;
+        int256 amountSqrtPerp;
+        int256 fee;
+    }
+
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
@@ -17,26 +31,30 @@ library TradeLogic {
         Perp.PairStatus storage pairStatus = globalData.pairs[pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
+        // update interest growth
+        ApplyInterestLib.applyInterestForToken(globalData.pairs, pairId);
+
+        // update rebalance fee growth
         Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
-        // pre trade
+        // settle user balance and fee
         (int256 underlyingFee, int256 stableFee) =
-            settleUserBalanceAndFee(pairStatus, globalData.rebalanceFeeGrowthCache, openPosition);
+            _settleUserBalanceAndFee(pairStatus, globalData.rebalanceFeeGrowthCache, openPosition);
 
+        // calculate required token amounts
         (int256 underlyingAmountForSqrt, int256 stableAmountForSqrt) = Perp.computeRequiredAmounts(
             pairStatus.sqrtAssetStatus, pairStatus.isMarginZero, openPosition, tradeParams.tradeAmountSqrt
         );
 
-        // swap
-        SwapStableResult memory swapResult = swap(
+        // swap tokens
+        SwapStableResult memory swapResult = _swap(
             globalData,
             pairId,
             SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, underlyingFee),
             settlementData
         );
 
-        // post trade
-        // update position
+        // add asset or debt
         tradeResult.payoff = Perp.updatePosition(
             pairStatus,
             openPosition,
@@ -44,55 +62,46 @@ library TradeLogic {
             Perp.UpdateSqrtPerpParams(tradeParams.tradeAmountSqrt, swapResult.amountSqrtPerp + stableAmountForSqrt)
         );
 
-        tradeResult.payoff.perpPayoff = roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.perpPayoff, 4);
-        tradeResult.payoff.sqrtPayoff = roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
-
-        tradeResult.fee = roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
+        // round up or down payoff and fee
+        tradeResult.payoff.perpPayoff = _roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.perpPayoff, 4);
+        tradeResult.payoff.sqrtPayoff = _roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
+        tradeResult.fee = _roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
 
         // check vault is safe
     }
 
-    struct SwapStableResult {
-        int256 amountPerp;
-        int256 amountSqrtPerp;
-        int256 fee;
-    }
-
-    function swap(
+    function _swap(
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
         SwapStableResult memory swapParams,
         bytes memory settlementData
     ) internal returns (SwapStableResult memory) {
-        globalData.lockData.quoteReserve = IERC20(globalData.pairs[pairId].quotePool.token).balanceOf(address(this));
-        globalData.lockData.baseReserve = IERC20(globalData.pairs[pairId].basePool.token).balanceOf(address(this));
-        globalData.lockData.locker = msg.sender;
-
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
+
+        globalData.initializeLock(pairId, msg.sender, totalBaseAmount);
 
         IHooks(msg.sender).predySettlementCallback(settlementData, totalBaseAmount);
 
         int256 totalQuoteAmount = globalData.lockData.quoteDelta;
 
-        GlobalDataLibrary.validateCurrencyDelta(globalData.lockData);
-        globalData.lockData.locker = address(0);
+        globalData.lockData.validateCurrencyDelta();
+        delete globalData.lockData;
 
-        return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
+        return _divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
     }
 
-    function divToStable(
-        SwapStableResult memory _swapParams,
-        int256 _amountUnderlying,
-        int256 _amountStable,
-        int256 _totalAmountStable
+    function _divToStable(
+        SwapStableResult memory swapParams,
+        int256 amountUnderlying,
+        int256 amountStable,
+        int256 totalAmountStable
     ) internal pure returns (SwapStableResult memory swapResult) {
-        // TODO: calculate trade price
-        swapResult.amountPerp = _amountStable * _swapParams.amountPerp / _amountUnderlying;
-        swapResult.amountSqrtPerp = _amountStable * _swapParams.amountSqrtPerp / _amountUnderlying;
-        swapResult.fee = _totalAmountStable - swapResult.amountPerp - swapResult.amountSqrtPerp;
+        swapResult.amountPerp = amountStable * swapParams.amountPerp / amountUnderlying;
+        swapResult.amountSqrtPerp = amountStable * swapParams.amountSqrtPerp / amountUnderlying;
+        swapResult.fee = totalAmountStable - swapResult.amountPerp - swapResult.amountSqrtPerp;
     }
 
-    function settleUserBalanceAndFee(
+    function _settleUserBalanceAndFee(
         Perp.PairStatus storage _pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus storage _userStatus
@@ -102,11 +111,11 @@ library TradeLogic {
         Perp.settleUserBalance(_pairStatus, _userStatus);
     }
 
-    function roundAndAddToProtocolFee(Perp.PairStatus storage _pairStatus, int256 _amount, uint8 _marginRoundedDecimal)
+    function _roundAndAddToProtocolFee(Perp.PairStatus storage _pairStatus, int256 _amount, uint8 _marginRoundedDecimal)
         internal
         returns (int256)
     {
-        int256 rounded = roundMargin(_amount, 10 ** _marginRoundedDecimal);
+        int256 rounded = _roundMargin(_amount, 10 ** _marginRoundedDecimal);
 
         if (_amount > rounded) {
             _pairStatus.quotePool.accumulatedProtocolRevenue += uint256(_amount - rounded);
@@ -115,7 +124,7 @@ library TradeLogic {
         return rounded;
     }
 
-    function roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
+    function _roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
         if (_amount > 0) {
             return int256(FixedPointMathLib.mulDivDown(uint256(_amount), 1, _roundedDecimals) * _roundedDecimals);
         } else {

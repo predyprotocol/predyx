@@ -10,8 +10,12 @@ import "./libraries/Perp.sol";
 import "./libraries/logic/AddPairLogic.sol";
 import "./libraries/logic/SupplyLogic.sol";
 import "./libraries/logic/TradeLogic.sol";
+import {GlobalDataLibrary} from "./types/GlobalData.sol";
 
 contract PredyPool is IPredyPool, IUniswapV3MintCallback {
+    using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
+    using LockDataLibrary for LockDataLibrary.LockData;
+
     GlobalDataLibrary.GlobalData public globalData;
 
     mapping(address => bool) public allowedUniswapPools;
@@ -74,42 +78,12 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
 
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData) external {}
 
-    function take(uint256 pairId, bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
-        address currency;
-        GlobalDataLibrary.LockData memory lockData = globalData.lockData;
-
-        if (isQuoteAsset) {
-            lockData.quoteDelta += int256(amount);
-            currency = globalData.pairs[pairId].quotePool.token;
-        } else {
-            lockData.baseDelta += int256(amount);
-            currency = globalData.pairs[pairId].basePool.token;
-        }
-
-        IERC20(currency).transfer(to, amount);
+    function take(address currency, address to, uint256 amount) external onlyByLocker {
+        globalData.take(currency, to, amount);
     }
 
-    function settle(uint256 pairId, bool isQuoteAsset) external onlyByLocker returns (uint256 paid) {
-        address currency;
-        uint256 reservesBefore;
-
-        if (isQuoteAsset) {
-            currency = globalData.pairs[pairId].quotePool.token;
-            reservesBefore = globalData.lockData.quoteReserve;
-        } else {
-            currency = globalData.pairs[pairId].basePool.token;
-            reservesBefore = globalData.lockData.baseReserve;
-        }
-
-        uint256 reserveAfter = IERC20(currency).balanceOf(address(this));
-
-        paid = reserveAfter - reservesBefore;
-
-        if (isQuoteAsset) {
-            globalData.lockData.quoteDelta -= int256(paid);
-        } else {
-            globalData.lockData.baseDelta -= int256(paid);
-        }
+    function settle(bool isQuoteAsset) external onlyByLocker returns (uint256 paid) {
+        return globalData.settle(isQuoteAsset);
     }
 
     function updateMargin(uint256 vaultId, int256 marginAmount) external onlyByLocker {}
