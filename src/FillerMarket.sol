@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
@@ -12,26 +12,18 @@ import "./base/BaseHookCallback.sol";
 /**
  * @notice Provides perps to retail traders
  */
-contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback {
+contract FillerMarket is IFillerMarket, BaseHookCallback {
+    ISwapRouter swapRouter;
+
     struct SettlementParams {
+        bytes path;
+        uint256 amountOutMinimumOrInMaximum;
         address quoteTokenAddress;
         address baseTokenAddress;
     }
 
-    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {}
-
-    /**
-     * @dev Callback for Uniswap V3 pool.
-     */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external override {
-        // require(allowedUniswapPools[msg.sender]);
-        IUniswapV3Pool uniswapPool = IUniswapV3Pool(msg.sender);
-        if (amount0Delta > 0) {
-            TransferHelper.safeTransfer(uniswapPool.token0(), msg.sender, uint256(amount0Delta));
-        }
-        if (amount1Delta > 0) {
-            TransferHelper.safeTransfer(uniswapPool.token1(), msg.sender, uint256(amount1Delta));
-        }
+    constructor(IPredyPool _predyPool, address _swapRouter) BaseHookCallback(_predyPool) {
+        swapRouter = ISwapRouter(_swapRouter);
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
@@ -41,15 +33,35 @@ contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
-            uint256 quoteAmount = uint256(baseAmountDelta);
-
             predyPool.take(settlemendParams.baseTokenAddress, address(this), uint256(baseAmountDelta));
+
+            IERC20(settlemendParams.baseTokenAddress).approve(address(swapRouter), uint256(baseAmountDelta));
+
+            uint256 quoteAmount = swapRouter.exactInput(
+                ISwapRouter.ExactInputParams(
+                    settlemendParams.path,
+                    address(this),
+                    block.timestamp,
+                    uint256(baseAmountDelta),
+                    settlemendParams.amountOutMinimumOrInMaximum
+                )
+            );
 
             IERC20(settlemendParams.quoteTokenAddress).transfer(address(predyPool), quoteAmount);
 
             predyPool.settle(true);
         } else {
-            uint256 quoteAmount = uint256(-baseAmountDelta);
+            IERC20(settlemendParams.quoteTokenAddress).approve(address(swapRouter), settlemendParams.amountOutMinimumOrInMaximum);
+
+            uint256 quoteAmount = swapRouter.exactOutput(
+                ISwapRouter.ExactOutputParams(
+                    settlemendParams.path,
+                    address(this),
+                    block.timestamp,
+                    uint256(-baseAmountDelta),
+                    settlemendParams.amountOutMinimumOrInMaximum
+                )
+            );
 
             predyPool.take(settlemendParams.quoteTokenAddress, address(this), quoteAmount);
 
@@ -72,7 +84,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback
     /**
      * @notice Verifies signature of the order and executes trade
      */
-    function trade(SignedOrder memory order, bytes memory settlementData)
+    function executeOrder(SignedOrder memory order, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {

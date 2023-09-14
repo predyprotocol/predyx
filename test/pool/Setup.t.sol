@@ -18,16 +18,18 @@ contract TestPool is Test {
 
     uint256 internal constant RISK_RATIO = 109544511;
 
+    address uniswapFactory;
+
     function setUp() public virtual {
         currency0 = new MockERC20("currency0","currency0",18);
         currency1 = new MockERC20("currency1","currency1",18);
         currency0.mint(address(this), type(uint128).max);
         currency1.mint(address(this), type(uint128).max);
 
-        address factory =
+        uniswapFactory =
             deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
 
-        uniswapPool = IUniswapV3Pool(IUniswapV3Factory(factory).createPool(address(currency0), address(currency1), 500));
+        uniswapPool = IUniswapV3Pool(IUniswapV3Factory(uniswapFactory).createPool(address(currency0), address(currency1), 500));
 
         uniswapPool.initialize(2 ** 96);
 
@@ -38,7 +40,7 @@ contract TestPool is Test {
 
         uniswapPool.mint(address(this), -2000, 2000, 1e18, bytes(""));
 
-        predyPool = new PredyPool(factory);
+        predyPool = new PredyPool(uniswapFactory);
 
         currency0.approve(address(predyPool), type(uint256).max);
         currency1.approve(address(predyPool), type(uint256).max);
