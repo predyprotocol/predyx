@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
@@ -10,15 +9,16 @@ import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./base/BaseHookCallback.sol";
 
+/**
+ * @notice Provides perps to retail traders
+ */
 contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback {
     struct SettlementParams {
         address quoteTokenAddress;
         address baseTokenAddress;
     }
 
-
-    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {
-    }
+    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {}
 
     /**
      * @dev Callback for Uniswap V3 pool.
@@ -34,7 +34,10 @@ contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback
         }
     }
 
-    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external override(BaseHookCallback) {
+    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
+        external
+        override(BaseHookCallback)
+    {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
@@ -53,7 +56,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback
             IERC20(settlemendParams.baseTokenAddress).transfer(address(predyPool), uint256(-baseAmountDelta));
 
             predyPool.settle(false);
-        }        
+        }
     }
 
     function predyTradeAfterCallback(
@@ -66,16 +69,16 @@ contract FillerMarket is IFillerMarket, BaseHookCallback, IUniswapV3SwapCallback
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseHookCallback) {}
 
-    function trade(SignedOrder memory order, bytes memory settlementData) external returns (IPredyPool.TradeResult memory tradeResult) {
+    /**
+     * @notice Verifies signature of the order and executes trade
+     */
+    function trade(SignedOrder memory order, bytes memory settlementData)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
         return predyPool.trade(
             order.order.pairId,
-            IPredyPool.TradeParams(
-                order.order.pairId,
-                1,
-                order.order.tradeAmount,
-                order.order.tradeAmountSqrt,
-                ""
-            ),
+            IPredyPool.TradeParams(order.order.pairId, 1, order.order.tradeAmount, order.order.tradeAmountSqrt, ""),
             settlementData
         );
     }

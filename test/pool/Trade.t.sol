@@ -43,11 +43,15 @@ contract TestTrade is TestPool {
     // trade succeeds for close
     function testTradeSucceedsForClose() public {
         tradeMarket.trade(
-            1, IPredyPool.TradeParams(1, 1, -99 * 1e4, 0, ""), abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
+            1,
+            IPredyPool.TradeParams(1, 1, -99 * 1e4, 0, ""),
+            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
         );
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
-            1, IPredyPool.TradeParams(1, 1, 99 * 1e4, 0, ""), abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
+            1,
+            IPredyPool.TradeParams(1, 1, 99 * 1e4, 0, ""),
+            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
         );
 
         assertEq(tradeResult.payoff.perpPayoff, 0);
@@ -61,18 +65,11 @@ contract TestTrade is TestPool {
     // trade fails if currency not settled
     function testCannotTradeIfCurrencyNotSettled() public {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(1, 1, -900, 1000, "");
-        bytes memory settlementData = abi.encode(TestTradeMarket2.SettlementParams(
-            70,
-            100,
-            address(currency0),
-            address(currency1),
-            true
-        ));
+        bytes memory settlementData =
+            abi.encode(TestTradeMarket2.SettlementParams(70, 100, address(currency0), address(currency1), true));
 
         vm.expectRevert(IPredyPool.CurrencyNotSettled.selector);
-        tradeMarket2.trade(
-            1, tradeParams, settlementData
-        );
+        tradeMarket2.trade(1, tradeParams, settlementData);
     }
 
     // trade fails if caller is not vault owner

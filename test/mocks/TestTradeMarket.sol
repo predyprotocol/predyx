@@ -10,11 +10,13 @@ import "../../src/libraries/logic/TradeLogic.sol";
  * @notice A mock market contract for trade tests
  */
 abstract contract BaseTestTradeMarket is BaseHookCallback {
-    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {
-    }
+    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {}
 
-    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external virtual override(BaseHookCallback) {
-    }
+    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
+        external
+        virtual
+        override(BaseHookCallback)
+    {}
 
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
@@ -40,10 +42,12 @@ contract TestTradeMarket is BaseTestTradeMarket {
         address baseTokenAddress;
     }
 
-    constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {
-    }
+    constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {}
 
-    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external override(BaseTestTradeMarket) {
+    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
+        external
+        override(BaseTestTradeMarket)
+    {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
@@ -66,9 +70,7 @@ contract TestTradeMarket is BaseTestTradeMarket {
     }
 }
 
-
 contract TestTradeMarket2 is BaseTestTradeMarket {
-
     struct SettlementParams {
         uint256 takeAmount;
         uint256 settleAmount;
@@ -77,8 +79,7 @@ contract TestTradeMarket2 is BaseTestTradeMarket {
         bool settleIsQuoteAsset;
     }
 
-    constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {
-    }
+    constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {}
 
     function predySettlementCallback(bytes memory settlementData, int256) external override(BaseTestTradeMarket) {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));

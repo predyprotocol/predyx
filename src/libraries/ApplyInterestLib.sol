@@ -43,11 +43,10 @@ library ApplyInterestLib {
         }
     }
 
-    function applyInterestForPoolStatus(
-        Perp.AssetPoolStatus storage poolStatus,
-        uint256 lastUpdateTimestamp,
-        uint8 fee
-    ) internal returns (uint256 interestRate) {
+    function applyInterestForPoolStatus(Perp.AssetPoolStatus storage poolStatus, uint256 lastUpdateTimestamp, uint8 fee)
+        internal
+        returns (uint256 interestRate)
+    {
         if (block.timestamp <= lastUpdateTimestamp) {
             return 0;
         }

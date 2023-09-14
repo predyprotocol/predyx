@@ -15,21 +15,8 @@ contract TestTrade is TestMarket {
 
     // trade succeeds for open(pnl, interest, premium, borrow fee)
     function testTradeSucceeds() public {
-        IFillerMarket.Order memory order = IFillerMarket.Order(
-            1,
-            1,
-            -1000,
-            900,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
-        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(
-            order,
-            ""
-        );
+        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 900, 0, 0, 0, 0, 0);
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
 
         IPredyPool.TradeResult memory tradeResult = fillerMarket.trade(
             signedOrder, abi.encode(FillerMarket.SettlementParams(address(currency1), address(currency0)))

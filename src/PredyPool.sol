@@ -12,6 +12,9 @@ import "./libraries/logic/SupplyLogic.sol";
 import "./libraries/logic/TradeLogic.sol";
 import {GlobalDataLibrary} from "./types/GlobalData.sol";
 
+/**
+ * @notice Holds the state for all pairs and vaults
+ */
 contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
@@ -49,10 +52,16 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         }
     }
 
+    /**
+     * @notice Adds new pair
+     */
     function registerPair(AddPairLogic.AddPairParams memory addPairParam) external {
         AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
     }
 
+    /**
+     * @notice Supplies liquidity to the lending pool
+     */
     function supply(uint256 pairId, bool isQuoteAsset, uint256 supplyAmount)
         external
         returns (uint256 finalSuppliedAmount)
@@ -60,6 +69,9 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         return SupplyLogic.supply(globalData, pairId, supplyAmount, isQuoteAsset);
     }
 
+    /**
+     * @notice Withdraws liquidity from the lending pool
+     */
     function withdraw(uint256 pairId, bool isQuoteAsset, uint256 withdrawAmount)
         external
         returns (uint256 finalBurnAmount, uint256 finalWithdrawAmount)
@@ -67,8 +79,14 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         return SupplyLogic.withdraw(globalData, pairId, withdrawAmount, isQuoteAsset);
     }
 
+    /**
+     * @notice Reallocated the range of concentrated liquidity provider position
+     */
     function reallocate(uint256 pairId) external {}
 
+    /**
+     * @notice Opens or closes perp positions
+     */
     function trade(uint256 pairId, TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult)
@@ -76,16 +94,31 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         return TradeLogic.trade(globalData, pairId, tradeParams, settlementData);
     }
 
+    /**
+     * @notice Executed liquidation call to close an unsafe vault
+     */
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData) external {}
 
+    /**
+     * @notice Takes tokens
+     * @dev Only locker can call this function
+     */
     function take(address currency, address to, uint256 amount) external onlyByLocker {
         globalData.take(currency, to, amount);
     }
 
+    /**
+     * @notice Settle tokens
+     * @dev Only locker can call this function
+     */
     function settle(bool isQuoteAsset) external onlyByLocker returns (uint256 paid) {
         return globalData.settle(isQuoteAsset);
     }
 
+    /**
+     * @notice Deposits margin to the vault or withdraws margin from the vault
+     * @dev Only locker can call this function
+     */
     function updateMargin(uint256 vaultId, int256 marginAmount) external onlyByLocker {}
 
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint256) {}

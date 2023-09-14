@@ -7,7 +7,7 @@ import "../../src/FillerMarket.sol";
 contract TestMarket is TestPool {
     FillerMarket fillerMarket;
 
-    function setUp() public override(TestPool) virtual {
+    function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
         fillerMarket = new FillerMarket(predyPool);
