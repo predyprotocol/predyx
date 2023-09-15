@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
 library Constants {
     uint256 internal constant ONE = 1e18;

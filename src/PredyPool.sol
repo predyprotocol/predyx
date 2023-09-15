@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -22,10 +22,6 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     GlobalDataLibrary.GlobalData public globalData;
 
     mapping(address => bool) public allowedUniswapPools;
-
-    mapping(address currency => uint256) public reservesOf;
-
-    mapping(address currency => int256 currencyDelta) public currencyDelta;
 
     modifier onlyByLocker() {
         address locker = globalData.lockData.locker;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
-import "@solmate/utils/FixedPointMathLib.sol";
+import "@solmate/src/utils/FixedPointMathLib.sol";
 import "./Constants.sol";
 import "./math/Math.sol";
 
