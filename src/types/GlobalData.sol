@@ -21,37 +21,32 @@ library GlobalDataLibrary {
         if (pairId <= 0 || globalData.pairsCount <= pairId) revert IPredyPool.InvalidPairId();
     }
 
-    function initializeLock(
-        GlobalDataLibrary.GlobalData storage globalData,
-        uint256 pairId,
-        address caller,
-        int256 baseDelta
-    ) internal {
+    function initializeLock(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId, address caller) internal {
         globalData.lockData.quoteReserve = IERC20(globalData.pairs[pairId].quotePool.token).balanceOf(address(this));
         globalData.lockData.baseReserve = IERC20(globalData.pairs[pairId].basePool.token).balanceOf(address(this));
         globalData.lockData.locker = caller;
         globalData.lockData.pairId = pairId;
-        globalData.lockData.baseDelta = baseDelta;
     }
 
-    function take(GlobalDataLibrary.GlobalData storage globalData, address currency, address to, uint256 amount)
+    function take(GlobalDataLibrary.GlobalData storage globalData, bool isQuoteAsset, address to, uint256 amount)
         internal
     {
-        LockDataLibrary.LockData storage lockData = globalData.lockData;
-        Perp.PairStatus memory pairStatus = globalData.pairs[lockData.pairId];
+        Perp.PairStatus memory pairStatus = globalData.pairs[globalData.lockData.pairId];
 
-        if (currency == pairStatus.quotePool.token) {
-            lockData.quoteDelta -= int256(amount);
-            IERC20(currency).transfer(to, amount);
-        } else if (currency == pairStatus.basePool.token) {
-            lockData.baseDelta -= int256(amount);
-            IERC20(currency).transfer(to, amount);
+        address currency;
+
+        if (isQuoteAsset) {
+            currency = pairStatus.quotePool.token;
+        } else {
+            currency = pairStatus.basePool.token;
         }
+
+        IERC20(currency).transfer(to, amount);
     }
 
     function settle(GlobalDataLibrary.GlobalData storage globalData, bool isQuoteAsset)
         internal
-        returns (uint256 paid)
+        returns (int256 paid)
     {
         address currency;
         uint256 reservesBefore;
@@ -66,12 +61,12 @@ library GlobalDataLibrary {
 
         uint256 reserveAfter = IERC20(currency).balanceOf(address(this));
 
-        paid = reserveAfter - reservesBefore;
-
         if (isQuoteAsset) {
-            globalData.lockData.quoteDelta += int256(paid);
+            globalData.lockData.quoteReserve = reserveAfter;
         } else {
-            globalData.lockData.baseDelta += int256(paid);
+            globalData.lockData.baseReserve = reserveAfter;
         }
+
+        paid = int256(reserveAfter) - int256(reservesBefore);
     }
 }

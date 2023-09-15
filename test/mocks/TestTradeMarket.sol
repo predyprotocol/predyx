@@ -37,12 +37,25 @@ abstract contract BaseTestTradeMarket is BaseHookCallback {
 }
 
 contract TestTradeMarket is BaseTestTradeMarket {
+    struct TradeAfterParams {
+        address quoteTokenAddress;
+        uint256 marginAmountUpdate;
+    }
+
     struct SettlementParams {
         address quoteTokenAddress;
         address baseTokenAddress;
     }
 
     constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {}
+
+    function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
+        external
+        override(BaseTestTradeMarket)
+    {
+        TradeAfterParams memory tradeAfterParams = abi.decode(tradeParams.extraData, (TradeAfterParams));
+        IERC20(tradeAfterParams.quoteTokenAddress).transfer(address(predyPool), tradeAfterParams.marginAmountUpdate);
+    }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
         external
@@ -53,19 +66,15 @@ contract TestTradeMarket is BaseTestTradeMarket {
         if (baseAmountDelta > 0) {
             uint256 quoteAmount = uint256(baseAmountDelta);
 
-            predyPool.take(settlemendParams.baseTokenAddress, address(this), uint256(baseAmountDelta));
+            predyPool.take(false, address(this), uint256(baseAmountDelta));
 
             IERC20(settlemendParams.quoteTokenAddress).transfer(address(predyPool), quoteAmount);
-
-            predyPool.settle(true);
         } else {
             uint256 quoteAmount = uint256(-baseAmountDelta);
 
-            predyPool.take(settlemendParams.quoteTokenAddress, address(this), quoteAmount);
+            predyPool.take(true, address(this), quoteAmount);
 
             IERC20(settlemendParams.baseTokenAddress).transfer(address(predyPool), uint256(-baseAmountDelta));
-
-            predyPool.settle(false);
         }
     }
 }
@@ -84,10 +93,8 @@ contract TestTradeMarket2 is BaseTestTradeMarket {
     function predySettlementCallback(bytes memory settlementData, int256) external override(BaseTestTradeMarket) {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
-        predyPool.take(settlemendParams.takeTokenAddress, address(this), settlemendParams.takeAmount);
+        predyPool.take(false, address(this), settlemendParams.takeAmount);
 
         IERC20(settlemendParams.settleTokenAddress).transfer(address(predyPool), settlemendParams.settleAmount);
-
-        predyPool.settle(settlemendParams.settleIsQuoteAsset);
     }
 }

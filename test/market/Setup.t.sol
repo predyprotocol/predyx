@@ -10,10 +10,10 @@ contract TestMarket is TestPool {
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
-        address swapRouter =
-            deployCode("../node_modules/@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol:SwapRouter",
-            abi.encode(uniswapFactory, address(currency0)));
-
+        address swapRouter = deployCode(
+            "../node_modules/@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol:SwapRouter",
+            abi.encode(uniswapFactory, address(currency0))
+        );
 
         fillerMarket = new FillerMarket(predyPool, swapRouter);
     }

@@ -67,6 +67,8 @@ library TradeLogic {
         tradeResult.payoff.sqrtPayoff = _roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
         tradeResult.fee = _roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
 
+        _callTradeAfterCallback(globalData, tradeParams, tradeResult);
+
         // check vault is safe
     }
 
@@ -78,14 +80,19 @@ library TradeLogic {
     ) internal returns (SwapStableResult memory) {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
-        globalData.initializeLock(pairId, msg.sender, totalBaseAmount);
+        globalData.initializeLock(pairId, msg.sender);
 
         IHooks(msg.sender).predySettlementCallback(settlementData, totalBaseAmount);
 
-        int256 totalQuoteAmount = globalData.lockData.quoteDelta;
+        int256 totalQuoteAmount = globalData.settle(true);
 
-        globalData.lockData.validateCurrencyDelta();
-        delete globalData.lockData;
+        if (globalData.settle(false) != -totalBaseAmount) {
+            revert IPredyPool.CurrencyNotSettled();
+        }
+
+        if (totalQuoteAmount * totalBaseAmount <= 0) {
+            revert IPredyPool.CurrencyNotSettled();
+        }
 
         return _divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
     }
@@ -99,6 +106,24 @@ library TradeLogic {
         swapResult.amountPerp = amountStable * swapParams.amountPerp / amountUnderlying;
         swapResult.amountSqrtPerp = amountStable * swapParams.amountSqrtPerp / amountUnderlying;
         swapResult.fee = totalAmountStable - swapResult.amountPerp - swapResult.amountSqrtPerp;
+    }
+
+    function _callTradeAfterCallback(
+        GlobalDataLibrary.GlobalData storage globalData,
+        IPredyPool.TradeParams memory tradeParams,
+        IPredyPool.TradeResult memory tradeResult
+    ) internal {
+        IHooks(msg.sender).predyTradeAfterCallback(tradeParams, tradeResult);
+
+        if (globalData.settle(false) != 0) {
+            revert IPredyPool.CurrencyNotSettled();
+        }
+
+        int256 marginAmountUpdate = GlobalDataLibrary.settle(globalData, true);
+
+        delete globalData.lockData;
+
+        globalData.vaults[tradeParams.vaultId].margin += marginAmountUpdate;
     }
 
     function _settleUserBalanceAndFee(

@@ -33,7 +33,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
-            predyPool.take(settlemendParams.baseTokenAddress, address(this), uint256(baseAmountDelta));
+            predyPool.take(false, address(this), uint256(baseAmountDelta));
 
             IERC20(settlemendParams.baseTokenAddress).approve(address(swapRouter), uint256(baseAmountDelta));
 
@@ -48,10 +48,12 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
             );
 
             IERC20(settlemendParams.quoteTokenAddress).transfer(address(predyPool), quoteAmount);
-
-            predyPool.settle(true);
         } else {
-            IERC20(settlemendParams.quoteTokenAddress).approve(address(swapRouter), settlemendParams.amountOutMinimumOrInMaximum);
+            IERC20(settlemendParams.quoteTokenAddress).approve(
+                address(swapRouter), settlemendParams.amountOutMinimumOrInMaximum
+            );
+
+            predyPool.take(true, address(this), settlemendParams.amountOutMinimumOrInMaximum);
 
             uint256 quoteAmount = swapRouter.exactOutput(
                 ISwapRouter.ExactOutputParams(
@@ -63,11 +65,11 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
                 )
             );
 
-            predyPool.take(settlemendParams.quoteTokenAddress, address(this), quoteAmount);
+            IERC20(settlemendParams.quoteTokenAddress).transfer(
+                address(predyPool), settlemendParams.amountOutMinimumOrInMaximum - quoteAmount
+            );
 
             IERC20(settlemendParams.baseTokenAddress).transfer(address(predyPool), uint256(-baseAmountDelta));
-
-            predyPool.settle(false);
         }
     }
 
@@ -88,11 +90,22 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        return predyPool.trade(
+        tradeResult = predyPool.trade(
             order.order.pairId,
             IPredyPool.TradeParams(order.order.pairId, 1, order.order.tradeAmount, order.order.tradeAmountSqrt, ""),
             settlementData
         );
+
+        // TODO: check limitPrice and limitPriceSqrt
+        if (order.order.tradeAmount > 0 && order.order.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate)) {
+            revert PriceGreaterThanLimit();
+        }
+
+        if (order.order.tradeAmount < 0 && order.order.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
+            revert PriceLessThanLimit();
+        }
+
+        return tradeResult;
     }
 
     function execLiquidationCall(uint256 positionId, bytes memory settlementData) external {}

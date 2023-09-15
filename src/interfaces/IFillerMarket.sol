@@ -17,6 +17,7 @@ interface IFillerMarket {
         int256 tradeAmount;
         int256 tradeAmountSqrt;
         uint256 limitPrice;
+        uint256 limitPriceSqrt;
         uint256 deadline;
         int256 marginAmount;
         uint256 marginRatio;

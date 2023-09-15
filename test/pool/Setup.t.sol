@@ -29,7 +29,8 @@ contract TestPool is Test {
         uniswapFactory =
             deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
 
-        uniswapPool = IUniswapV3Pool(IUniswapV3Factory(uniswapFactory).createPool(address(currency0), address(currency1), 500));
+        uniswapPool =
+            IUniswapV3Pool(IUniswapV3Factory(uniswapFactory).createPool(address(currency0), address(currency1), 500));
 
         uniswapPool.initialize(2 ** 96);
 

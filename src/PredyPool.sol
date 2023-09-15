@@ -99,16 +99,8 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
      * @notice Takes tokens
      * @dev Only locker can call this function
      */
-    function take(address currency, address to, uint256 amount) external onlyByLocker {
-        globalData.take(currency, to, amount);
-    }
-
-    /**
-     * @notice Settle tokens
-     * @dev Only locker can call this function
-     */
-    function settle(bool isQuoteAsset) external onlyByLocker returns (uint256 paid) {
-        return globalData.settle(isQuoteAsset);
+    function take(bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
+        globalData.take(isQuoteAsset, to, amount);
     }
 
     /**
@@ -121,6 +113,10 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
 
     function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory) {
         return globalData.pairs[pairId];
+    }
+
+    function getVault(uint256 vaultId) external view returns (DataType.Vault memory) {
+        return globalData.vaults[vaultId];
     }
 
     function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {}

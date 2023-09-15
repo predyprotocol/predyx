@@ -2,10 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-import {Permit2} from "@uniswap/permit2/Permit2.sol";
+// import {Permit2} from "@uniswap/permit2/Permit2.sol";
 
 contract TestExecuteOrder is TestMarket {
-    Permit2 permit2;
+    // Permit2 permit2;
+    bytes normalSwapRoute;
 
     function setUp() public override {
         TestMarket.setUp();
@@ -15,18 +16,19 @@ contract TestExecuteOrder is TestMarket {
         predyPool.supply(1, true, 1e8);
         predyPool.supply(1, false, 1e8);
 
-        permit2 = new Permit2();
+        // permit2 = new Permit2();
+
+        normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
     }
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceeds() public {
-        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 900, 0, 0, 0, 0, 0);
+        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 900, 0, 0, 0, 0, 0, 0);
         IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
 
-        bytes memory path = abi.encodePacked(address(currency0), uint24(500), address(currency1));
-
         IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
-            signedOrder, abi.encode(FillerMarket.SettlementParams(path, 0, address(currency1), address(currency0)))
+            signedOrder,
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)))
         );
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 980);
@@ -51,8 +53,29 @@ contract TestExecuteOrder is TestMarket {
     // executeOrder fails if deadline passed
     // executeOrder fails if signature is invalid
     // executeOrder fails if nonce is invalid
+
     // executeOrder fails if price is greater than limit
+    function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
+        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, 1000, 0, 999, 0, 0, 0, 0, 0);
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+        bytes memory settlementData =
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)));
+
+        vm.expectRevert(IFillerMarket.PriceGreaterThanLimit.selector);
+        fillerMarket.executeOrder(signedOrder, settlementData);
+    }
+
     // executeOrder fails if price is less than limit
+    function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
+        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 0, 1001, 0, 0, 0, 0, 0);
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+        bytes memory settlementData =
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)));
+
+        vm.expectRevert(IFillerMarket.PriceLessThanLimit.selector);
+        fillerMarket.executeOrder(signedOrder, settlementData);
+    }
+
     // executeOrder fails if filler pool is not enough
     // executeOrder fails if the vault is danger
 

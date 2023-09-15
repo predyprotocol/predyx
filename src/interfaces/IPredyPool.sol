@@ -35,6 +35,5 @@ interface IPredyPool {
         external
         returns (TradeResult memory tradeResult);
 
-    function take(address currency, address to, uint256 amount) external;
-    function settle(bool isQuoteAsset) external returns (uint256 paid);
+    function take(bool isQuoteAsset, address to, uint256 amount) external;
 }
