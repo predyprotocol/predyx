@@ -28,11 +28,18 @@ abstract contract BaseTestTradeMarket is BaseHookCallback {
         IPredyPool.TradeResult memory tradeResult
     ) external virtual override(BaseHookCallback) {}
 
-    function trade(uint256 pairId, IPredyPool.TradeParams memory tradeParams, bytes memory settlementData)
+    function trade(IPredyPool.TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        return predyPool.trade(pairId, tradeParams, settlementData);
+        return predyPool.trade(tradeParams, settlementData);
+    }
+
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
+        return predyPool.execLiquidationCall(vaultId, closeRatio, settlementData);
     }
 }
 

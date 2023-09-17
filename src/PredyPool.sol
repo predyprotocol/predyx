@@ -10,6 +10,7 @@ import "./libraries/Perp.sol";
 import "./libraries/logic/AddPairLogic.sol";
 import "./libraries/logic/SupplyLogic.sol";
 import "./libraries/logic/TradeLogic.sol";
+import "./libraries/logic/LiquidationLogic.sol";
 import {GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /**
@@ -83,17 +84,34 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     /**
      * @notice Opens or closes perp positions
      */
-    function trade(uint256 pairId, TradeParams memory tradeParams, bytes memory settlementData)
+    function trade(TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult)
     {
-        return TradeLogic.trade(globalData, pairId, tradeParams, settlementData);
+        if (tradeParams.vaultId == 0) {
+            tradeParams.vaultId = globalData.vaultCount;
+
+            globalData.vaults[tradeParams.vaultId].owner = msg.sender;
+
+            globalData.vaultCount++;
+        } else {
+            if (globalData.vaults[tradeParams.vaultId].owner != msg.sender) {
+                revert CallerIsNotVaultOwner();
+            }
+        }
+
+        return TradeLogic.trade(globalData, tradeParams, settlementData);
     }
 
     /**
      * @notice Executed liquidation call to close an unsafe vault
      */
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData) external {}
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
+        external
+        returns (TradeResult memory tradeResult)
+    {
+        return LiquidationLogic.liquidate(vaultId, closeRatio, globalData, settlementData);
+    }
 
     /**
      * @notice Takes tokens

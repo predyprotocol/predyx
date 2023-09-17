@@ -110,7 +110,7 @@ library Perp {
     }
 
     struct UserStatus {
-        uint64 pairId;
+        uint256 pairId;
         int24 rebalanceLastTickLower;
         int24 rebalanceLastTickUpper;
         uint64 lastNumRebalance;

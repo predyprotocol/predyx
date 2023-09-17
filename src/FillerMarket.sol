@@ -14,6 +14,7 @@ import "./base/BaseHookCallback.sol";
  */
 contract FillerMarket is IFillerMarket, BaseHookCallback {
     ISwapRouter swapRouter;
+    address _quoteTokenAddress;
 
     struct SettlementParams {
         bytes path;
@@ -22,8 +23,16 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         address baseTokenAddress;
     }
 
-    constructor(IPredyPool _predyPool, address _swapRouter) BaseHookCallback(_predyPool) {
+    struct UserPosition {
+        uint256 vaultId;
+        int256 marginCoveredByFiller;
+    }
+
+    mapping(uint256 => UserPosition) public userPositions;
+
+    constructor(IPredyPool _predyPool, address _swapRouter, address __quoteTokenAddress) BaseHookCallback(_predyPool) {
         swapRouter = ISwapRouter(_swapRouter);
+        _quoteTokenAddress = __quoteTokenAddress;
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
@@ -76,7 +85,20 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) {}
+    ) external override(BaseHookCallback) {
+        int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
+
+        int256 finalMarginAmountUpdate =
+            marginAmountUpdate + tradeResult.minDeposit - userPositions[tradeParams.vaultId].marginCoveredByFiller;
+
+        userPositions[tradeParams.vaultId].marginCoveredByFiller = tradeResult.minDeposit;
+
+        if (finalMarginAmountUpdate > 0) {
+            IERC20(_quoteTokenAddress).transfer(address(predyPool), uint256(finalMarginAmountUpdate));
+        } else if (finalMarginAmountUpdate < 0) {
+            predyPool.take(true, address(this), uint256(-finalMarginAmountUpdate));
+        }
+    }
 
     function predyLiquidationCallback(
         IPredyPool.TradeParams memory tradeParams,
@@ -90,11 +112,24 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
+        if (order.order.marginAmount > 0) {
+            IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), uint256(order.order.marginAmount));
+        }
+
+        UserPosition storage userPosition = userPositions[order.order.positionId];
+
         tradeResult = predyPool.trade(
-            order.order.pairId,
-            IPredyPool.TradeParams(order.order.pairId, 1, order.order.tradeAmount, order.order.tradeAmountSqrt, ""),
+            IPredyPool.TradeParams(
+                order.order.pairId,
+                userPosition.vaultId,
+                order.order.tradeAmount,
+                order.order.tradeAmountSqrt,
+                abi.encode(order.order.marginAmount)
+            ),
             settlementData
         );
+
+        userPosition.vaultId = tradeResult.vaultId;
 
         // TODO: check limitPrice and limitPriceSqrt
         if (order.order.tradeAmount > 0 && order.order.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate)) {
@@ -110,7 +145,9 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     function execLiquidationCall(uint256 positionId, bytes memory settlementData) external {}
 
-    function depositToFillerPool(uint256 depositAmount) external {}
+    function depositToFillerPool(uint256 depositAmount) external {
+        IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
+    }
 
     function withdrawFromFillerPool(uint256 withdrawAmount) external {}
 

@@ -45,6 +45,8 @@ contract TestPool is Test {
 
         currency0.approve(address(predyPool), type(uint256).max);
         currency1.approve(address(predyPool), type(uint256).max);
+
+        vm.warp(block.timestamp + 1 minutes);
     }
 
     /**
@@ -56,6 +58,18 @@ contract TestPool is Test {
         }
         if (amount1 > 0) {
             TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token1(), msg.sender, amount1);
+        }
+    }
+
+    /**
+     * @dev Callback for Uniswap V3 pool.
+     */
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        if (amount0Delta > 0) {
+            TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token0(), msg.sender, uint256(amount0Delta));
+        }
+        if (amount1Delta > 0) {
+            TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token1(), msg.sender, uint256(amount1Delta));
         }
     }
 
@@ -73,5 +87,13 @@ contract TestPool is Test {
                 irmParams
             )
         );
+    }
+
+    function _movePrice(bool _isUp) internal {
+        if (_isUp) {
+            uniswapPool.swap(address(this), false, 5 * 1e16, TickMath.MAX_SQRT_RATIO - 1, "");
+        } else {
+            uniswapPool.swap(address(this), true, -5 * 1e16, TickMath.MIN_SQRT_RATIO + 1, "");
+        }
     }
 }

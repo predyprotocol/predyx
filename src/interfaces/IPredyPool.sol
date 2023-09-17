@@ -12,6 +12,12 @@ interface IPredyPool {
 
     error InvalidPairId();
 
+    error CallerIsNotVaultOwner();
+
+    error VaultIsNotDanger();
+
+    error SlippageTooLarge();
+
     struct TradeParams {
         uint256 pairId;
         uint256 vaultId;
@@ -22,8 +28,10 @@ interface IPredyPool {
 
     struct TradeResult {
         Perp.Payoff payoff;
+        uint256 vaultId;
         int256 fee;
         int256 minDeposit;
+        int256 averagePrice;
     }
 
     struct VaultStatus {
@@ -31,7 +39,10 @@ interface IPredyPool {
         int256 margin;
     }
 
-    function trade(uint256 pairId, TradeParams memory tradeParams, bytes memory settlementData)
+    function trade(TradeParams memory tradeParams, bytes memory settlementData)
+        external
+        returns (TradeResult memory tradeResult);
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult);
 

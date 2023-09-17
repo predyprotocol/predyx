@@ -15,6 +15,9 @@ contract TestMarket is TestPool {
             abi.encode(uniswapFactory, address(currency0))
         );
 
-        fillerMarket = new FillerMarket(predyPool, swapRouter);
+        fillerMarket = new FillerMarket(predyPool, swapRouter, address(currency1));
+
+        currency0.approve(address(fillerMarket), type(uint256).max);
+        currency1.approve(address(fillerMarket), type(uint256).max);
     }
 }

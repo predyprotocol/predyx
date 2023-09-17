@@ -6,6 +6,8 @@ interface IFillerMarket {
 
     error PriceLessThanLimit();
 
+    error PastDeadline();
+
     struct SignedOrder {
         Order order;
         bytes sig;
