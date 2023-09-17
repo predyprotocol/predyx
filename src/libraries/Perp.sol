@@ -80,15 +80,6 @@ library Perp {
         int256 stableAmount;
     }
 
-    struct Payoff {
-        int256 perpEntryUpdate;
-        int256 sqrtEntryUpdate;
-        int256 sqrtRebalanceEntryUpdateUnderlying;
-        int256 sqrtRebalanceEntryUpdateStable;
-        int256 perpPayoff;
-        int256 sqrtPayoff;
-    }
-
     struct SqrtPerpAssetStatus {
         address uniswapPool;
         int24 tickLower;
@@ -495,7 +486,7 @@ library Perp {
         UserStatus storage _userStatus,
         UpdatePerpParams memory _updatePerpParams,
         UpdateSqrtPerpParams memory _updateSqrtPerpParams
-    ) internal returns (Payoff memory payoff) {
+    ) internal returns (IPredyPool.Payoff memory payoff) {
         (payoff.perpEntryUpdate, payoff.perpPayoff) = calculateEntry(
             _userStatus.perp.amount,
             _userStatus.perp.entryValue,

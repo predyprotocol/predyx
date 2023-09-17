@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
-
-import {Perp} from "../libraries/Perp.sol";
+pragma solidity >=0.8.0;
 
 interface IPredyPool {
     error LockedBy(address locker);
@@ -27,11 +25,20 @@ interface IPredyPool {
     }
 
     struct TradeResult {
-        Perp.Payoff payoff;
+        Payoff payoff;
         uint256 vaultId;
         int256 fee;
         int256 minDeposit;
         int256 averagePrice;
+    }
+
+    struct Payoff {
+        int256 perpEntryUpdate;
+        int256 sqrtEntryUpdate;
+        int256 sqrtRebalanceEntryUpdateUnderlying;
+        int256 sqrtRebalanceEntryUpdateStable;
+        int256 perpPayoff;
+        int256 sqrtPayoff;
     }
 
     struct VaultStatus {
