@@ -2,10 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-// import {Permit2} from "@uniswap/permit2/Permit2.sol";
 
 contract TestExecuteOrder is TestMarket {
-    // Permit2 permit2;
     bytes normalSwapRoute;
 
     function setUp() public override {
@@ -15,8 +13,6 @@ contract TestExecuteOrder is TestMarket {
 
         predyPool.supply(1, true, 1e8);
         predyPool.supply(1, false, 1e8);
-
-        // permit2 = new Permit2();
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 

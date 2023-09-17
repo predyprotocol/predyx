@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import {IPermit2} from "@uniswap/permit2/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
@@ -13,7 +14,8 @@ import "./base/BaseHookCallback.sol";
  * @notice Provides perps to retail traders
  */
 contract FillerMarket is IFillerMarket, BaseHookCallback {
-    ISwapRouter swapRouter;
+    IPermit2 _permit2;
+    ISwapRouter _swapRouter;
     address _quoteTokenAddress;
 
     struct SettlementParams {
@@ -30,9 +32,10 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 => UserPosition) public userPositions;
 
-    constructor(IPredyPool _predyPool, address _swapRouter, address __quoteTokenAddress) BaseHookCallback(_predyPool) {
-        swapRouter = ISwapRouter(_swapRouter);
-        _quoteTokenAddress = __quoteTokenAddress;
+    constructor(IPredyPool _predyPool, address swapRouterAddress, address quoteTokenAddress, address permit2Address) BaseHookCallback(_predyPool) {
+        _swapRouter = ISwapRouter(swapRouterAddress);
+        _quoteTokenAddress = quoteTokenAddress;
+        _permit2 = IPermit2(permit2Address);
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
@@ -42,11 +45,11 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
-            predyPool.take(false, address(this), uint256(baseAmountDelta));
+            _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
-            IERC20(settlemendParams.baseTokenAddress).approve(address(swapRouter), uint256(baseAmountDelta));
+            IERC20(settlemendParams.baseTokenAddress).approve(address(_swapRouter), uint256(baseAmountDelta));
 
-            uint256 quoteAmount = swapRouter.exactInput(
+            uint256 quoteAmount = _swapRouter.exactInput(
                 ISwapRouter.ExactInputParams(
                     settlemendParams.path,
                     address(this),
@@ -56,15 +59,15 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
                 )
             );
 
-            IERC20(settlemendParams.quoteTokenAddress).transfer(address(predyPool), quoteAmount);
+            IERC20(settlemendParams.quoteTokenAddress).transfer(address(_predyPool), quoteAmount);
         } else {
             IERC20(settlemendParams.quoteTokenAddress).approve(
-                address(swapRouter), settlemendParams.amountOutMinimumOrInMaximum
+                address(_swapRouter), settlemendParams.amountOutMinimumOrInMaximum
             );
 
-            predyPool.take(true, address(this), settlemendParams.amountOutMinimumOrInMaximum);
+            _predyPool.take(true, address(this), settlemendParams.amountOutMinimumOrInMaximum);
 
-            uint256 quoteAmount = swapRouter.exactOutput(
+            uint256 quoteAmount = _swapRouter.exactOutput(
                 ISwapRouter.ExactOutputParams(
                     settlemendParams.path,
                     address(this),
@@ -75,10 +78,10 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
             );
 
             IERC20(settlemendParams.quoteTokenAddress).transfer(
-                address(predyPool), settlemendParams.amountOutMinimumOrInMaximum - quoteAmount
+                address(_predyPool), settlemendParams.amountOutMinimumOrInMaximum - quoteAmount
             );
 
-            IERC20(settlemendParams.baseTokenAddress).transfer(address(predyPool), uint256(-baseAmountDelta));
+            IERC20(settlemendParams.baseTokenAddress).transfer(address(_predyPool), uint256(-baseAmountDelta));
         }
     }
 
@@ -94,9 +97,9 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         userPositions[tradeParams.vaultId].marginCoveredByFiller = tradeResult.minDeposit;
 
         if (finalMarginAmountUpdate > 0) {
-            IERC20(_quoteTokenAddress).transfer(address(predyPool), uint256(finalMarginAmountUpdate));
+            IERC20(_quoteTokenAddress).transfer(address(_predyPool), uint256(finalMarginAmountUpdate));
         } else if (finalMarginAmountUpdate < 0) {
-            predyPool.take(true, address(this), uint256(-finalMarginAmountUpdate));
+            _predyPool.take(true, address(this), uint256(-finalMarginAmountUpdate));
         }
     }
 
@@ -118,7 +121,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
         UserPosition storage userPosition = userPositions[order.order.positionId];
 
-        tradeResult = predyPool.trade(
+        tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
                 order.order.pairId,
                 userPosition.vaultId,

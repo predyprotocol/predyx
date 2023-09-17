@@ -24,19 +24,22 @@ contract TestExecLiquidationCall is TestPool {
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceeds() public {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -1000, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+            1, 0, -1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
         );
+
+        bytes memory settlementData =
+            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
 
         tradeMarket.trade(
-            tradeParams, abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
+            tradeParams, settlementData
         );
 
-        _movePrice(true);
+        _movePrice(true, 6 * 1e16);
 
-        vm.warp(block.timestamp + 1 minutes);
+        vm.warp(block.timestamp + 10 minutes);
 
         tradeMarket.execLiquidationCall(
-            1, 1e18, abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
+            1, 1e18, settlementData
         );
     }
 
@@ -51,7 +54,7 @@ contract TestExecLiquidationCall is TestPool {
 
         tradeMarket.trade(tradeParams, settlementData);
 
-        _movePrice(true);
+        _movePrice(true, 5 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
@@ -64,5 +67,19 @@ contract TestExecLiquidationCall is TestPool {
     // liquidate succeeds by premium payment
     // liquidate succeeds with insolvent vault
     // liquidate fails if the vault is safe
+    function testLiquidateFailIfVaultIsSafe() public {
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
+            1, 0, -1000, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+        );
+
+        bytes memory settlementData =
+            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
+
+        tradeMarket.trade(tradeParams, settlementData);
+
+        vm.expectRevert(IPredyPool.VaultIsNotDanger.selector);
+        tradeMarket.execLiquidationCall(1, 1e18, settlementData);
+    }
+
     // liquidate fails after liquidation
 }

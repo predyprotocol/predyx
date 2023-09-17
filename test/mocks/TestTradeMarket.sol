@@ -10,7 +10,7 @@ import "../../src/libraries/logic/TradeLogic.sol";
  * @notice A mock market contract for trade tests
  */
 abstract contract BaseTestTradeMarket is BaseHookCallback {
-    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {}
+    constructor(IPredyPool predyPool) BaseHookCallback(predyPool) {}
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
         external
@@ -32,14 +32,14 @@ abstract contract BaseTestTradeMarket is BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        return predyPool.trade(tradeParams, settlementData);
+        return _predyPool.trade(tradeParams, settlementData);
     }
 
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        return predyPool.execLiquidationCall(vaultId, closeRatio, settlementData);
+        return _predyPool.execLiquidationCall(vaultId, closeRatio, settlementData);
     }
 }
 
@@ -69,7 +69,7 @@ contract TestTradeMarket is BaseTestTradeMarket {
         override(BaseTestTradeMarket)
     {
         TradeAfterParams memory tradeAfterParams = abi.decode(tradeParams.extraData, (TradeAfterParams));
-        IERC20(tradeAfterParams.quoteTokenAddress).transfer(address(predyPool), tradeAfterParams.marginAmountUpdate);
+        IERC20(tradeAfterParams.quoteTokenAddress).transfer(address(_predyPool), tradeAfterParams.marginAmountUpdate);
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
@@ -81,15 +81,15 @@ contract TestTradeMarket is BaseTestTradeMarket {
         if (baseAmountDelta > 0) {
             uint256 quoteAmount = uint256(baseAmountDelta) * _price / 1e4;
 
-            predyPool.take(false, address(this), uint256(baseAmountDelta));
+            _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
-            IERC20(settlemendParams.quoteTokenAddress).transfer(address(predyPool), quoteAmount);
+            IERC20(settlemendParams.quoteTokenAddress).transfer(address(_predyPool), quoteAmount);
         } else {
             uint256 quoteAmount = uint256(-baseAmountDelta) * _price / 1e4;
 
-            predyPool.take(true, address(this), quoteAmount);
+            _predyPool.take(true, address(this), quoteAmount);
 
-            IERC20(settlemendParams.baseTokenAddress).transfer(address(predyPool), uint256(-baseAmountDelta));
+            IERC20(settlemendParams.baseTokenAddress).transfer(address(_predyPool), uint256(-baseAmountDelta));
         }
     }
 }
@@ -108,8 +108,8 @@ contract TestTradeMarket2 is BaseTestTradeMarket {
     function predySettlementCallback(bytes memory settlementData, int256) external override(BaseTestTradeMarket) {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
-        predyPool.take(false, address(this), settlemendParams.takeAmount);
+        _predyPool.take(false, address(this), settlemendParams.takeAmount);
 
-        IERC20(settlemendParams.settleTokenAddress).transfer(address(predyPool), settlemendParams.settleAmount);
+        IERC20(settlemendParams.settleTokenAddress).transfer(address(_predyPool), settlemendParams.settleAmount);
     }
 }

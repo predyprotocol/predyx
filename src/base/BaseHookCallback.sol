@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 import "../interfaces/IPredyPool.sol";
 import "../interfaces/IHooks.sol";
 
 abstract contract BaseHookCallback is IHooks {
-    IPredyPool predyPool;
+    IPredyPool _predyPool;
 
-    constructor(IPredyPool _predyPool) {
-        predyPool = _predyPool;
+    constructor(IPredyPool predyPool) {
+        _predyPool = predyPool;
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external virtual;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -8,9 +8,10 @@ import "./interfaces/IPredyPool.sol";
 import "./interfaces/IHooks.sol";
 import "./libraries/Perp.sol";
 import "./libraries/logic/AddPairLogic.sol";
+import "./libraries/logic/LiquidationLogic.sol";
+import "./libraries/logic/ReallocationLogic.sol";
 import "./libraries/logic/SupplyLogic.sol";
 import "./libraries/logic/TradeLogic.sol";
-import "./libraries/logic/LiquidationLogic.sol";
 import {GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /**
@@ -39,13 +40,26 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
      * @dev Callback for Uniswap V3 pool.
      */
     function uniswapV3MintCallback(uint256 amount0, uint256 amount1, bytes calldata) external override {
-        // require(allowedUniswapPools[msg.sender]);
+        require(allowedUniswapPools[msg.sender]);
         IUniswapV3Pool uniswapPool = IUniswapV3Pool(msg.sender);
         if (amount0 > 0) {
             TransferHelper.safeTransfer(uniswapPool.token0(), msg.sender, amount0);
         }
         if (amount1 > 0) {
             TransferHelper.safeTransfer(uniswapPool.token1(), msg.sender, amount1);
+        }
+    }
+
+    /**
+     * @dev Callback for Uniswap V3 pool.
+     */
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        require(allowedUniswapPools[msg.sender]);
+        if (amount0Delta > 0) {
+            TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token0(), msg.sender, uint256(amount0Delta));
+        }
+        if (amount1Delta > 0) {
+            TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token1(), msg.sender, uint256(amount1Delta));
         }
     }
 
@@ -79,7 +93,9 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     /**
      * @notice Reallocated the range of concentrated liquidity provider position
      */
-    function reallocate(uint256 pairId) external {}
+    function reallocate(uint256 pairId) external returns (bool reallocationHappened, int256 profit) {
+        return ReallocationLogic.reallocate(globalData, pairId);
+    }
 
     /**
      * @notice Opens or closes perp positions
@@ -127,7 +143,12 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
      */
     function updateMargin(uint256 vaultId, int256 marginAmount) external onlyByLocker {}
 
-    function getSqrtIndexPrice(uint256 pairId) external view returns (uint256) {}
+    function getSqrtIndexPrice(uint256 pairId) external view returns (uint160) {
+        return UniHelper.convertSqrtPrice(
+            UniHelper.getSqrtTWAP(globalData.pairs[pairId].sqrtAssetStatus.uniswapPool),
+            globalData.pairs[pairId].isMarginZero
+        );
+    }
 
     function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory) {
         return globalData.pairs[pairId];
