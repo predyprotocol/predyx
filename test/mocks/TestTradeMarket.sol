@@ -54,7 +54,15 @@ contract TestTradeMarket is BaseTestTradeMarket {
         address baseTokenAddress;
     }
 
-    constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {}
+    uint256 _price;
+
+    constructor(IPredyPool _predyPool) BaseTestTradeMarket(_predyPool) {
+        _price = 1e4;
+    }
+
+    function setMockPrice(uint256 price) external {
+        _price = price;
+    }
 
     function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
         external
@@ -71,13 +79,13 @@ contract TestTradeMarket is BaseTestTradeMarket {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
-            uint256 quoteAmount = uint256(baseAmountDelta);
+            uint256 quoteAmount = uint256(baseAmountDelta) * _price / 1e4;
 
             predyPool.take(false, address(this), uint256(baseAmountDelta));
 
             IERC20(settlemendParams.quoteTokenAddress).transfer(address(predyPool), quoteAmount);
         } else {
-            uint256 quoteAmount = uint256(-baseAmountDelta);
+            uint256 quoteAmount = uint256(-baseAmountDelta) * _price / 1e4;
 
             predyPool.take(true, address(this), quoteAmount);
 

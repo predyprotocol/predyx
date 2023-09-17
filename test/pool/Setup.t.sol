@@ -91,9 +91,9 @@ contract TestPool is Test {
 
     function _movePrice(bool _isUp) internal {
         if (_isUp) {
-            uniswapPool.swap(address(this), false, 5 * 1e16, TickMath.MAX_SQRT_RATIO - 1, "");
+            uniswapPool.swap(address(this), false, 2 * 1e16, TickMath.MAX_SQRT_RATIO - 1, "");
         } else {
-            uniswapPool.swap(address(this), true, -5 * 1e16, TickMath.MIN_SQRT_RATIO + 1, "");
+            uniswapPool.swap(address(this), true, -2 * 1e16, TickMath.MIN_SQRT_RATIO + 1, "");
         }
     }
 }

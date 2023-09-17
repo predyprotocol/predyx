@@ -62,7 +62,7 @@ library LiquidationLogic {
         return (_MAX_SLIPPAGE - ratio * (_MAX_SLIPPAGE - _MIN_SLIPPAGE) / 1e4) + 1e4;
     }
 
-    function checkPrice(uint256 sqrtTwap, int256 averagePrice, uint256 slippageTolerance) internal {
+    function checkPrice(uint256 sqrtTwap, int256 averagePrice, uint256 slippageTolerance) internal pure {
         uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
 
         if (averagePrice == 0) {

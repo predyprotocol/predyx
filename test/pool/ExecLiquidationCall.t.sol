@@ -27,7 +27,7 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -1000, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
         );
 
-        IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
+        tradeMarket.trade(
             tradeParams, abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
         );
 
@@ -41,6 +41,25 @@ contract TestExecLiquidationCall is TestPool {
     }
 
     // liquidate fails if slippage too large
+    function testLiquidateFailIfSlippageTooLarge() public {
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
+            1, 0, -1000, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+        );
+
+        bytes memory settlementData =
+            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
+
+        tradeMarket.trade(tradeParams, settlementData);
+
+        _movePrice(true);
+
+        vm.warp(block.timestamp + 30 minutes);
+
+        tradeMarket.setMockPrice(20000);
+
+        vm.expectRevert(IPredyPool.SlippageTooLarge.selector);
+        tradeMarket.execLiquidationCall(1, 1e18, settlementData);
+    }
 
     // liquidate succeeds by premium payment
     // liquidate succeeds with insolvent vault
