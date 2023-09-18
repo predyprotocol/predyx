@@ -22,6 +22,12 @@ library GlobalDataLibrary {
     }
 
     function initializeLock(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId, address caller) internal {
+        /*
+        if(globalData.lockData.locker != address(0)) {
+            revert IPredyPool.LockedBy(globalData.lockData.locker);
+        }
+        */
+
         globalData.lockData.quoteReserve = IERC20(globalData.pairs[pairId].quotePool.token).balanceOf(address(this));
         globalData.lockData.baseReserve = IERC20(globalData.pairs[pairId].basePool.token).balanceOf(address(this));
         globalData.lockData.locker = caller;

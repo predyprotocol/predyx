@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IHooks.sol";
 import "./libraries/Perp.sol";
@@ -12,12 +13,13 @@ import "./libraries/logic/LiquidationLogic.sol";
 import "./libraries/logic/ReallocationLogic.sol";
 import "./libraries/logic/SupplyLogic.sol";
 import "./libraries/logic/TradeLogic.sol";
+import "./libraries/logic/MarginLogic.sol";
 import {GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /**
  * @notice Holds the state for all pairs and vaults
  */
-contract PredyPool is IPredyPool, IUniswapV3MintCallback {
+contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
 
@@ -141,7 +143,13 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
      * @notice Deposits margin to the vault or withdraws margin from the vault
      * @dev Only locker can call this function
      */
-    function updateMargin(uint256 vaultId, int256 marginAmount) external onlyByLocker {}
+    function updateMargin(uint256 vaultId, int256 marginAmount) external {
+        DataType.Vault storage vault = globalData.vaults[vaultId];
+
+        MarginLogic.updateMargin(
+            vault, globalData.pairs[vault.openPosition.pairId], globalData.rebalanceFeeGrowthCache, marginAmount
+        );
+    }
 
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint160) {
         return UniHelper.convertSqrtPrice(

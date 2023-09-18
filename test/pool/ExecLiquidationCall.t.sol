@@ -32,8 +32,9 @@ contract TestExecLiquidationCall is TestPool {
         tradeMarket.trade(tradeParams, settlementData);
 
         _movePrice(true, 6 * 1e16);
+        //1000000 1106398
 
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(block.timestamp + 12 minutes);
 
         tradeMarket.execLiquidationCall(1, 1e18, settlementData);
     }

@@ -23,6 +23,11 @@ contract TestPool is Test {
     function setUp() public virtual {
         currency0 = new MockERC20("currency0","currency0",18);
         currency1 = new MockERC20("currency1","currency1",18);
+
+        if (uint160(address(currency0)) < uint160(address(currency1))) {
+            (currency0, currency1) = (currency1, currency0);
+        }
+
         currency0.mint(address(this), type(uint128).max);
         currency1.mint(address(this), type(uint128).max);
 

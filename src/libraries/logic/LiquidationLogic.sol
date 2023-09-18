@@ -43,6 +43,8 @@ library LiquidationLogic {
             settlementData
         );
 
+        delete globalData.lockData;
+
         (tradeResult.minDeposit,,,) = PositionCalculator.calculateMinDeposit(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
         );

@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./base/BaseHookCallback.sol";
-
 import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
 import "./libraries/market/MarketOrderLib.sol";
