@@ -6,5 +6,5 @@ solmate/=lib/solmate
 @openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/
 @uniswap/v3-periphery/=lib/v3-periphery/
 @uniswap/v3-core/=lib/v3-core/
-@uniswap/permit2/=lib/permit2/src/
+@uniswap/permit2/=lib/permit2/
 

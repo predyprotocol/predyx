@@ -4,16 +4,23 @@ pragma solidity ^0.8.17;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import {IPermit2} from "@uniswap/permit2/interfaces/IPermit2.sol";
+import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./base/BaseHookCallback.sol";
 
+import "./libraries/market/Permit2Lib.sol";
+import "./libraries/market/ResolvedOrder.sol";
+import "./libraries/market/MarketOrderLib.sol";
+
 /**
  * @notice Provides perps to retail traders
  */
 contract FillerMarket is IFillerMarket, BaseHookCallback {
+    using MarketOrderLib for MarketOrder;
+    using Permit2Lib for ResolvedOrder;
+
     IPermit2 _permit2;
     ISwapRouter _swapRouter;
     address _quoteTokenAddress;
@@ -32,7 +39,9 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 => UserPosition) public userPositions;
 
-    constructor(IPredyPool _predyPool, address swapRouterAddress, address quoteTokenAddress, address permit2Address) BaseHookCallback(_predyPool) {
+    constructor(IPredyPool _predyPool, address swapRouterAddress, address quoteTokenAddress, address permit2Address)
+        BaseHookCallback(_predyPool)
+    {
         _swapRouter = ISwapRouter(swapRouterAddress);
         _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
@@ -110,24 +119,27 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     /**
      * @notice Verifies signature of the order and executes trade
+     * @param order The order signed by trader
+     * @param settlementData The route of settlement created by filler
+     * @dev Fillers call this function
      */
     function executeOrder(SignedOrder memory order, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        if (order.order.marginAmount > 0) {
-            IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), uint256(order.order.marginAmount));
-        }
+        (MarketOrder memory marketOrder, ResolvedOrder memory resolvedOrder) = _resolve(order);
 
-        UserPosition storage userPosition = userPositions[order.order.positionId];
+        _verifyOrder(resolvedOrder);
+
+        UserPosition storage userPosition = userPositions[marketOrder.positionId];
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
-                order.order.pairId,
+                marketOrder.pairId,
                 userPosition.vaultId,
-                order.order.tradeAmount,
-                order.order.tradeAmountSqrt,
-                abi.encode(order.order.marginAmount)
+                marketOrder.tradeAmount,
+                marketOrder.tradeAmountSqrt,
+                abi.encode(marketOrder.marginAmount)
             ),
             settlementData
         );
@@ -135,24 +147,54 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         userPosition.vaultId = tradeResult.vaultId;
 
         // TODO: check limitPrice and limitPriceSqrt
-        if (order.order.tradeAmount > 0 && order.order.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate)) {
+        if (marketOrder.tradeAmount > 0 && marketOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate)) {
             revert PriceGreaterThanLimit();
         }
 
-        if (order.order.tradeAmount < 0 && order.order.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
+        if (marketOrder.tradeAmount < 0 && marketOrder.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
             revert PriceLessThanLimit();
+        }
+
+        if (marketOrder.marginAmount < 0) {
+            IERC20(_quoteTokenAddress).transfer(marketOrder.info.trader, uint256(-marketOrder.marginAmount));
         }
 
         return tradeResult;
     }
 
+    /**
+     * @notice Executes liquidation call for the position
+     * @param positionId The id of position
+     * @param settlementData The route of settlement created by liquidator
+     */
     function execLiquidationCall(uint256 positionId, bytes memory settlementData) external {}
 
     function depositToFillerPool(uint256 depositAmount) external {
         IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
     }
 
-    function withdrawFromFillerPool(uint256 withdrawAmount) external {}
+    function withdrawFromFillerPool(uint256 withdrawAmount) external {
+        IERC20(_quoteTokenAddress).transfer(msg.sender, withdrawAmount);
+    }
 
     function getPositionStatus(uint256 positionId) external {}
+
+    function _resolve(SignedOrder memory order)
+        internal
+        view
+        returns (MarketOrder memory marketOrder, ResolvedOrder memory)
+    {
+        return MarketOrderLib.resolve(order, _quoteTokenAddress);
+    }
+
+    function _verifyOrder(ResolvedOrder memory order) internal {
+        _permit2.permitWitnessTransferFrom(
+            order.toPermit(),
+            order.transferDetails(address(this)),
+            order.info.trader,
+            order.hash,
+            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            order.sig
+        );
+    }
 }

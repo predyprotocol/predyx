@@ -23,24 +23,19 @@ contract TestExecLiquidationCall is TestPool {
 
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceeds() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6)));
 
         bytes memory settlementData =
             abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
 
-        tradeMarket.trade(
-            tradeParams, settlementData
-        );
+        tradeMarket.trade(tradeParams, settlementData);
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 10 minutes);
 
-        tradeMarket.execLiquidationCall(
-            1, 1e18, settlementData
-        );
+        tradeMarket.execLiquidationCall(1, 1e18, settlementData);
     }
 
     // liquidate fails if slippage too large

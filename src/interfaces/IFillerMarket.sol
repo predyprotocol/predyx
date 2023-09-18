@@ -6,23 +6,8 @@ interface IFillerMarket {
 
     error PriceLessThanLimit();
 
-    error PastDeadline();
-
     struct SignedOrder {
-        Order order;
+        bytes order;
         bytes sig;
-    }
-
-    struct Order {
-        uint256 positionId;
-        uint256 pairId;
-        int256 tradeAmount;
-        int256 tradeAmountSqrt;
-        uint256 limitPrice;
-        uint256 limitPriceSqrt;
-        uint256 deadline;
-        int256 marginAmount;
-        uint256 marginRatio;
-        uint256 nonce;
     }
 }

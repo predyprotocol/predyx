@@ -2,9 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
+import {MarketOrderLib} from "../../src/libraries/market/MarketOrderLib.sol";
+import {SigUtils} from "../utils/SigUtils.sol";
+import "forge-std/console2.sol";
 
-contract TestExecuteOrder is TestMarket {
+contract TestExecuteOrder is TestMarket, SigUtils {
+    using MarketOrderLib for MarketOrder;
+
     bytes normalSwapRoute;
+    uint256 fromPrivateKey;
+    address from;
+    bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public override {
         TestMarket.setUp();
@@ -17,12 +25,45 @@ contract TestExecuteOrder is TestMarket {
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
         fillerMarket.depositToFillerPool(100 * 1e6);
+
+        fromPrivateKey = 0x12341234;
+        from = vm.addr(fromPrivateKey);
+        DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
+
+        currency1.mint(from, type(uint128).max);
+
+        vm.prank(from);
+        currency1.approve(address(permit2), type(uint256).max);
+    }
+
+    function toPermit(MarketOrder memory order) internal view returns (ISignatureTransfer.PermitTransferFrom memory) {
+        uint256 amount = order.marginAmount > 0 ? uint256(order.marginAmount) : 0;
+
+        return ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: address(currency1), amount: amount}),
+            nonce: order.info.nonce,
+            deadline: order.info.deadline
+        });
     }
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
-    function testExecuteOrderSucceeds() public {
-        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 900, 0, 0, 0, 1e5, 0, 0);
-        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+    function testExecuteOrderSucceedsForOpen() public {
+        MarketOrder memory order = MarketOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 1, 1, -1000, 900, 0, 0, 1e5, 0
+        );
+
+        bytes32 witness = order.hash();
+
+        bytes memory sig = getPermitSignature(
+            fromPrivateKey,
+            toPermit(order),
+            address(fillerMarket),
+            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
 
         IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
             signedOrder,
@@ -38,8 +79,23 @@ contract TestExecuteOrder is TestMarket {
     // netting
     function testExecuteOrderSucceedsWithNetting() public {
         {
-            IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 0, 0, 0, 0, 1e5, 0, 0);
-            IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+            MarketOrder memory order = MarketOrder(
+                OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 1, 1, -1000, 0, 0, 0, 1e5, 0
+            );
+
+            bytes32 witness = order.hash();
+
+            bytes memory sig = getPermitSignature(
+                fromPrivateKey,
+                toPermit(order),
+                address(fillerMarket),
+                MarketOrderLib.PERMIT2_ORDER_TYPE,
+                witness,
+                DOMAIN_SEPARATOR
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
+
             fillerMarket.executeOrder(
                 signedOrder,
                 abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)))
@@ -47,8 +103,23 @@ contract TestExecuteOrder is TestMarket {
         }
 
         {
-            IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, 1000, 0, 1200, 0, 0, 1e5, 0, 0);
-            IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+            MarketOrder memory order = MarketOrder(
+                OrderInfo(address(fillerMarket), from, 1, block.timestamp + 100, ""), 1, 1, 1000, 0, 1200, 0, 1e5, 0
+            );
+
+            bytes32 witness = order.hash();
+
+            bytes memory sig = getPermitSignature(
+                fromPrivateKey,
+                toPermit(order),
+                address(fillerMarket),
+                MarketOrderLib.PERMIT2_ORDER_TYPE,
+                witness,
+                DOMAIN_SEPARATOR
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
+
             fillerMarket.executeOrder(
                 signedOrder,
                 abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)))
@@ -71,12 +142,25 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
-        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, 1000, 0, 1200, 0, 1, 1e5, 0, 0);
-        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+        MarketOrder memory order =
+            MarketOrder(OrderInfo(address(fillerMarket), from, 0, 1, ""), 1, 1, 1000, 0, 1200, 0, 1e5, 0);
+
+        bytes32 witness = order.hash();
+
+        bytes memory sig = getPermitSignature(
+            fromPrivateKey,
+            toPermit(order),
+            address(fillerMarket),
+            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
         bytes memory settlementData =
             abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)));
 
-        vm.expectRevert(IFillerMarket.PastDeadline.selector);
+        vm.expectRevert();
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -85,8 +169,23 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
-        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, 1000, 0, 999, 0, 0, 1e5, 0, 0);
-        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+        MarketOrder memory order = MarketOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 1, 1, 1000, 0, 999, 0, 1e5, 0
+        );
+
+        bytes32 witness = order.hash();
+
+        bytes memory sig = getPermitSignature(
+            fromPrivateKey,
+            toPermit(order),
+            address(fillerMarket),
+            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
+
         bytes memory settlementData =
             abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)));
 
@@ -96,8 +195,23 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
-        IFillerMarket.Order memory order = IFillerMarket.Order(1, 1, -1000, 0, 1001, 0, 0, 1e5, 0, 0);
-        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(order, "");
+        MarketOrder memory order = MarketOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 1, 1, -1000, 0, 1001, 0, 1e5, 0
+        );
+
+        bytes32 witness = order.hash();
+
+        bytes memory sig = getPermitSignature(
+            fromPrivateKey,
+            toPermit(order),
+            address(fillerMarket),
+            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
+
         bytes memory settlementData =
             abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)));
 

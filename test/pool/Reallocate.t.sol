@@ -28,7 +28,7 @@ contract TestReallocate is TestPool {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
             1, 0, -9990, 10000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
         );
-        
+
         tradeMarket.trade(
             tradeParams, abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
         );
@@ -37,7 +37,6 @@ contract TestReallocate is TestPool {
 
         predyPool.reallocate(1);
     }
-
 
     // reallocate succeeds if totalAmount is 0
     // reallocate fails if current tick is within safe range
