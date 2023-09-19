@@ -12,6 +12,7 @@ import "./base/BaseHookCallback.sol";
 import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
 import "./libraries/market/MarketOrderLib.sol";
+import "./libraries/math/Math.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -19,6 +20,7 @@ import "./libraries/market/MarketOrderLib.sol";
 contract FillerMarket is IFillerMarket, BaseHookCallback {
     using MarketOrderLib for MarketOrder;
     using Permit2Lib for ResolvedOrder;
+    using Math for uint256;
 
     IPermit2 _permit2;
     ISwapRouter _swapRouter;
@@ -29,6 +31,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         uint256 amountOutMinimumOrInMaximum;
         address quoteTokenAddress;
         address baseTokenAddress;
+        int256 fee;
     }
 
     struct UserPosition {
@@ -55,46 +58,49 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         external
         override(BaseHookCallback)
     {
-        SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
+        SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
             _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
-            IERC20(settlemendParams.baseTokenAddress).approve(address(_swapRouter), uint256(baseAmountDelta));
+            IERC20(settlementParams.baseTokenAddress).approve(address(_swapRouter), uint256(baseAmountDelta));
 
             uint256 quoteAmount = _swapRouter.exactInput(
                 ISwapRouter.ExactInputParams(
-                    settlemendParams.path,
+                    settlementParams.path,
                     address(this),
                     block.timestamp,
                     uint256(baseAmountDelta),
-                    settlemendParams.amountOutMinimumOrInMaximum
+                    settlementParams.amountOutMinimumOrInMaximum
                 )
             );
 
-            IERC20(settlemendParams.quoteTokenAddress).transfer(address(_predyPool), quoteAmount);
+            IERC20(settlementParams.quoteTokenAddress).transfer(
+                address(_predyPool), quoteAmount.addDelta(settlementParams.fee)
+            );
         } else {
-            IERC20(settlemendParams.quoteTokenAddress).approve(
-                address(_swapRouter), settlemendParams.amountOutMinimumOrInMaximum
+            IERC20(settlementParams.quoteTokenAddress).approve(
+                address(_swapRouter), settlementParams.amountOutMinimumOrInMaximum
             );
 
-            _predyPool.take(true, address(this), settlemendParams.amountOutMinimumOrInMaximum);
+            _predyPool.take(true, address(this), settlementParams.amountOutMinimumOrInMaximum);
 
             uint256 quoteAmount = _swapRouter.exactOutput(
                 ISwapRouter.ExactOutputParams(
-                    settlemendParams.path,
+                    settlementParams.path,
                     address(this),
                     block.timestamp,
                     uint256(-baseAmountDelta),
-                    settlemendParams.amountOutMinimumOrInMaximum
+                    settlementParams.amountOutMinimumOrInMaximum
                 )
             );
 
-            IERC20(settlemendParams.quoteTokenAddress).transfer(
-                address(_predyPool), settlemendParams.amountOutMinimumOrInMaximum - quoteAmount
+            IERC20(settlementParams.quoteTokenAddress).transfer(
+                address(_predyPool),
+                settlementParams.amountOutMinimumOrInMaximum - quoteAmount.addDelta(settlementParams.fee)
             );
 
-            IERC20(settlemendParams.baseTokenAddress).transfer(address(_predyPool), uint256(-baseAmountDelta));
+            IERC20(settlementParams.baseTokenAddress).transfer(address(_predyPool), uint256(-baseAmountDelta));
         }
     }
 

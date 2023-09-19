@@ -74,7 +74,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
         IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
             signedOrder,
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)))
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
         );
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 980);
@@ -94,7 +94,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
             fillerMarket.executeOrder(
                 signedOrder,
-                abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)))
+                abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
             );
         }
 
@@ -107,7 +107,9 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
             fillerMarket.executeOrder(
                 signedOrder,
-                abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)))
+                abi.encode(
+                    FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0)
+                )
             );
         }
     }
@@ -133,7 +135,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)));
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
         vm.expectRevert();
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -147,7 +149,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)));
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
         vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -163,7 +165,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0)));
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
         vm.expectRevert(IFillerMarket.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -178,7 +180,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0)));
+            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0));
 
         vm.expectRevert(IFillerMarket.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
