@@ -33,10 +33,13 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     struct UserPosition {
         uint256 vaultId;
+        address owner;
         int256 marginCoveredByFiller;
     }
 
     mapping(uint256 => UserPosition) public userPositions;
+
+    uint256 positionCounts;
 
     constructor(IPredyPool _predyPool, address swapRouterAddress, address quoteTokenAddress, address permit2Address)
         BaseHookCallback(_predyPool)
@@ -44,6 +47,8 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         _swapRouter = ISwapRouter(swapRouterAddress);
         _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
+
+        positionCounts = 1;
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
@@ -130,7 +135,22 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
         _verifyOrder(resolvedOrder);
 
-        UserPosition storage userPosition = userPositions[marketOrder.positionId];
+        UserPosition storage userPosition;
+
+        if (marketOrder.positionId == 0) {
+            marketOrder.positionId = positionCounts;
+            positionCounts++;
+
+            userPosition = userPositions[marketOrder.positionId];
+
+            userPosition.owner = marketOrder.info.trader;
+        } else {
+            userPosition = userPositions[marketOrder.positionId];
+
+            if (marketOrder.info.trader != userPosition.owner) {
+                revert IFillerMarket.SignerIsNotVaultOwner();
+            }
+        }
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
