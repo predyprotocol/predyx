@@ -104,20 +104,18 @@ library PositionCalculator {
     {
         Perp.UserStatus memory userStatus = _vault.openPosition;
 
-        if (pairStatus.sqrtAssetStatus.uniswapPool != address(0)) {
-            sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
+        sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
 
-            PositionParams memory positionParams =
-                getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, userStatus);
+        PositionParams memory positionParams =
+            getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, userStatus);
 
-            minValue += calculateMinValue(sqrtPrice, positionParams, pairStatus.riskParams.riskRatio);
+        minValue += calculateMinValue(sqrtPrice, positionParams, pairStatus.riskParams.riskRatio);
 
-            vaultValue += calculateValue(sqrtPrice, positionParams);
+        vaultValue += calculateValue(sqrtPrice, positionParams);
 
-            debtValue += calculateSquartDebtValue(sqrtPrice, userStatus);
+        debtValue += calculateSquartDebtValue(sqrtPrice, userStatus);
 
-            hasPosition = hasPosition || getHasPositionFlag(userStatus);
-        }
+        hasPosition = hasPosition || getHasPositionFlag(userStatus);
 
         minValue += int256(_vault.margin);
         vaultValue += int256(_vault.margin);

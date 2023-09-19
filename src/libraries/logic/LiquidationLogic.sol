@@ -8,7 +8,6 @@ import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 import {PositionCalculator} from "../PositionCalculator.sol";
-import "forge-std/console2.sol";
 
 library LiquidationLogic {
     // 5%
@@ -28,8 +27,6 @@ library LiquidationLogic {
         (bool isLiquidatable, int256 minDeposit, int256 vaultValue, uint256 twap) = PositionCalculator.isLiquidatable(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
         );
-
-        console2.log(uint256(minDeposit), uint256(vaultValue));
 
         if (!isLiquidatable) {
             revert IPredyPool.VaultIsNotDanger();
