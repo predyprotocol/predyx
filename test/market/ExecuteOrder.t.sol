@@ -52,6 +52,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     function _createSignedOrder(GeneralOrder memory marketOrder)
         internal
+        view
         returns (IFillerMarket.SignedOrder memory signedOrder)
     {
         bytes32 witness = marketOrder.hash();
@@ -172,7 +173,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         bytes memory settlementData =
             abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
-        vm.expectRevert(IFillerMarket.PriceGreaterThanLimit.selector);
+        vm.expectRevert(GeneralOrderLib.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -187,7 +188,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         bytes memory settlementData =
             abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0));
 
-        vm.expectRevert(IFillerMarket.PriceLessThanLimit.selector);
+        vm.expectRevert(GeneralOrderLib.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 

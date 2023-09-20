@@ -3,7 +3,9 @@ pragma solidity ^0.8.17;
 
 import {OrderInfo, OrderInfoLib} from "./OrderInfoLib.sol";
 import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
+import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {ResolvedOrder} from "./ResolvedOrder.sol";
+import "../Constants.sol";
 
 struct GeneralOrder {
     OrderInfo info;
@@ -22,6 +24,12 @@ struct GeneralOrder {
 /// @notice helpers for handling general order objects
 library GeneralOrderLib {
     using OrderInfoLib for OrderInfo;
+
+    error PriceGreaterThanLimit();
+
+    error PriceLessThanLimit();
+
+    error TriggerNotMatched();
 
     bytes internal constant GENERAL_ORDER_TYPE = abi.encodePacked(
         "GeneralOrder(",
@@ -76,5 +84,57 @@ library GeneralOrderLib {
         uint256 amount = generalOrder.marginAmount > 0 ? uint256(generalOrder.marginAmount) : 0;
 
         return (generalOrder, ResolvedOrder(generalOrder.info, token, amount, hash(generalOrder), order.sig));
+    }
+
+    function validateGeneralOrder(GeneralOrder memory generalOrder, IPredyPool.TradeResult memory tradeResult)
+        internal
+        pure
+    {
+        if (generalOrder.triggerPrice > 0) {
+            uint256 twap = (tradeResult.sqrtTwap * tradeResult.sqrtTwap) >> Constants.RESOLUTION;
+
+            if (generalOrder.tradeAmount > 0 && generalOrder.triggerPrice < twap) {
+                revert TriggerNotMatched();
+            }
+            if (generalOrder.tradeAmount < 0 && generalOrder.triggerPrice > twap) {
+                revert TriggerNotMatched();
+            }
+        }
+
+        if (generalOrder.triggerPriceSqrt > 0) {
+            if (generalOrder.tradeAmountSqrt > 0 && generalOrder.triggerPriceSqrt < tradeResult.sqrtTwap) {
+                revert TriggerNotMatched();
+            }
+            if (generalOrder.tradeAmountSqrt < 0 && generalOrder.triggerPriceSqrt > tradeResult.sqrtTwap) {
+                revert TriggerNotMatched();
+            }
+        }
+
+        if (generalOrder.limitPrice > 0) {
+            if (generalOrder.tradeAmount > 0 && generalOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate))
+            {
+                revert PriceGreaterThanLimit();
+            }
+
+            if (generalOrder.tradeAmount < 0 && generalOrder.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
+                revert PriceLessThanLimit();
+            }
+        }
+
+        if (generalOrder.limitPriceSqrt > 0) {
+            if (
+                generalOrder.tradeAmountSqrt > 0
+                    && generalOrder.limitPriceSqrt < uint256(-tradeResult.payoff.sqrtEntryUpdate)
+            ) {
+                revert PriceGreaterThanLimit();
+            }
+
+            if (
+                generalOrder.tradeAmountSqrt < 0
+                    && generalOrder.limitPriceSqrt > uint256(tradeResult.payoff.sqrtEntryUpdate)
+            ) {
+                revert PriceLessThanLimit();
+            }
+        }
     }
 }

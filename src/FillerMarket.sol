@@ -13,7 +13,6 @@ import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
 import "./libraries/market/GeneralOrderLib.sol";
 import "./libraries/math/Math.sol";
-import "./libraries/Constants.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -139,7 +138,8 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) = _resolve(order, _quoteTokenAddress);
+        (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
+            GeneralOrderLib.resolve(order, _quoteTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
@@ -173,7 +173,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
         userPosition.vaultId = tradeResult.vaultId;
 
-        _validateGeneralOrder(generalOrder, tradeResult);
+        generalOrder.validateGeneralOrder(tradeResult);
 
         if (generalOrder.marginAmount < 0) {
             IERC20(_quoteTokenAddress).transfer(generalOrder.info.trader, uint256(-generalOrder.marginAmount));
@@ -199,18 +199,6 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     function getPositionStatus(uint256 positionId) external {}
 
-    function _resolve(SignedOrder memory order, address token)
-        internal
-        pure
-        returns (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder)
-    {
-        return GeneralOrderLib.resolve(order, token);
-    }
-
-    // verifyOrder
-    // limitPrice
-    // triggerPrice
-
     function _verifyOrder(ResolvedOrder memory order) internal {
         order.validate();
 
@@ -222,57 +210,5 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
             GeneralOrderLib.PERMIT2_ORDER_TYPE,
             order.sig
         );
-    }
-
-    function _validateGeneralOrder(GeneralOrder memory generalOrder, IPredyPool.TradeResult memory tradeResult)
-        internal
-        pure
-    {
-        if (generalOrder.triggerPrice > 0) {
-            uint256 twap = (tradeResult.sqrtTwap * tradeResult.sqrtTwap) >> Constants.RESOLUTION;
-
-            if (generalOrder.tradeAmount > 0 && generalOrder.triggerPrice < twap) {
-                revert TriggerNotMatched();
-            }
-            if (generalOrder.tradeAmount < 0 && generalOrder.triggerPrice > twap) {
-                revert TriggerNotMatched();
-            }
-        }
-
-        if (generalOrder.triggerPriceSqrt > 0) {
-            if (generalOrder.tradeAmountSqrt > 0 && generalOrder.triggerPriceSqrt < tradeResult.sqrtTwap) {
-                revert TriggerNotMatched();
-            }
-            if (generalOrder.tradeAmountSqrt < 0 && generalOrder.triggerPriceSqrt > tradeResult.sqrtTwap) {
-                revert TriggerNotMatched();
-            }
-        }
-
-        if (generalOrder.limitPrice > 0) {
-            if (generalOrder.tradeAmount > 0 && generalOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate))
-            {
-                revert PriceGreaterThanLimit();
-            }
-
-            if (generalOrder.tradeAmount < 0 && generalOrder.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
-                revert PriceLessThanLimit();
-            }
-        }
-
-        if (generalOrder.limitPriceSqrt > 0) {
-            if (
-                generalOrder.tradeAmountSqrt > 0
-                    && generalOrder.limitPriceSqrt < uint256(-tradeResult.payoff.sqrtEntryUpdate)
-            ) {
-                revert PriceGreaterThanLimit();
-            }
-
-            if (
-                generalOrder.tradeAmountSqrt < 0
-                    && generalOrder.limitPriceSqrt > uint256(tradeResult.payoff.sqrtEntryUpdate)
-            ) {
-                revert PriceLessThanLimit();
-            }
-        }
     }
 }
