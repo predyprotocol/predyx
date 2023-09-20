@@ -30,6 +30,7 @@ interface IPredyPool {
         int256 fee;
         int256 minDeposit;
         int256 averagePrice;
+        uint160 sqrtTwap;
     }
 
     struct Payoff {

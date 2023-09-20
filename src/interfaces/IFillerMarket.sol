@@ -8,6 +8,8 @@ interface IFillerMarket {
 
     error PriceLessThanLimit();
 
+    error TriggerNotMatched();
+
     struct SignedOrder {
         bytes order;
         bytes sig;

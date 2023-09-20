@@ -20,6 +20,10 @@ library TradeLogic {
 
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
 
+        (tradeResult.minDeposit,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
+            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
+        );
+
         _callTradeAfterCallback(globalData, tradeParams, tradeResult);
 
         // check vault is safe

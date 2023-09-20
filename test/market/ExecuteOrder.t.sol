@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-import {MarketOrderLib} from "../../src/libraries/market/MarketOrderLib.sol";
+import {GeneralOrderLib} from "../../src/libraries/market/GeneralOrderLib.sol";
 import {SigUtils} from "../utils/SigUtils.sol";
 import "forge-std/console2.sol";
 
 contract TestExecuteOrder is TestMarket, SigUtils {
-    using MarketOrderLib for MarketOrder;
+    using GeneralOrderLib for GeneralOrder;
 
     bytes normalSwapRoute;
     uint256 fromPrivateKey;
@@ -36,7 +36,11 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         currency1.approve(address(permit2), type(uint256).max);
     }
 
-    function _toPermit(MarketOrder memory order) internal view returns (ISignatureTransfer.PermitTransferFrom memory) {
+    function _toPermit(GeneralOrder memory order)
+        internal
+        view
+        returns (ISignatureTransfer.PermitTransferFrom memory)
+    {
         uint256 amount = order.marginAmount > 0 ? uint256(order.marginAmount) : 0;
 
         return ISignatureTransfer.PermitTransferFrom({
@@ -46,7 +50,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         });
     }
 
-    function _createSignedOrder(MarketOrder memory marketOrder)
+    function _createSignedOrder(GeneralOrder memory marketOrder)
         internal
         returns (IFillerMarket.SignedOrder memory signedOrder)
     {
@@ -56,7 +60,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
             fromPrivateKey,
             _toPermit(marketOrder),
             address(fillerMarket),
-            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            GeneralOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
         );
@@ -66,8 +70,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
-        MarketOrder memory order = MarketOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 0, 1, -1000, 900, 0, 0, 1e5, 0
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, -1000, 900, 0, 0, 0, 0, 1e5, 0
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
@@ -86,8 +90,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
     // netting
     function testExecuteOrderSucceedsWithNetting() public {
         {
-            MarketOrder memory order = MarketOrder(
-                OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 0, 1, -1000, 0, 0, 0, 1e5, 0
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, -1000, 0, 0, 0, 0, 0, 1e5, 0
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
@@ -99,8 +103,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         }
 
         {
-            MarketOrder memory order = MarketOrder(
-                OrderInfo(address(fillerMarket), from, 1, block.timestamp + 100, ""), 1, 1, 1000, 0, 1200, 0, 1e5, 0
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from, 1, block.timestamp + 100), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
@@ -129,8 +133,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
-        MarketOrder memory order =
-            MarketOrder(OrderInfo(address(fillerMarket), from, 0, 1, ""), 1, 1, 1000, 0, 1200, 0, 1e5, 0);
+        GeneralOrder memory order =
+            GeneralOrder(OrderInfo(address(fillerMarket), from, 0, 1), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0);
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
 
@@ -143,8 +147,9 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        MarketOrder memory order =
-            MarketOrder(OrderInfo(address(fillerMarket), from, 0, block.timestamp, ""), 1, 1, 1000, 0, 1200, 0, 1e5, 0);
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
+        );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
 
@@ -158,8 +163,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
-        MarketOrder memory order = MarketOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 0, 1, 1000, 0, 999, 0, 1e5, 0
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, 1000, 0, 0, 0, 999, 0, 1e5, 0
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
@@ -173,8 +178,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
-        MarketOrder memory order = MarketOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100, ""), 0, 1, -1000, 0, 1001, 0, 1e5, 0
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, -1000, 0, 0, 0, 1001, 0, 1e5, 0
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);

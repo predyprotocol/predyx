@@ -74,10 +74,6 @@ library Trade {
         tradeResult.payoff.sqrtPayoff = _roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
         tradeResult.fee = _roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
         tradeResult.vaultId = tradeParams.vaultId;
-
-        (tradeResult.minDeposit,,,) = PositionCalculator.calculateMinDeposit(
-            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
-        );
     }
 
     function _swap(

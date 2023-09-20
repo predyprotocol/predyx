@@ -11,14 +11,16 @@ import "./interfaces/IFillerMarket.sol";
 import "./base/BaseHookCallback.sol";
 import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
-import "./libraries/market/MarketOrderLib.sol";
+import "./libraries/market/GeneralOrderLib.sol";
 import "./libraries/math/Math.sol";
+import "./libraries/Constants.sol";
 
 /**
  * @notice Provides perps to retail traders
  */
 contract FillerMarket is IFillerMarket, BaseHookCallback {
-    using MarketOrderLib for MarketOrder;
+    using ResolvedOrderLib for ResolvedOrder;
+    using GeneralOrderLib for GeneralOrder;
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
 
@@ -42,7 +44,7 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 => UserPosition) public userPositions;
 
-    uint256 positionCounts;
+    uint64 public positionCounts;
 
     constructor(IPredyPool _predyPool, address swapRouterAddress, address quoteTokenAddress, address permit2Address)
         BaseHookCallback(_predyPool)
@@ -137,51 +139,44 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        (MarketOrder memory marketOrder, ResolvedOrder memory resolvedOrder) = _resolve(order);
+        (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) = _resolve(order, _quoteTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
         UserPosition storage userPosition;
 
-        if (marketOrder.positionId == 0) {
-            marketOrder.positionId = positionCounts;
+        if (generalOrder.positionId == 0) {
+            generalOrder.positionId = positionCounts;
             positionCounts++;
 
-            userPosition = userPositions[marketOrder.positionId];
+            userPosition = userPositions[generalOrder.positionId];
 
-            userPosition.owner = marketOrder.info.trader;
+            userPosition.owner = generalOrder.info.trader;
         } else {
-            userPosition = userPositions[marketOrder.positionId];
+            userPosition = userPositions[generalOrder.positionId];
 
-            if (marketOrder.info.trader != userPosition.owner) {
+            if (generalOrder.info.trader != userPosition.owner) {
                 revert IFillerMarket.SignerIsNotVaultOwner();
             }
         }
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
-                marketOrder.pairId,
+                generalOrder.pairId,
                 userPosition.vaultId,
-                marketOrder.tradeAmount,
-                marketOrder.tradeAmountSqrt,
-                abi.encode(marketOrder.marginAmount)
+                generalOrder.tradeAmount,
+                generalOrder.tradeAmountSqrt,
+                abi.encode(generalOrder.marginAmount)
             ),
             settlementData
         );
 
         userPosition.vaultId = tradeResult.vaultId;
 
-        // TODO: check limitPrice and limitPriceSqrt
-        if (marketOrder.tradeAmount > 0 && marketOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate)) {
-            revert PriceGreaterThanLimit();
-        }
+        _validateGeneralOrder(generalOrder, tradeResult);
 
-        if (marketOrder.tradeAmount < 0 && marketOrder.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
-            revert PriceLessThanLimit();
-        }
-
-        if (marketOrder.marginAmount < 0) {
-            IERC20(_quoteTokenAddress).transfer(marketOrder.info.trader, uint256(-marketOrder.marginAmount));
+        if (generalOrder.marginAmount < 0) {
+            IERC20(_quoteTokenAddress).transfer(generalOrder.info.trader, uint256(-generalOrder.marginAmount));
         }
 
         return tradeResult;
@@ -204,22 +199,80 @@ contract FillerMarket is IFillerMarket, BaseHookCallback {
 
     function getPositionStatus(uint256 positionId) external {}
 
-    function _resolve(SignedOrder memory order)
+    function _resolve(SignedOrder memory order, address token)
         internal
-        view
-        returns (MarketOrder memory marketOrder, ResolvedOrder memory)
+        pure
+        returns (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder)
     {
-        return MarketOrderLib.resolve(order, _quoteTokenAddress);
+        return GeneralOrderLib.resolve(order, token);
     }
 
+    // verifyOrder
+    // limitPrice
+    // triggerPrice
+
     function _verifyOrder(ResolvedOrder memory order) internal {
+        order.validate();
+
         _permit2.permitWitnessTransferFrom(
             order.toPermit(),
             order.transferDetails(address(this)),
             order.info.trader,
             order.hash,
-            MarketOrderLib.PERMIT2_ORDER_TYPE,
+            GeneralOrderLib.PERMIT2_ORDER_TYPE,
             order.sig
         );
+    }
+
+    function _validateGeneralOrder(GeneralOrder memory generalOrder, IPredyPool.TradeResult memory tradeResult)
+        internal
+        pure
+    {
+        if (generalOrder.triggerPrice > 0) {
+            uint256 twap = (tradeResult.sqrtTwap * tradeResult.sqrtTwap) >> Constants.RESOLUTION;
+
+            if (generalOrder.tradeAmount > 0 && generalOrder.triggerPrice < twap) {
+                revert TriggerNotMatched();
+            }
+            if (generalOrder.tradeAmount < 0 && generalOrder.triggerPrice > twap) {
+                revert TriggerNotMatched();
+            }
+        }
+
+        if (generalOrder.triggerPriceSqrt > 0) {
+            if (generalOrder.tradeAmountSqrt > 0 && generalOrder.triggerPriceSqrt < tradeResult.sqrtTwap) {
+                revert TriggerNotMatched();
+            }
+            if (generalOrder.tradeAmountSqrt < 0 && generalOrder.triggerPriceSqrt > tradeResult.sqrtTwap) {
+                revert TriggerNotMatched();
+            }
+        }
+
+        if (generalOrder.limitPrice > 0) {
+            if (generalOrder.tradeAmount > 0 && generalOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate))
+            {
+                revert PriceGreaterThanLimit();
+            }
+
+            if (generalOrder.tradeAmount < 0 && generalOrder.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
+                revert PriceLessThanLimit();
+            }
+        }
+
+        if (generalOrder.limitPriceSqrt > 0) {
+            if (
+                generalOrder.tradeAmountSqrt > 0
+                    && generalOrder.limitPriceSqrt < uint256(-tradeResult.payoff.sqrtEntryUpdate)
+            ) {
+                revert PriceGreaterThanLimit();
+            }
+
+            if (
+                generalOrder.tradeAmountSqrt < 0
+                    && generalOrder.limitPriceSqrt > uint256(tradeResult.payoff.sqrtEntryUpdate)
+            ) {
+                revert PriceLessThanLimit();
+            }
+        }
     }
 }

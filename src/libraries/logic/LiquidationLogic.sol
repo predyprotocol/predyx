@@ -24,9 +24,8 @@ library LiquidationLogic {
         Perp.UserStatus memory openPosition = globalData.vaults[vaultId].openPosition;
         Perp.PairStatus storage pairStatus = globalData.pairs[openPosition.pairId];
 
-        (bool isLiquidatable, int256 minDeposit, int256 vaultValue, uint256 twap) = PositionCalculator.isLiquidatable(
-            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
-        );
+        (bool isLiquidatable, int256 minDeposit, int256 vaultValue, uint256 sqrtTwap) = PositionCalculator
+            .isLiquidatable(pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]);
 
         if (!isLiquidatable) {
             revert IPredyPool.VaultIsNotDanger();
@@ -42,12 +41,12 @@ library LiquidationLogic {
 
         delete globalData.lockData;
 
-        (tradeResult.minDeposit,,,) = PositionCalculator.calculateMinDeposit(
+        (tradeResult.minDeposit,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
         );
 
         // TODO: compare tradeResult.averagePrice and TWAP
-        checkPrice(twap, tradeResult.averagePrice, calculateSlippageTolerance(minDeposit, vaultValue));
+        checkPrice(sqrtTwap, tradeResult.averagePrice, calculateSlippageTolerance(minDeposit, vaultValue));
     }
 
     function calculateSlippageTolerance(int256 minDeposit, int256 vaultValue) internal pure returns (uint256) {
