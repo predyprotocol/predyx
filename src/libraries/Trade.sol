@@ -44,7 +44,7 @@ library Trade {
 
         // settle user balance and fee
         (int256 underlyingFee, int256 stableFee) =
-            _settleUserBalanceAndFee(pairStatus, globalData.rebalanceFeeGrowthCache, openPosition);
+            settleUserBalanceAndFee(pairStatus, globalData.rebalanceFeeGrowthCache, openPosition);
 
         // calculate required token amounts
         (int256 underlyingAmountForSqrt, int256 stableAmountForSqrt) = Perp.computeRequiredAmounts(
@@ -70,9 +70,9 @@ library Trade {
         );
 
         // round up or down payoff and fee
-        tradeResult.payoff.perpPayoff = _roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.perpPayoff, 4);
-        tradeResult.payoff.sqrtPayoff = _roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
-        tradeResult.fee = _roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
+        tradeResult.payoff.perpPayoff = roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.perpPayoff, 4);
+        tradeResult.payoff.sqrtPayoff = roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
+        tradeResult.fee = roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
         tradeResult.vaultId = tradeParams.vaultId;
     }
 
@@ -98,10 +98,10 @@ library Trade {
             revert IPredyPool.CurrencyNotSettled();
         }
 
-        return _divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
+        return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
     }
 
-    function _divToStable(
+    function divToStable(
         SwapStableResult memory swapParams,
         int256 amountUnderlying,
         int256 amountStable,
@@ -114,7 +114,7 @@ library Trade {
         swapResult.averagePrice = totalAmountStable * int256(Constants.Q96) / int256(Math.abs(amountUnderlying));
     }
 
-    function _settleUserBalanceAndFee(
+    function settleUserBalanceAndFee(
         Perp.PairStatus storage _pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus storage _userStatus
@@ -124,11 +124,11 @@ library Trade {
         Perp.settleUserBalance(_pairStatus, _userStatus);
     }
 
-    function _roundAndAddToProtocolFee(Perp.PairStatus storage _pairStatus, int256 _amount, uint8 _marginRoundedDecimal)
+    function roundAndAddToProtocolFee(Perp.PairStatus storage _pairStatus, int256 _amount, uint8 _marginRoundedDecimal)
         internal
         returns (int256)
     {
-        int256 rounded = _roundMargin(_amount, 10 ** _marginRoundedDecimal);
+        int256 rounded = roundMargin(_amount, 10 ** _marginRoundedDecimal);
 
         if (_amount > rounded) {
             _pairStatus.quotePool.accumulatedProtocolRevenue += uint256(_amount - rounded);
@@ -137,7 +137,7 @@ library Trade {
         return rounded;
     }
 
-    function _roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
+    function roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
         if (_amount > 0) {
             return int256(FixedPointMathLib.mulDivDown(uint256(_amount), 1, _roundedDecimals) * _roundedDecimals);
         } else {

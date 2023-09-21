@@ -66,13 +66,19 @@ library PositionCalculator {
     function calculateMinDeposit(
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        DataType.Vault memory _vault
+        DataType.Vault memory vault
     ) internal view returns (int256 minDeposit, int256 vaultValue, bool hasPosition, uint160 twap) {
         int256 minValue;
         uint256 debtValue;
 
-        (minValue, vaultValue, debtValue, hasPosition, twap) =
-            calculateMinValue(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        twap = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
+
+        (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
+            vault,
+            getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, vault.openPosition),
+            twap,
+            pairStatus.riskParams.riskRatio
+        );
 
         int256 minMinValue = SafeCast.toInt256(calculateRequiredCollateralWithDebt() * debtValue / 1e6);
 
@@ -89,27 +95,27 @@ library PositionCalculator {
 
     /**
      * @notice Calculates min value of the vault.
-     * @param pairStatus pair status
-     * @param _rebalanceFeeGrowthCache rebalance fee growth cache
-     * @param _vault The target vault for calculation
+     * @param vault The target vault for calculation
+     * @param positionParams The position parameters
+     * @param sqrtPrice The square root of time-weighted average price
+     * @param riskRatio risk ratio of price
      */
     function calculateMinValue(
-        Perp.PairStatus memory pairStatus,
-        mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        DataType.Vault memory _vault
-    )
-        internal
-        view
-        returns (int256 minValue, int256 vaultValue, uint256 debtValue, bool hasPosition, uint160 sqrtPrice)
-    {
-        Perp.UserStatus memory userStatus = _vault.openPosition;
+        DataType.Vault memory vault,
+        PositionParams memory positionParams,
+        uint160 sqrtPrice,
+        uint256 riskRatio
+    ) internal pure returns (int256 minValue, int256 vaultValue, uint256 debtValue, bool hasPosition) {
+        Perp.UserStatus memory userStatus = vault.openPosition;
 
+        /*
         sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
 
         PositionParams memory positionParams =
             getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, userStatus);
+        */
 
-        minValue += calculateMinValue(sqrtPrice, positionParams, pairStatus.riskParams.riskRatio);
+        minValue += calculateMinValue(sqrtPrice, positionParams, riskRatio);
 
         vaultValue += calculateValue(sqrtPrice, positionParams);
 
@@ -117,8 +123,8 @@ library PositionCalculator {
 
         hasPosition = hasPosition || getHasPositionFlag(userStatus);
 
-        minValue += int256(_vault.margin);
-        vaultValue += int256(_vault.margin);
+        minValue += int256(vault.margin);
+        vaultValue += int256(vault.margin);
     }
 
     function getHasPosition(DataType.Vault memory _vault) internal pure returns (bool hasPosition) {

@@ -20,6 +20,7 @@ abstract contract BaseHookCallback is IHooks {
 
     function predyLiquidationCallback(
         IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult
+        IPredyPool.TradeResult memory tradeResult,
+        int256 marginAmount
     ) external virtual;
 }

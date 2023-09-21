@@ -10,8 +10,10 @@ contract TestExecuteOrder is TestMarket, SigUtils {
     using GeneralOrderLib for GeneralOrder;
 
     bytes normalSwapRoute;
-    uint256 fromPrivateKey;
-    address from;
+    uint256 fromPrivateKey1;
+    address from1;
+    uint256 fromPrivateKey2;
+    address from2;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public override {
@@ -26,13 +28,19 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
         fillerMarket.depositToFillerPool(100 * 1e6);
 
-        fromPrivateKey = 0x12341234;
-        from = vm.addr(fromPrivateKey);
+        fromPrivateKey1 = 0x12341234;
+        from1 = vm.addr(fromPrivateKey1);
+        fromPrivateKey2 = 0x1235678;
+        from2 = vm.addr(fromPrivateKey2);
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        currency1.mint(from, type(uint128).max);
+        currency1.mint(from1, type(uint128).max);
+        currency1.mint(from2, type(uint128).max);
 
-        vm.prank(from);
+        vm.prank(from1);
+        currency1.approve(address(permit2), type(uint256).max);
+
+        vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
     }
 
@@ -50,7 +58,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         });
     }
 
-    function _createSignedOrder(GeneralOrder memory marketOrder)
+    function _createSignedOrder(GeneralOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view
         returns (IFillerMarket.SignedOrder memory signedOrder)
@@ -72,14 +80,14 @@ contract TestExecuteOrder is TestMarket, SigUtils {
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         GeneralOrder memory order = GeneralOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, -1000, 900, 0, 0, 0, 0, 1e5, 0
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100), 0, 1, -1000, 900, 0, 0, 0, 0, 1e5, 0
         );
 
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
             signedOrder,
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
+            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
         );
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 980);
@@ -92,28 +100,28 @@ contract TestExecuteOrder is TestMarket, SigUtils {
     function testExecuteOrderSucceedsWithNetting() public {
         {
             GeneralOrder memory order = GeneralOrder(
-                OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, -1000, 0, 0, 0, 0, 0, 1e5, 0
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100), 0, 1, -1000, 0, 0, 0, 0, 0, 1e5, 0
             );
 
-            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
                 signedOrder,
-                abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
+                abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
             );
         }
 
         {
             GeneralOrder memory order = GeneralOrder(
-                OrderInfo(address(fillerMarket), from, 1, block.timestamp + 100), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
+                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
             );
 
-            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
                 signedOrder,
                 abi.encode(
-                    FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0)
+                    BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0)
                 )
             );
         }
@@ -135,12 +143,12 @@ contract TestExecuteOrder is TestMarket, SigUtils {
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
         GeneralOrder memory order =
-            GeneralOrder(OrderInfo(address(fillerMarket), from, 0, 1), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0);
+            GeneralOrder(OrderInfo(address(fillerMarket), from1, 0, 1), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0);
 
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
+            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
         vm.expectRevert();
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -148,30 +156,43 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        GeneralOrder memory order = GeneralOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
-        );
-
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
-
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
+            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
-        vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp), 0, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            fillerMarket.executeOrder(signedOrder, settlementData);
+        }
+
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from2, 0, block.timestamp), 1, 1, 1000, 0, 0, 0, 1200, 0, 1e5, 0
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
+
+            vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
+            fillerMarket.executeOrder(signedOrder, settlementData);
+        }
     }
+
     // executeOrder fails if nonce is invalid
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
         GeneralOrder memory order = GeneralOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, 1000, 0, 0, 0, 999, 0, 1e5, 0
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100), 0, 1, 1000, 0, 0, 0, 999, 0, 1e5, 0
         );
 
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
+            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
 
         vm.expectRevert(GeneralOrderLib.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -180,13 +201,13 @@ contract TestExecuteOrder is TestMarket, SigUtils {
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
         GeneralOrder memory order = GeneralOrder(
-            OrderInfo(address(fillerMarket), from, 0, block.timestamp + 100), 0, 1, -1000, 0, 0, 0, 1001, 0, 1e5, 0
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100), 0, 1, -1000, 0, 0, 0, 1001, 0, 1e5, 0
         );
 
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order);
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         bytes memory settlementData =
-            abi.encode(FillerMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0));
+            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0));
 
         vm.expectRevert(GeneralOrderLib.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
