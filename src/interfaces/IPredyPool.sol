@@ -55,4 +55,8 @@ interface IPredyPool {
         returns (TradeResult memory tradeResult);
 
     function take(bool isQuoteAsset, address to, uint256 amount) external;
+
+    function updateMargin(uint256 vaultId, int256 marginAmount) external;
+
+    function getSqrtIndexPrice(uint256 pairId) external view returns (uint160);
 }

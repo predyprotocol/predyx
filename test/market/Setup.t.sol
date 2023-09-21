@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "../pool/Setup.t.sol";
-import "../../src/PerpMarket.sol";
+import "../../src/GammaTradeMarket.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 
 contract TestMarket is TestPool {
-    PerpMarket fillerMarket;
+    GammaTradeMarket fillerMarket;
     IPermit2 permit2;
 
     function setUp() public virtual override(TestPool) {
@@ -19,7 +19,7 @@ contract TestMarket is TestPool {
 
         permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
 
-        fillerMarket = new PerpMarket(predyPool, swapRouter, address(currency1), address(permit2));
+        fillerMarket = new GammaTradeMarket(predyPool, swapRouter, address(currency1), address(permit2));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
