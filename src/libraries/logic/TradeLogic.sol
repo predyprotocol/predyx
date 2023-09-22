@@ -11,6 +11,10 @@ import {PositionCalculator} from "../PositionCalculator.sol";
 library TradeLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
 
+    event PositionUpdated(
+        uint256 vaultId, uint256 pairId, int256 tradeAmount, int256 tradeSqrtAmount, IPredyPool.Payoff payoff, int256 fee
+    );
+
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
@@ -29,6 +33,15 @@ library TradeLogic {
         // check vault is safe
         tradeResult.minDeposit = PositionCalculator.checkSafe(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
+        );
+
+        emit PositionUpdated(
+            tradeParams.vaultId,
+            tradeParams.pairId,
+            tradeParams.tradeAmount,
+            tradeParams.tradeAmountSqrt,
+            tradeResult.payoff,
+            tradeResult.fee
         );
     }
 

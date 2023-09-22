@@ -22,6 +22,11 @@ library LiquidationLogic {
     // 0.5%
     uint256 constant _MIN_SLIPPAGE = 50;
 
+    event PositionLiquidated(
+        uint256 vaultId, uint256 pairId, int256 tradeAmount, int256 tradeSqrtAmount, IPredyPool.Payoff payoff, int256 fee
+    );
+
+
     function liquidate(
         uint256 vaultId,
         uint256 closeRatio,

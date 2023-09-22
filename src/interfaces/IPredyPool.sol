@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.0;
 
+import "../libraries/DataType.sol";
+
 interface IPredyPool {
     error LockedBy(address locker);
 
@@ -59,4 +61,6 @@ interface IPredyPool {
     function updateMargin(uint256 vaultId, int256 marginAmount) external;
 
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint160);
+
+    function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
 }

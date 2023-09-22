@@ -34,6 +34,8 @@ abstract contract BaseMarket is BaseHookCallback {
         external
         override(BaseHookCallback)
     {
+        // This is a settlement function using Uniswap Router
+        // filler can set negative fee
         SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {

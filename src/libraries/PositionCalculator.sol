@@ -108,13 +108,6 @@ library PositionCalculator {
     ) internal pure returns (int256 minValue, int256 vaultValue, uint256 debtValue, bool hasPosition) {
         Perp.UserStatus memory userStatus = vault.openPosition;
 
-        /*
-        sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
-
-        PositionParams memory positionParams =
-            getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, userStatus);
-        */
-
         minValue += calculateMinValue(sqrtPrice, positionParams, riskRatio);
 
         vaultValue += calculateValue(sqrtPrice, positionParams);
