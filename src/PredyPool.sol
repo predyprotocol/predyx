@@ -95,14 +95,17 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
     /**
      * @notice Reallocated the range of concentrated liquidity provider position
      */
-    function reallocate(uint256 pairId) external returns (bool reallocationHappened, int256 profit) {
-        return ReallocationLogic.reallocate(globalData, pairId);
+    function reallocate(uint256 pairId, IHooks.SettlementData memory settlementData)
+        external
+        returns (bool relocationOccurred)
+    {
+        return ReallocationLogic.reallocate(globalData, pairId, settlementData);
     }
 
     /**
      * @notice Opens or closes perp positions
      */
-    function trade(TradeParams memory tradeParams, bytes memory settlementData)
+    function trade(TradeParams memory tradeParams, IHooks.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult)
     {
@@ -110,6 +113,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
             tradeParams.vaultId = globalData.vaultCount;
 
             globalData.vaults[tradeParams.vaultId].owner = msg.sender;
+            globalData.vaults[tradeParams.vaultId].recepient = msg.sender;
 
             globalData.vaultCount++;
         } else {
@@ -121,10 +125,24 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
         return TradeLogic.trade(globalData, tradeParams, settlementData);
     }
 
+    function updateRecepient(uint256 vaultId, address recepient) external {
+        DataType.Vault storage vault = globalData.vaults[vaultId];
+
+        if (recepient == address(0)) {
+            revert InvalidAddress();
+        }
+
+        if (vault.owner != msg.sender) {
+            revert CallerIsNotVaultOwner();
+        }
+
+        vault.recepient = recepient;
+    }
+
     /**
      * @notice Executed liquidation call to close an unsafe vault
      */
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, IHooks.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult)
     {

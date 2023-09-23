@@ -29,7 +29,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
         openPosition.sqrtPerp.entryValue = 0;
         openPosition.stable.positionAmount = _amountStable;
 
-        return DataType.Vault(1, address(usdc), address(this), _margin, openPosition);
+        return DataType.Vault(1, address(usdc), address(this), address(this), _margin, openPosition);
     }
 
     function testCalculateMinDepositZero() public {

@@ -8,6 +8,7 @@ library DataType {
         uint256 id;
         address marginId;
         address owner;
+        address recepient;
         int256 margin;
         Perp.UserStatus openPosition;
     }

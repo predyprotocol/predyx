@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.0;
 
+import "./IHooks.sol";
 import "../libraries/DataType.sol";
 
 interface IPredyPool {
@@ -11,6 +12,8 @@ interface IPredyPool {
     error InvalidAmount();
 
     error InvalidPairId();
+
+    error InvalidAddress();
 
     error CallerIsNotVaultOwner();
 
@@ -49,12 +52,14 @@ interface IPredyPool {
         int256 margin;
     }
 
-    function trade(TradeParams memory tradeParams, bytes memory settlementData)
+    function trade(TradeParams memory tradeParams, IHooks.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult);
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, IHooks.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult);
+
+    function updateRecepient(uint256 vaultId, address recepient) external;
 
     function take(bool isQuoteAsset, address to, uint256 amount) external;
 

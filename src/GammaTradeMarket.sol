@@ -48,20 +48,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
         }
     }
 
-    function predyLiquidationCallback(
-        IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult,
-        int256 marginAmount
-    ) external override(BaseMarket) {
-        address account = userPositions[tradeParams.vaultId];
-
-        if (tradeResult.minDeposit == 0 && marginAmount > 0) {
-            _predyPool.take(true, address(this), uint256(marginAmount));
-
-            IERC20(_quoteTokenAddress).transfer(account, uint256(marginAmount));
-        }
-    }
-
     /**
      * @notice Verifies signature of the order and executes trade
      * @param order The order signed by trader
@@ -85,11 +71,13 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
                 generalOrder.tradeAmountSqrt,
                 abi.encode(generalOrder.marginAmount)
             ),
-            settlementData
+            IHooks.SettlementData(address(this), settlementData)
         );
 
         if (generalOrder.positionId == 0) {
             userPositions[tradeResult.vaultId] = generalOrder.info.trader;
+
+            _predyPool.updateRecepient(tradeResult.vaultId, generalOrder.info.trader);
         } else {
             if (generalOrder.info.trader != userPositions[tradeResult.vaultId]) {
                 revert IFillerMarket.SignerIsNotVaultOwner();
@@ -111,7 +99,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
      * @param settlementData The route of settlement created by liquidator
      */
     function execLiquidationCall(uint256 vaultId, bytes memory settlementData) external {
-        _predyPool.execLiquidationCall(vaultId, 1e18, settlementData);
+        _predyPool.execLiquidationCall(vaultId, 1e18, IHooks.SettlementData(address(this), settlementData));
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {

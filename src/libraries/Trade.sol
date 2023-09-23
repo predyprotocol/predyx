@@ -29,8 +29,8 @@ library Trade {
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
-        bytes memory settlementData
-    ) internal returns (IPredyPool.TradeResult memory tradeResult) {
+        IHooks.SettlementData memory settlementData
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
@@ -80,13 +80,15 @@ library Trade {
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
         SwapStableResult memory swapParams,
-        bytes memory settlementData
+        IHooks.SettlementData memory settlementData
     ) internal returns (SwapStableResult memory) {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
-        globalData.initializeLock(pairId, msg.sender);
+        globalData.initializeLock(pairId, settlementData.settlementContractAddress);
 
-        IHooks(msg.sender).predySettlementCallback(settlementData, totalBaseAmount);
+        IHooks(settlementData.settlementContractAddress).predySettlementCallback(
+            settlementData.encodedData, totalBaseAmount
+        );
 
         int256 totalQuoteAmount = globalData.settle(true);
 
@@ -97,6 +99,8 @@ library Trade {
         if (totalQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.CurrencyNotSettled();
         }
+
+        delete globalData.lockData;
 
         return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
     }

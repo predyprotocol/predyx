@@ -12,13 +12,18 @@ library TradeLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
 
     event PositionUpdated(
-        uint256 vaultId, uint256 pairId, int256 tradeAmount, int256 tradeSqrtAmount, IPredyPool.Payoff payoff, int256 fee
+        uint256 vaultId,
+        uint256 pairId,
+        int256 tradeAmount,
+        int256 tradeSqrtAmount,
+        IPredyPool.Payoff payoff,
+        int256 fee
     );
 
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
-        bytes memory settlementData
+        IHooks.SettlementData memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
 
@@ -28,7 +33,7 @@ library TradeLogic {
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
         );
 
-        _callTradeAfterCallback(globalData, tradeParams, tradeResult);
+        callTradeAfterCallback(globalData, tradeParams, tradeResult);
 
         // check vault is safe
         tradeResult.minDeposit = PositionCalculator.checkSafe(
@@ -45,11 +50,13 @@ library TradeLogic {
         );
     }
 
-    function _callTradeAfterCallback(
+    function callTradeAfterCallback(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
     ) internal {
+        globalData.initializeLock(tradeParams.pairId, msg.sender);
+
         IHooks(msg.sender).predyTradeAfterCallback(tradeParams, tradeResult);
 
         if (globalData.settle(false) != 0) {

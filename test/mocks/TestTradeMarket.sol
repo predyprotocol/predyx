@@ -23,24 +23,18 @@ abstract contract BaseTestTradeMarket is BaseHookCallback {
         IPredyPool.TradeResult memory tradeResult
     ) external virtual override(BaseHookCallback) {}
 
-    function predyLiquidationCallback(
-        IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult,
-        int256 marginAmount
-    ) external virtual override(BaseHookCallback) {}
-
     function trade(IPredyPool.TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        return _predyPool.trade(tradeParams, settlementData);
+        return _predyPool.trade(tradeParams, IHooks.SettlementData(address(this), settlementData));
     }
 
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        return _predyPool.execLiquidationCall(vaultId, closeRatio, settlementData);
+        return _predyPool.execLiquidationCall(vaultId, closeRatio, IHooks.SettlementData(address(this), settlementData));
     }
 }
 
@@ -85,7 +79,7 @@ contract TestTradeMarket is BaseTestTradeMarket {
             _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
             IERC20(settlemendParams.quoteTokenAddress).transfer(address(_predyPool), quoteAmount);
-        } else {
+        } else if (baseAmountDelta < 0) {
             uint256 quoteAmount = uint256(-baseAmountDelta) * _price / 1e4;
 
             _predyPool.take(true, address(this), quoteAmount);

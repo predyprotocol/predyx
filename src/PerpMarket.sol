@@ -51,6 +51,9 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     int256 fundingRateGrobalGrowth;
     uint256 lastFundingRateCalculationTime;
 
+    int256 fillerMarginAmount;
+    int256 fillerCumulativeFundingRates;
+
     struct TotalPosition {
         uint256 totalLongAmount;
         uint256 totalShortAmount;
@@ -75,13 +78,6 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseMarket) {}
-
-    function predyLiquidationCallback(
-        IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult,
-        int256 marginAmount
-    ) external override(BaseMarket) {
-    }
 
     /**
      * @notice Verifies signature of the order and executes trade
@@ -135,8 +131,10 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             "SAFE"
         );
 
-        if(generalOrder.marginAmount < 0) {
-            IERC20(_quoteTokenAddress).transfer(userPositions[generalOrder.positionId].owner, uint256(-generalOrder.marginAmount));
+        if (generalOrder.marginAmount < 0) {
+            IERC20(_quoteTokenAddress).transfer(
+                userPositions[generalOrder.positionId].owner, uint256(-generalOrder.marginAmount)
+            );
         }
 
         sendMarginToUser(generalOrder.positionId);
@@ -144,13 +142,9 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         return tradeResult;
     }
 
-    function depositMargin(uint256 marginAmount) external {
+    function depositMargin(uint256 marginAmount) external {}
 
-    }
-
-    function withdrawMargin(uint256 marginAmount) external {
-
-    }
+    function withdrawMargin(uint256 marginAmount) external {}
 
     /**
      * @notice Executes liquidation call for the position
@@ -162,20 +156,20 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
         updateFundingFee(userPosition);
 
-        // TODO: liquidation call
         // check vault is danger
         require(!calculatePositionValue(userPosition, _predyPool.getSqrtIndexPrice(userPosition.pairId)), "NOT SAFE");
 
         coverPosition(userPosition.pairId, positionId, -userPosition.positionAmount, 0, settlementData);
 
-        // TODO: transfer margin
+        // TODO: - filler margin
+
         sendMarginToUser(positionId);
     }
 
     function sendMarginToUser(uint64 positionId) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
-        if(userPosition.positionAmount == 0) {
+        if (userPosition.positionAmount == 0) {
             if (userPosition.positionAmount == 0 && userPosition.marginAmount > 0) {
                 uint256 marginAmount = uint256(userPosition.marginAmount);
 
@@ -183,6 +177,9 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
                 IERC20(_quoteTokenAddress).transfer(userPosition.owner, marginAmount);
             } else {
+                // filler should cover negative margin
+                fillerMarginAmount += userPosition.marginAmount;
+
                 userPosition.marginAmount = 0;
             }
         }
@@ -191,11 +188,15 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     function depositToFillerPool(uint256 depositAmount) external {
         IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
 
+        fillerMarginAmount += int256(depositAmount);
+
         _predyPool.updateMargin(vaultId, int256(depositAmount));
     }
 
     function withdrawFromFillerPool(uint256 withdrawAmount) external {
         _predyPool.updateMargin(vaultId, -int256(withdrawAmount));
+
+        fillerMarginAmount -= int256(withdrawAmount);
 
         checkFillerMinDeposit();
 
@@ -215,25 +216,32 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         );
     }
 
-    function updateFundingFee(
-        UserPosition storage userPosition
-    ) internal {
-        fundingRateGrobalGrowth += getFundingRate() * int256(block.timestamp - lastFundingRateCalculationTime) / int256(365 days);
+    function updateFundingFee(UserPosition storage userPosition) internal {
+        fundingRateGrobalGrowth +=
+            getFundingRate() * int256(block.timestamp - lastFundingRateCalculationTime) / int256(365 days);
 
         lastFundingRateCalculationTime = block.timestamp;
 
-        int256 fundingFee = (fundingRateGrobalGrowth - userPosition.cumulativeFundingRates) * userPosition.entryValue / 1e18;
+        int256 fundingFee =
+            (fundingRateGrobalGrowth - userPosition.cumulativeFundingRates) * userPosition.positionAmount / 1e18;
 
         userPosition.cumulativeFundingRates = fundingRateGrobalGrowth;
 
         userPosition.marginAmount += fundingFee;
+
+        // TODO: +- fee to filler margin
+        fillerMarginAmount += (fillerCumulativeFundingRates - userPosition.cumulativeFundingRates)
+            * (int256(totalPosition.totalLongAmount) - int256(totalPosition.totalShortAmount)) / 1e18;
+
+        fillerCumulativeFundingRates = userPosition.cumulativeFundingRates;
     }
 
-    function getFundingRate() internal returns (int256) {
-        if(totalPosition.totalLongAmount > totalPosition.totalShortAmount) {
-            return 1e16;
+    function getFundingRate() internal view returns (int256) {
+        // TODO: per ETH
+        if (totalPosition.totalLongAmount > totalPosition.totalShortAmount) {
+            return 12 * 1e16;
         } else {
-            return -1e16;
+            return -12 * 1e16;
         }
     }
 
@@ -245,7 +253,8 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         bytes memory settlementData
     ) internal returns (IPredyPool.TradeResult memory tradeResult) {
         tradeResult = _predyPool.trade(
-            IPredyPool.TradeParams(pairId, vaultId, tradeAmount, 0, abi.encode(marginAmount)), settlementData
+            IPredyPool.TradeParams(pairId, vaultId, tradeAmount, 0, abi.encode(marginAmount)),
+            IHooks.SettlementData(address(this), settlementData)
         );
 
         vaultId = tradeResult.vaultId;
@@ -288,22 +297,21 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             }
         }
 
-        if(openAmount > 0) {
+        if (openAmount > 0) {
             totalPosition.totalLongAmount += uint256(openAmount);
         }
-        if(openAmount < 0) {
+        if (openAmount < 0) {
             totalPosition.totalShortAmount += uint256(-openAmount);
         }
-        if(closeAmount > 0) {
+        if (closeAmount > 0) {
             totalPosition.totalShortAmount -= uint256(closeAmount);
         }
-        if(closeAmount < 0) {
+        if (closeAmount < 0) {
             totalPosition.totalLongAmount -= uint256(-closeAmount);
         }
-
     }
 
-    function calculatePositionValue(UserPosition memory userPosition, uint160 sqrtPrice) internal view returns (bool) {
+    function calculatePositionValue(UserPosition memory userPosition, uint160 sqrtPrice) internal pure returns (bool) {
         int256 price = int256(uint256(sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
@@ -313,15 +321,12 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         return value >= min;
     }
 
-    function checkFillerMinDeposit() internal view returns (bool) {
+    function checkFillerMinDeposit() internal view {
         DataType.Vault memory vault = _predyPool.getVault(vaultId);
-        
+
         uint256 minDeposit = getFillerMinDeposit(_predyPool.getSqrtIndexPrice(vault.openPosition.pairId));
 
-        require(
-            vault.margin >= int256(minDeposit),
-            "MIN"
-        );
+        require(vault.margin >= int256(minDeposit), "MIN");
     }
 
     function getFillerMinDeposit(uint160 sqrtPrice) internal view returns (uint256) {
@@ -330,7 +335,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         uint256 longSideMinDeposit = totalPosition.totalLongAmount * price / (Constants.Q96 * 5);
         uint256 shortSideMinDeposit = totalPosition.totalShortAmount * price / (Constants.Q96 * 5);
 
-        if(longSideMinDeposit > shortSideMinDeposit) {
+        if (longSideMinDeposit > shortSideMinDeposit) {
             return longSideMinDeposit;
         } else {
             return shortSideMinDeposit;

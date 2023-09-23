@@ -23,16 +23,21 @@ library LiquidationLogic {
     uint256 constant _MIN_SLIPPAGE = 50;
 
     event PositionLiquidated(
-        uint256 vaultId, uint256 pairId, int256 tradeAmount, int256 tradeSqrtAmount, IPredyPool.Payoff payoff, int256 fee
+        uint256 vaultId,
+        uint256 pairId,
+        int256 tradeAmount,
+        int256 tradeSqrtAmount,
+        IPredyPool.Payoff payoff,
+        int256 fee
     );
-
 
     function liquidate(
         uint256 vaultId,
         uint256 closeRatio,
         GlobalDataLibrary.GlobalData storage globalData,
-        bytes memory settlementData
+        IHooks.SettlementData memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        require(closeRatio > 0);
         DataType.Vault storage vault = globalData.vaults[vaultId];
         Perp.PairStatus storage pairStatus = globalData.pairs[vault.openPosition.pairId];
 
@@ -41,7 +46,11 @@ library LiquidationLogic {
             checkVaultIsDanger(pairStatus, vault, globalData.rebalanceFeeGrowthCache);
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            vault.openPosition.pairId, vaultId, -vault.openPosition.perp.amount, -vault.openPosition.sqrtPerp.amount, ""
+            vault.openPosition.pairId,
+            vaultId,
+            -vault.openPosition.perp.amount * int256(closeRatio) / 1e18,
+            -vault.openPosition.sqrtPerp.amount * int256(closeRatio) / 1e18,
+            ""
         );
 
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
@@ -52,13 +61,19 @@ library LiquidationLogic {
         (tradeResult.minDeposit,, hasPosition,) =
             PositionCalculator.calculateMinDeposit(pairStatus, globalData.rebalanceFeeGrowthCache, vault);
 
-        callLiquidationCallback(globalData, tradeParams, tradeResult);
+        // callLiquidationCallback(globalData, tradeParams, tradeResult);
 
         // TODO: compare tradeResult.averagePrice and TWAP, which averagePrice or entryPrice is better?
         checkPrice(sqrtTwap, tradeParams, tradeResult, slippageTolerance);
 
-        if (!hasPosition && vault.margin < 0) {
-            IERC20(pairStatus.quotePool.token).transferFrom(msg.sender, address(this), uint256(-vault.margin));
+        if (!hasPosition) {
+            if (vault.margin > 0) {
+                // Send the remaining margin to the recipient.
+                IERC20(pairStatus.quotePool.token).transfer(vault.recepient, uint256(vault.margin));
+            } else if (vault.margin < 0) {
+                // If the margin is negative, the liquidator will make up for it.
+                IERC20(pairStatus.quotePool.token).transferFrom(msg.sender, address(this), uint256(-vault.margin));
+            }
         }
     }
 
@@ -87,28 +102,6 @@ library LiquidationLogic {
         }
 
         slippageTolerance = calculateSlippageTolerance(minDeposit, vaultValue);
-    }
-
-    function callLiquidationCallback(
-        GlobalDataLibrary.GlobalData storage globalData,
-        IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult
-    ) internal {
-        DataType.Vault storage vault = globalData.vaults[tradeParams.vaultId];
-
-        // globalData.initializeLock(vault.openPosition.pairId, vault.owner);
-
-        IHooks(vault.owner).predyLiquidationCallback(tradeParams, tradeResult, vault.margin);
-
-        if (globalData.settle(false) != 0) {
-            revert IPredyPool.CurrencyNotSettled();
-        }
-
-        int256 marginAmountUpdate = GlobalDataLibrary.settle(globalData, true);
-
-        delete globalData.lockData;
-
-        vault.margin += marginAmountUpdate;
     }
 
     function calculateSlippageTolerance(int256 minDeposit, int256 vaultValue) internal pure returns (uint256) {

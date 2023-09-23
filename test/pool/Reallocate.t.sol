@@ -23,7 +23,13 @@ contract TestReallocate is TestPool {
 
     // reallocate succeeds
     function testReallocateSucceeds() public {
-        predyPool.reallocate(1);
+        predyPool.reallocate(
+            1,
+            IHooks.SettlementData(
+                address(tradeMarket),
+                abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
+            )
+        );
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
             1, 0, -9990, 10000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
@@ -35,7 +41,15 @@ contract TestReallocate is TestPool {
 
         _movePrice(true, 5 * 1e16);
 
-        predyPool.reallocate(1);
+        tradeMarket.setMockPrice(14000);
+
+        predyPool.reallocate(
+            1,
+            IHooks.SettlementData(
+                address(tradeMarket),
+                abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)))
+            )
+        );
     }
 
     // reallocate succeeds if totalAmount is 0

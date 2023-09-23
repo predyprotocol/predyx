@@ -120,7 +120,7 @@ library Perp {
         uint256 spread
     );
     event SqrtPositionUpdated(uint256 pairId, int256 open, int256 close);
-    event Rebalanced(uint256 pairId, int24 tickLower, int24 tickUpper, int256 profit);
+    event Rebalanced(uint256 pairId, int24 tickLower, int24 tickUpper);
 
     function createAssetStatus(address uniswapPool, int24 tickLower, int24 tickUpper)
         internal
@@ -202,11 +202,10 @@ library Perp {
      *     0 -> sqrt(x) - sqrt(a2)
      *       sqrt(a2) - sqrt(x)
      */
-    function reallocate(
-        PairStatus storage _assetStatusUnderlying,
-        SqrtPerpAssetStatus storage _sqrtAssetStatus,
-        bool _enableRevert
-    ) internal returns (bool, int256 profit) {
+    function reallocate(PairStatus storage _assetStatusUnderlying, SqrtPerpAssetStatus storage _sqrtAssetStatus)
+        internal
+        returns (bool, int256 deltaPositionBase, int256 deltaPositionQuote)
+    {
         (uint160 currentSqrtPrice, int24 currentTick,,,,,) = IUniswapV3Pool(_sqrtAssetStatus.uniswapPool).slot0();
 
         if (
@@ -215,7 +214,7 @@ library Perp {
         ) {
             saveLastFeeGrowth(_sqrtAssetStatus);
 
-            return (false, 0);
+            return (false, 0, 0);
         }
 
         uint128 totalLiquidityAmount = getAvailableLiquidityAmount(
@@ -228,7 +227,7 @@ library Perp {
 
             saveLastFeeGrowth(_sqrtAssetStatus);
 
-            return (false, 0);
+            return (false, 0, 0);
         }
 
         int24 tick;
@@ -252,20 +251,13 @@ library Perp {
         saveLastFeeGrowth(_sqrtAssetStatus);
 
         if (isOutOfRange) {
-            profit = swapForOutOfRange(
-                _assetStatusUnderlying, _sqrtAssetStatus, currentSqrtPrice, tick, totalLiquidityAmount
-            );
-
-            require(!_enableRevert || profit >= 0, "CANTREBAL");
-
-            if (profit > 0) {
-                _sqrtAssetStatus.fee1Growth += uint256(profit) * Constants.Q128 / _sqrtAssetStatus.totalAmount;
-            }
+            (deltaPositionBase, deltaPositionQuote) =
+                swapForOutOfRange(_assetStatusUnderlying, currentSqrtPrice, tick, totalLiquidityAmount);
         }
 
-        emit Rebalanced(_assetStatusUnderlying.id, _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper, profit);
+        emit Rebalanced(_assetStatusUnderlying.id, _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper);
 
-        return (true, profit);
+        return (true, deltaPositionBase, deltaPositionQuote);
     }
 
     function rebalanceForInRange(
@@ -311,12 +303,11 @@ library Perp {
      *       sqrt(x) - sqrt(a1)
      */
     function swapForOutOfRange(
-        PairStatus storage _assetStatusUnderlying,
-        SqrtPerpAssetStatus storage _sqrtAssetStatus,
+        PairStatus storage pairStatus,
         uint160 _currentSqrtPrice,
         int24 _tick,
         uint128 _totalLiquidityAmount
-    ) internal returns (int256 profit) {
+    ) internal returns (int256 deltaPositionBase, int256 deltaPositionQuote) {
         uint160 tickSqrtPrice = TickMath.getSqrtRatioAtTick(_tick);
 
         // 1/_currentSqrtPrice - 1/tickSqrtPrice
@@ -327,6 +318,8 @@ library Perp {
         int256 deltaPosition1 =
             LPMath.calculateAmount1ForLiquidity(_currentSqrtPrice, tickSqrtPrice, _totalLiquidityAmount, true);
 
+        // TODO: settlement data
+        /*
         (, int256 amount1) = IUniswapV3Pool(_sqrtAssetStatus.uniswapPool).swap(
             address(this),
             // if x < lower then swap token0 for token1, if upper < x then swap token1 for token0.
@@ -338,8 +331,17 @@ library Perp {
         );
 
         profit = -amount1 - deltaPosition1;
+        */
 
-        updateRebalancePosition(_assetStatusUnderlying, deltaPosition0, deltaPosition1);
+        if (pairStatus.isMarginZero) {
+            deltaPositionQuote = -deltaPosition0;
+            deltaPositionBase = -deltaPosition1;
+        } else {
+            deltaPositionBase = -deltaPosition0;
+            deltaPositionQuote = -deltaPosition1;
+        }
+
+        updateRebalancePosition(pairStatus, deltaPosition0, deltaPosition1);
     }
 
     function getAvailableLiquidityAmount(

@@ -6,12 +6,16 @@ import "../Perp.sol";
 import "../PairLib.sol";
 import "../ApplyInterestLib.sol";
 import "../../types/GlobalData.sol";
+import "forge-std/console2.sol";
 
 library ReallocationLogic {
-    function reallocate(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId)
-        external
-        returns (bool reallocationHappened, int256 profit)
-    {
+    using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
+
+    function reallocate(
+        GlobalDataLibrary.GlobalData storage globalData,
+        uint256 pairId,
+        IHooks.SettlementData memory settlementData
+    ) external returns (bool relocationOccurred) {
         // Checks the pair exists
         // PairLib.validatePairId(globalData, pairId);
 
@@ -22,9 +26,36 @@ library ReallocationLogic {
 
         Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
-        (reallocationHappened, profit) = Perp.reallocate(pairStatus, pairStatus.sqrtAssetStatus, false);
+        {
+            int256 deltaPositionBase;
+            int256 deltaPositionQuote;
 
-        if (reallocationHappened) {
+            (relocationOccurred, deltaPositionBase, deltaPositionQuote) =
+                Perp.reallocate(pairStatus, pairStatus.sqrtAssetStatus);
+
+            globalData.initializeLock(pairId, settlementData.settlementContractAddress);
+
+            IHooks(settlementData.settlementContractAddress).predySettlementCallback(
+                settlementData.encodedData, deltaPositionBase
+            );
+            int256 a = globalData.settle(true) + deltaPositionQuote;
+            int256 b = globalData.settle(false) + deltaPositionBase;
+
+            console2.log(a);
+            console2.log(b);
+
+            if (a < 0) {
+                revert IPredyPool.CurrencyNotSettled();
+            }
+
+            if (b < 0) {
+                revert IPredyPool.CurrencyNotSettled();
+            }
+
+            delete globalData.lockData;
+        }
+
+        if (relocationOccurred) {
             globalData.rebalanceFeeGrowthCache[PairLib.getRebalanceCacheId(
                 pairId, pairStatus.sqrtAssetStatus.numRebalance
             )] = DataType.RebalanceFeeGrowthCache(
@@ -33,18 +64,6 @@ library ReallocationLogic {
             );
 
             Perp.finalizeReallocation(pairStatus.sqrtAssetStatus);
-        }
-
-        if (profit < 0) {
-            address token;
-
-            if (pairStatus.isMarginZero) {
-                token = pairStatus.basePool.token;
-            } else {
-                token = pairStatus.quotePool.token;
-            }
-
-            TransferHelper.safeTransferFrom(token, msg.sender, address(this), uint256(-profit));
         }
     }
 }

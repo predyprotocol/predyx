@@ -34,6 +34,7 @@ abstract contract BaseMarket is BaseHookCallback {
         external
         override(BaseHookCallback)
     {
+        require(address(_predyPool) == msg.sender);
         // This is a settlement function using Uniswap Router
         // filler can set negative fee
         SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
@@ -54,7 +55,7 @@ abstract contract BaseMarket is BaseHookCallback {
             );
 
             IERC20(settlementParams.quoteTokenAddress).transfer(
-                address(_predyPool), quoteAmount.addDelta(settlementParams.fee)
+                address(_predyPool), quoteAmount.addDelta(-settlementParams.fee)
             );
         } else {
             IERC20(settlementParams.quoteTokenAddress).approve(
@@ -75,7 +76,7 @@ abstract contract BaseMarket is BaseHookCallback {
 
             IERC20(settlementParams.quoteTokenAddress).transfer(
                 address(_predyPool),
-                settlementParams.amountOutMinimumOrInMaximum - quoteAmount.addDelta(settlementParams.fee)
+                settlementParams.amountOutMinimumOrInMaximum - quoteAmount.addDelta(-settlementParams.fee)
             );
 
             IERC20(settlementParams.baseTokenAddress).transfer(address(_predyPool), uint256(-baseAmountDelta));
@@ -85,11 +86,5 @@ abstract contract BaseMarket is BaseHookCallback {
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external virtual override(BaseHookCallback) {}
-
-    function predyLiquidationCallback(
-        IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult,
-        int256 marginAmount
     ) external virtual override(BaseHookCallback) {}
 }
