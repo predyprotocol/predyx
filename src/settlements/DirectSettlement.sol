@@ -6,8 +6,6 @@ import "../interfaces/IPredyPool.sol";
 import "./BaseSettlement.sol";
 
 contract DirectSettlement is BaseSettlement {
-    uint256 _price;
-
     struct SettlementParams {
         address quoteTokenAddress;
         address baseTokenAddress;
@@ -15,7 +13,6 @@ contract DirectSettlement is BaseSettlement {
     }
 
     constructor(IPredyPool _predyPool) BaseSettlement(_predyPool) {
-        _price = 1e4;
     }
 
     function getSettlementParams(address quoteTokenAddress, address baseTokenAddress, uint256 price)

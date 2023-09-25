@@ -317,22 +317,7 @@ library Perp {
         // _currentSqrtPrice - tickSqrtPrice
         int256 deltaPosition1 =
             LPMath.calculateAmount1ForLiquidity(_currentSqrtPrice, tickSqrtPrice, _totalLiquidityAmount, true);
-
-        // TODO: settlement data
-        /*
-        (, int256 amount1) = IUniswapV3Pool(_sqrtAssetStatus.uniswapPool).swap(
-            address(this),
-            // if x < lower then swap token0 for token1, if upper < x then swap token1 for token0.
-            deltaPosition0 < 0,
-            // + means exactIn, - means exactOut
-            -deltaPosition0,
-            (deltaPosition0 < 0 ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1),
-            ""
-        );
-
-        profit = -amount1 - deltaPosition1;
-        */
-
+        
         if (pairStatus.isMarginZero) {
             deltaPositionQuote = -deltaPosition0;
             deltaPositionBase = -deltaPosition1;

@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IHooks.sol";
 import "./interfaces/ISettlement.sol";
@@ -20,7 +19,7 @@ import {GlobalDataLibrary} from "./types/GlobalData.sol";
 /**
  * @notice Holds the state for all pairs and vaults
  */
-contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback {
+contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
 
@@ -50,19 +49,6 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
         }
         if (amount1 > 0) {
             TransferHelper.safeTransfer(uniswapPool.token1(), msg.sender, amount1);
-        }
-    }
-
-    /**
-     * @dev Callback for Uniswap V3 pool.
-     */
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
-        require(allowedUniswapPools[msg.sender]);
-        if (amount0Delta > 0) {
-            TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token0(), msg.sender, uint256(amount0Delta));
-        }
-        if (amount1Delta > 0) {
-            TransferHelper.safeTransfer(IUniswapV3Pool(msg.sender).token1(), msg.sender, uint256(amount1Delta));
         }
     }
 
@@ -113,13 +99,23 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
         if (tradeParams.vaultId == 0) {
             tradeParams.vaultId = globalData.vaultCount;
 
-            globalData.vaults[tradeParams.vaultId].owner = msg.sender;
-            globalData.vaults[tradeParams.vaultId].recepient = msg.sender;
+            // initialize vault
+            DataType.Vault storage vault = globalData.vaults[tradeParams.vaultId];
+
+            vault.owner = msg.sender;
+            vault.recepient = msg.sender;
+            vault.openPosition.pairId = tradeParams.pairId;
 
             globalData.vaultCount++;
         } else {
-            if (globalData.vaults[tradeParams.vaultId].owner != msg.sender) {
+            DataType.Vault memory vault = globalData.vaults[tradeParams.vaultId];
+
+            if (vault.owner != msg.sender) {
                 revert CallerIsNotVaultOwner();
+            }
+
+            if(vault.openPosition.pairId != tradeParams.pairId) {
+                revert PairIdIsDifferent();
             }
         }
 

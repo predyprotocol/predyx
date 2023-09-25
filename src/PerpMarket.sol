@@ -96,6 +96,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             userPositions[generalOrder.positionId].pairId = generalOrder.pairId;
             positionCounts++;
         } else {
+            // TODO: check pairId
             if (generalOrder.info.trader != userPositions[generalOrder.positionId].owner) {
                 revert IFillerMarket.SignerIsNotVaultOwner();
             }

@@ -18,8 +18,7 @@ import {Math} from "./math/Math.sol";
 
 library Trade {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
-    using LockDataLibrary for LockDataLibrary.LockData;
-
+    
     struct SwapStableResult {
         int256 amountPerp;
         int256 amountSqrtPerp;
@@ -34,8 +33,6 @@ library Trade {
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
-
-        openPosition.pairId = tradeParams.pairId;
 
         // update interest growth
         ApplyInterestLib.applyInterestForToken(globalData.pairs, tradeParams.pairId);
@@ -53,7 +50,7 @@ library Trade {
         );
 
         // swap tokens
-        SwapStableResult memory swapResult = _swap(
+        SwapStableResult memory swapResult = swap(
             globalData,
             tradeParams.pairId,
             SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, underlyingFee, 0),
@@ -77,7 +74,7 @@ library Trade {
         tradeResult.vaultId = tradeParams.vaultId;
     }
 
-    function _swap(
+    function swap(
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
         SwapStableResult memory swapParams,
