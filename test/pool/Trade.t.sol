@@ -53,7 +53,7 @@ contract TestTrade is TestPool {
     function testTradeSucceedsForClose() public {
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -86,7 +86,7 @@ contract TestTrade is TestPool {
     function testTradeFails_IfCallerIsNotVaultOwner() public {
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -104,4 +104,5 @@ contract TestTrade is TestPool {
     // trade fails if asset can not cover borrow
     // trade fails if sqrt liquidity can not cover sqrt borrow
     // trade fails if current tick is not within safe range
+    // trade fails in callback
 }

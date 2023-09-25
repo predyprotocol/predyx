@@ -18,7 +18,7 @@ import {Math} from "./math/Math.sol";
 
 library Trade {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
-    
+
     struct SwapStableResult {
         int256 amountPerp;
         int256 amountSqrtPerp;
@@ -94,6 +94,7 @@ library Trade {
             revert IPredyPool.CurrencyNotSettled();
         }
 
+        // TODO: in case of totalBaseAmount == 0, 
         if (totalQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.CurrencyNotSettled();
         }

@@ -54,6 +54,9 @@ library LiquidationLogic {
         );
 
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
+
+        vault.margin += tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
+
         tradeResult.sqrtTwap = sqrtTwap;
 
         bool hasPosition;

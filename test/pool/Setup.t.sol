@@ -44,14 +44,16 @@ contract TestPool is Test {
         currency0.approve(address(uniswapPool), type(uint256).max);
         currency1.approve(address(uniswapPool), type(uint256).max);
 
-        uniswapPool.mint(address(this), -2000, 2000, 1e18, bytes(""));
+        uniswapPool.mint(address(this), -4000, 4000, 1e18, bytes(""));
 
         predyPool = new PredyPool(uniswapFactory);
 
         currency0.approve(address(predyPool), type(uint256).max);
         currency1.approve(address(predyPool), type(uint256).max);
 
-        vm.warp(block.timestamp + 1 minutes);
+        _movePrice(true, 100);
+        vm.warp(block.timestamp + 30 minutes);
+        _movePrice(false, 100);
     }
 
     /**
