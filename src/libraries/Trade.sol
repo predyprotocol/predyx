@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@solmate/src/utils/FixedPointMathLib.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {IHooks} from "../interfaces/IHooks.sol";
+import {ISettlement} from "../interfaces/ISettlement.sol";
 import {ApplyInterestLib} from "./ApplyInterestLib.sol";
 import {Constants} from "./Constants.sol";
 import {DataType} from "./DataType.sol";
@@ -29,7 +30,7 @@ library Trade {
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
-        IHooks.SettlementData memory settlementData
+        ISettlement.SettlementData memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
@@ -80,13 +81,13 @@ library Trade {
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
         SwapStableResult memory swapParams,
-        IHooks.SettlementData memory settlementData
+        ISettlement.SettlementData memory settlementData
     ) internal returns (SwapStableResult memory) {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
         globalData.initializeLock(pairId, settlementData.settlementContractAddress);
 
-        IHooks(settlementData.settlementContractAddress).predySettlementCallback(
+        ISettlement(settlementData.settlementContractAddress).predySettlementCallback(
             settlementData.encodedData, totalBaseAmount
         );
 

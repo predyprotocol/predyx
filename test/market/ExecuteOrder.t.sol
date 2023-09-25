@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {GeneralOrderLib} from "../../src/libraries/market/GeneralOrderLib.sol";
+import {ISettlement} from "../../src/interfaces/ISettlement.sol";
 import {SigUtils} from "../utils/SigUtils.sol";
 import "forge-std/console2.sol";
 
@@ -86,8 +87,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
-            signedOrder,
-            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
+            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
         );
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 980);
@@ -117,7 +117,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
             fillerMarket.executeOrder(
                 signedOrder,
-                abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0))
+                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
             );
         }
 
@@ -130,9 +130,7 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
             fillerMarket.executeOrder(
                 signedOrder,
-                abi.encode(
-                    BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0)
-                )
+                settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0)
             );
         }
     }
@@ -157,8 +155,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        bytes memory settlementData =
-            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert();
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -166,8 +164,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        bytes memory settlementData =
-            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         {
             GeneralOrder memory order = GeneralOrder(
@@ -201,8 +199,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        bytes memory settlementData =
-            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0));
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert(GeneralOrderLib.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -216,8 +214,8 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        bytes memory settlementData =
-            abi.encode(BaseMarket.SettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0));
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
         vm.expectRevert(GeneralOrderLib.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);

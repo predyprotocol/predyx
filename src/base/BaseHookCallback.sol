@@ -11,8 +11,6 @@ abstract contract BaseHookCallback is IHooks {
         _predyPool = predyPool;
     }
 
-    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external virtual;
-
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult

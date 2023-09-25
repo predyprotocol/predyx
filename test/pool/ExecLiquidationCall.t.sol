@@ -3,9 +3,11 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import "../mocks/TestTradeMarket.sol";
+import "../../src/settlements/DirectSettlement.sol";
 
 contract TestExecLiquidationCall is TestPool {
     TestTradeMarket tradeMarket;
+    DirectSettlement settlement;
 
     function setUp() public override {
         TestPool.setUp();
@@ -16,9 +18,13 @@ contract TestExecLiquidationCall is TestPool {
         predyPool.supply(1, false, 1e8);
 
         tradeMarket = new TestTradeMarket(predyPool);
+        settlement = new DirectSettlement(predyPool);
 
         currency0.transfer(address(tradeMarket), 1e8);
         currency1.transfer(address(tradeMarket), 1e8);
+
+        currency0.transfer(address(settlement), 1e8);
+        currency1.transfer(address(settlement), 1e8);
     }
 
     // liquidate succeeds if the vault is danger
@@ -26,8 +32,8 @@ contract TestExecLiquidationCall is TestPool {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, -1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6)));
 
-        bytes memory settlementData =
-            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         tradeMarket.trade(tradeParams, settlementData);
 
@@ -45,19 +51,24 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -1000, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
         );
 
-        bytes memory settlementData =
-            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
+        {
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
-        tradeMarket.trade(tradeParams, settlementData);
+            tradeMarket.trade(tradeParams, settlementData);
+        }
 
         _movePrice(true, 5 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
-        tradeMarket.setMockPrice(20000);
+        {
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(address(currency1), address(currency0), 20000);
 
-        vm.expectRevert(IPredyPool.SlippageTooLarge.selector);
-        tradeMarket.execLiquidationCall(1, 1e18, settlementData);
+            vm.expectRevert(IPredyPool.SlippageTooLarge.selector);
+            tradeMarket.execLiquidationCall(1, 1e18, settlementData);
+        }
     }
 
     // liquidate succeeds by premium payment
@@ -68,8 +79,8 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -1000, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
         );
 
-        bytes memory settlementData =
-            abi.encode(TestTradeMarket.SettlementParams(address(currency1), address(currency0)));
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         tradeMarket.trade(tradeParams, settlementData);
 

@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {IHooks} from "../../interfaces/IHooks.sol";
+import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
@@ -23,20 +24,20 @@ library TradeLogic {
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
-        IHooks.SettlementData memory settlementData
+        ISettlement.SettlementData memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
 
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
 
-        (tradeResult.minDeposit,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
+        (tradeResult.minMargin,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
         );
 
         callTradeAfterCallback(globalData, tradeParams, tradeResult);
 
         // check vault is safe
-        tradeResult.minDeposit = PositionCalculator.checkSafe(
+        tradeResult.minMargin = PositionCalculator.checkSafe(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
         );
 

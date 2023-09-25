@@ -8,7 +8,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
-import "./base/BaseMarket.sol";
+import "./base/BaseHookCallback.sol";
 import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
 import "./libraries/market/GeneralOrderLib.sol";
@@ -20,7 +20,7 @@ import "./libraries/DataType.sol";
 /**
  * @notice Provides perps to retail traders
  */
-contract PerpMarket is IFillerMarket, BaseMarket {
+contract PerpMarket is IFillerMarket, BaseHookCallback {
     using ResolvedOrderLib for ResolvedOrder;
     using GeneralOrderLib for GeneralOrder;
     using Permit2Lib for ResolvedOrder;
@@ -61,13 +61,9 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
     TotalPosition public totalPosition;
 
-    constructor(
-        IPredyPool _predyPool,
-        address swapRouterAddress,
-        address quoteTokenAddress,
-        address permit2Address,
-        address fillerAddress
-    ) BaseMarket(_predyPool, swapRouterAddress) {
+    constructor(IPredyPool _predyPool, address quoteTokenAddress, address permit2Address, address fillerAddress)
+        BaseHookCallback(_predyPool)
+    {
         _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
         _fillerAddress = fillerAddress;
@@ -77,7 +73,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseMarket) {}
+    ) external override(BaseHookCallback) {}
 
     /**
      * @notice Verifies signature of the order and executes trade
@@ -254,7 +250,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     ) internal returns (IPredyPool.TradeResult memory tradeResult) {
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(pairId, vaultId, tradeAmount, 0, abi.encode(marginAmount)),
-            IHooks.SettlementData(address(this), settlementData)
+            ISettlement.SettlementData(address(this), settlementData)
         );
 
         vaultId = tradeResult.vaultId;

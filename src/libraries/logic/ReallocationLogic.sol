@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.17;
 
-import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "../Perp.sol";
 import "../PairLib.sol";
 import "../ApplyInterestLib.sol";
 import "../../types/GlobalData.sol";
-import "forge-std/console2.sol";
 
 library ReallocationLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
@@ -14,7 +12,7 @@ library ReallocationLogic {
     function reallocate(
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
-        IHooks.SettlementData memory settlementData
+        ISettlement.SettlementData memory settlementData
     ) external returns (bool relocationOccurred) {
         // Checks the pair exists
         // PairLib.validatePairId(globalData, pairId);
@@ -35,20 +33,15 @@ library ReallocationLogic {
 
             globalData.initializeLock(pairId, settlementData.settlementContractAddress);
 
-            IHooks(settlementData.settlementContractAddress).predySettlementCallback(
+            ISettlement(settlementData.settlementContractAddress).predySettlementCallback(
                 settlementData.encodedData, deltaPositionBase
             );
-            int256 a = globalData.settle(true) + deltaPositionQuote;
-            int256 b = globalData.settle(false) + deltaPositionBase;
 
-            console2.log(a);
-            console2.log(b);
-
-            if (a < 0) {
+            if (globalData.settle(true) + deltaPositionQuote < 0) {
                 revert IPredyPool.CurrencyNotSettled();
             }
 
-            if (b < 0) {
+            if (globalData.settle(false) + deltaPositionBase < 0) {
                 revert IPredyPool.CurrencyNotSettled();
             }
 

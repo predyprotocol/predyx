@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {IHooks} from "../../interfaces/IHooks.sol";
+import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {Constants} from "../Constants.sol";
 import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
@@ -11,7 +12,6 @@ import {Math} from "../math/Math.sol";
 import {DataType} from "../DataType.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 import {PositionCalculator} from "../PositionCalculator.sol";
-import "forge-std/console2.sol";
 
 library LiquidationLogic {
     using Math for int256;
@@ -35,7 +35,7 @@ library LiquidationLogic {
         uint256 vaultId,
         uint256 closeRatio,
         GlobalDataLibrary.GlobalData storage globalData,
-        IHooks.SettlementData memory settlementData
+        ISettlement.SettlementData memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         require(closeRatio > 0);
         DataType.Vault storage vault = globalData.vaults[vaultId];
@@ -58,10 +58,8 @@ library LiquidationLogic {
 
         bool hasPosition;
 
-        (tradeResult.minDeposit,, hasPosition,) =
+        (tradeResult.minMargin,, hasPosition,) =
             PositionCalculator.calculateMinDeposit(pairStatus, globalData.rebalanceFeeGrowthCache, vault);
-
-        // callLiquidationCallback(globalData, tradeParams, tradeResult);
 
         // TODO: compare tradeResult.averagePrice and TWAP, which averagePrice or entryPrice is better?
         checkPrice(sqrtTwap, tradeParams, tradeResult, slippageTolerance);
@@ -83,7 +81,7 @@ library LiquidationLogic {
      * @param vault The vault object
      * @param rebalanceFeeGrowthCache rebalance fee growth
      * @return sqrtTwap The square root of time weighted average price used for value calculation
-     * @return slippageTolerance slippage tolerance calculated by minDeposit and vault value
+     * @return slippageTolerance slippage tolerance calculated by minMargin and vault value
      */
     function checkVaultIsDanger(
         Perp.PairStatus memory pairStatus,
@@ -91,25 +89,25 @@ library LiquidationLogic {
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache
     ) internal view returns (uint160 sqrtTwap, uint256 slippageTolerance) {
         bool isLiquidatable;
-        int256 minDeposit;
+        int256 minMargin;
         int256 vaultValue;
 
-        (isLiquidatable, minDeposit, vaultValue, sqrtTwap) =
+        (isLiquidatable, minMargin, vaultValue, sqrtTwap) =
             PositionCalculator.isLiquidatable(pairStatus, rebalanceFeeGrowthCache, vault);
 
         if (!isLiquidatable) {
             revert IPredyPool.VaultIsNotDanger();
         }
 
-        slippageTolerance = calculateSlippageTolerance(minDeposit, vaultValue);
+        slippageTolerance = calculateSlippageTolerance(minMargin, vaultValue);
     }
 
-    function calculateSlippageTolerance(int256 minDeposit, int256 vaultValue) internal pure returns (uint256) {
-        if (vaultValue <= 0 || minDeposit == 0) {
+    function calculateSlippageTolerance(int256 minMargin, int256 vaultValue) internal pure returns (uint256) {
+        if (vaultValue <= 0 || minMargin == 0) {
             return _MAX_SLIPPAGE;
         }
 
-        uint256 ratio = uint256(vaultValue * 1e4 / minDeposit);
+        uint256 ratio = uint256(vaultValue * 1e4 / minMargin);
 
         if (ratio > 1e4) {
             return _MIN_SLIPPAGE;

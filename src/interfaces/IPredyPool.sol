@@ -2,6 +2,7 @@
 pragma solidity >=0.8.0;
 
 import "./IHooks.sol";
+import "./ISettlement.sol";
 import "../libraries/DataType.sol";
 
 interface IPredyPool {
@@ -33,7 +34,7 @@ interface IPredyPool {
         Payoff payoff;
         uint256 vaultId;
         int256 fee;
-        int256 minDeposit;
+        int256 minMargin;
         int256 averagePrice;
         uint160 sqrtTwap;
     }
@@ -52,10 +53,10 @@ interface IPredyPool {
         int256 margin;
     }
 
-    function trade(TradeParams memory tradeParams, IHooks.SettlementData memory settlementData)
+    function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult);
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, IHooks.SettlementData memory settlementData)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult);
 

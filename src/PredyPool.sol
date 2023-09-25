@@ -7,6 +7,7 @@ import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.so
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IHooks.sol";
+import "./interfaces/ISettlement.sol";
 import "./libraries/Perp.sol";
 import "./libraries/logic/AddPairLogic.sol";
 import "./libraries/logic/LiquidationLogic.sol";
@@ -95,7 +96,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
     /**
      * @notice Reallocated the range of concentrated liquidity provider position
      */
-    function reallocate(uint256 pairId, IHooks.SettlementData memory settlementData)
+    function reallocate(uint256 pairId, ISettlement.SettlementData memory settlementData)
         external
         returns (bool relocationOccurred)
     {
@@ -105,7 +106,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
     /**
      * @notice Opens or closes perp positions
      */
-    function trade(TradeParams memory tradeParams, IHooks.SettlementData memory settlementData)
+    function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult)
     {
@@ -142,7 +143,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, IUniswapV3SwapCallback
     /**
      * @notice Executed liquidation call to close an unsafe vault
      */
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, IHooks.SettlementData memory settlementData)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult)
     {

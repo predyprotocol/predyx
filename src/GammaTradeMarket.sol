@@ -8,7 +8,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
-import "./base/BaseMarket.sol";
+import "./base/BaseHookCallback.sol";
 import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
 import "./libraries/market/GeneralOrderLib.sol";
@@ -17,7 +17,7 @@ import "./libraries/math/Math.sol";
 /**
  * @notice Gamma trade market contract
  */
-contract GammaTradeMarket is IFillerMarket, BaseMarket {
+contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
     using ResolvedOrderLib for ResolvedOrder;
     using GeneralOrderLib for GeneralOrder;
     using Permit2Lib for ResolvedOrder;
@@ -28,8 +28,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
 
     mapping(uint256 vaultId => address) public userPositions;
 
-    constructor(IPredyPool _predyPool, address swapRouterAddress, address quoteTokenAddress, address permit2Address)
-        BaseMarket(_predyPool, swapRouterAddress)
+    constructor(IPredyPool _predyPool, address quoteTokenAddress, address permit2Address)
+        BaseHookCallback(_predyPool)
     {
         _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
@@ -37,7 +37,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
 
     function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
         external
-        override(BaseMarket)
+        override(BaseHookCallback)
     {
         int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
 
@@ -54,7 +54,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
      * @param settlementData The route of settlement created by filler
      * @dev Fillers call this function
      */
-    function executeOrder(SignedOrder memory order, bytes memory settlementData)
+    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -71,7 +71,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
                 generalOrder.tradeAmountSqrt,
                 abi.encode(generalOrder.marginAmount)
             ),
-            IHooks.SettlementData(address(this), settlementData)
+            settlementData
         );
 
         if (generalOrder.positionId == 0) {
@@ -99,7 +99,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
      * @param settlementData The route of settlement created by liquidator
      */
     function execLiquidationCall(uint256 vaultId, bytes memory settlementData) external {
-        _predyPool.execLiquidationCall(vaultId, 1e18, IHooks.SettlementData(address(this), settlementData));
+        _predyPool.execLiquidationCall(vaultId, 1e18, ISettlement.SettlementData(address(this), settlementData));
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {

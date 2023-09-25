@@ -29,12 +29,12 @@ library PositionCalculator {
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         DataType.Vault memory _vault
-    ) internal view returns (bool _isLiquidatable, int256 minDeposit, int256 vaultValue, uint160 twap) {
+    ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint160 twap) {
         bool hasPosition;
 
-        (minDeposit, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
 
-        bool isSafe = vaultValue >= minDeposit && _vault.margin >= 0;
+        bool isSafe = vaultValue >= minMargin && _vault.margin >= 0;
 
         _isLiquidatable = !isSafe && hasPosition;
     }
@@ -43,10 +43,10 @@ library PositionCalculator {
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         DataType.Vault memory _vault
-    ) internal view returns (int256 minDeposit) {
+    ) internal view returns (int256 minMargin) {
         bool isSafe;
 
-        (minDeposit, isSafe,) = getIsSafe(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        (minMargin, isSafe,) = getIsSafe(pairStatus, _rebalanceFeeGrowthCache, _vault);
 
         require(isSafe, "NS");
     }
@@ -55,19 +55,19 @@ library PositionCalculator {
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         DataType.Vault memory _vault
-    ) internal view returns (int256 minDeposit, bool isSafe, bool hasPosition) {
+    ) internal view returns (int256 minMargin, bool isSafe, bool hasPosition) {
         int256 vaultValue;
 
-        (minDeposit, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
 
-        isSafe = vaultValue >= minDeposit && _vault.margin >= 0;
+        isSafe = vaultValue >= minMargin && _vault.margin >= 0;
     }
 
     function calculateMinDeposit(
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         DataType.Vault memory vault
-    ) internal view returns (int256 minDeposit, int256 vaultValue, bool hasPosition, uint160 twap) {
+    ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint160 twap) {
         int256 minValue;
         uint256 debtValue;
 
@@ -82,10 +82,10 @@ library PositionCalculator {
 
         int256 minMinValue = SafeCast.toInt256(calculateRequiredCollateralWithDebt() * debtValue / 1e6);
 
-        minDeposit = vaultValue - minValue + minMinValue;
+        minMargin = vaultValue - minValue + minMinValue;
 
-        if (hasPosition && minDeposit < Constants.MIN_MARGIN_AMOUNT) {
-            minDeposit = Constants.MIN_MARGIN_AMOUNT;
+        if (hasPosition && minMargin < Constants.MIN_MARGIN_AMOUNT) {
+            minMargin = Constants.MIN_MARGIN_AMOUNT;
         }
     }
 
