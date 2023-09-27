@@ -17,7 +17,7 @@ contract TestPerp is Test, PairStatusUtils {
     address internal token1;
     IUniswapV3Pool internal uniswapPool;
 
-    Perp.PairStatus internal underlyingAssetStatus;
+    Perp.PairStatus internal pairStatus;
     Perp.UserStatus internal userStatus;
 
     function setUp() public virtual {
@@ -46,12 +46,12 @@ contract TestPerp is Test, PairStatusUtils {
 
         uniswapPool.mint(address(this), -1000, 1000, 1000000, bytes(""));
 
-        underlyingAssetStatus = createAssetStatus(1, address(usdc), address(weth), address(uniswapPool));
+        pairStatus = createAssetStatus(1, address(usdc), address(weth), address(uniswapPool));
 
         userStatus = Perp.createPerpUserStatus(1);
 
-        ScaledAsset.addAsset(underlyingAssetStatus.basePool.tokenStatus, 1e8);
-        ScaledAsset.addAsset(underlyingAssetStatus.quotePool.tokenStatus, 1e8);
+        ScaledAsset.addAsset(pairStatus.basePool.tokenStatus, 1e8);
+        ScaledAsset.addAsset(pairStatus.quotePool.tokenStatus, 1e8);
     }
 
     function uniswapV3MintCallback(uint256 amount0, uint256 amount1, bytes calldata) external {

@@ -94,7 +94,7 @@ library Trade {
             revert IPredyPool.CurrencyNotSettled();
         }
 
-        // TODO: in case of totalBaseAmount == 0, 
+        // TODO: in case of totalBaseAmount == 0,
         if (totalQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.CurrencyNotSettled();
         }

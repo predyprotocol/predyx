@@ -114,7 +114,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
                 revert CallerIsNotVaultOwner();
             }
 
-            if(vault.openPosition.pairId != tradeParams.pairId) {
+            if (vault.openPosition.pairId != tradeParams.pairId) {
                 revert PairIdIsDifferent();
             }
         }

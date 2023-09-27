@@ -34,7 +34,7 @@ library PositionCalculator {
         bool hasPosition;
 
         (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
-        
+
         console2.log(vaultValue);
         console2.log(minMargin);
 

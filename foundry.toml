@@ -10,3 +10,6 @@ solc_version = "0.8.19"
 
 gas_reports = ["*"]
 fs_permissions = [{ access = "read", path = "./"}]
+
+[fuzz]
+runs = 1024

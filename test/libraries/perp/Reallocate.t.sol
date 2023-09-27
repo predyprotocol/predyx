@@ -8,26 +8,21 @@ contract TestPerpReallocate is TestPerp {
     function setUp() public override {
         TestPerp.setUp();
 
-        ScaledAsset.addAsset(underlyingAssetStatus.basePool.tokenStatus, 1000000);
-        ScaledAsset.addAsset(underlyingAssetStatus.quotePool.tokenStatus, 1000000);
+        ScaledAsset.addAsset(pairStatus.basePool.tokenStatus, 1000000);
+        ScaledAsset.addAsset(pairStatus.quotePool.tokenStatus, 1000000);
     }
 
     function testReallocate() public {
-        Perp.computeRequiredAmounts(
-            underlyingAssetStatus.sqrtAssetStatus, underlyingAssetStatus.isMarginZero, userStatus, 1000000
-        );
+        Perp.computeRequiredAmounts(pairStatus.sqrtAssetStatus, pairStatus.isMarginZero, userStatus, 1000000);
         Perp.updatePosition(
-            underlyingAssetStatus,
-            userStatus,
-            Perp.UpdatePerpParams(-100, 100),
-            Perp.UpdateSqrtPerpParams(1000000, -100)
+            pairStatus, userStatus, Perp.UpdatePerpParams(-100, 100), Perp.UpdateSqrtPerpParams(1000000, -100)
         );
 
         uniswapPool.swap(address(this), false, 10000, TickMath.MAX_SQRT_RATIO - 1, "");
 
-        Perp.reallocate(underlyingAssetStatus, underlyingAssetStatus.sqrtAssetStatus);
+        Perp.reallocate(pairStatus, pairStatus.sqrtAssetStatus);
 
-        assertEq(underlyingAssetStatus.sqrtAssetStatus.tickLower, -900);
-        assertEq(underlyingAssetStatus.sqrtAssetStatus.tickUpper, 1090);
+        assertEq(pairStatus.sqrtAssetStatus.tickLower, -900);
+        assertEq(pairStatus.sqrtAssetStatus.tickUpper, 1090);
     }
 }

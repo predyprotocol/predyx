@@ -30,7 +30,7 @@ library Math {
         if (b >= 0) {
             return a + uint256(b);
         } else {
-            return a + uint256(-b);
+            return a - uint256(-b);
         }
     }
 }

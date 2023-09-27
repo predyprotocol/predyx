@@ -64,8 +64,8 @@ library Perp {
     struct SqrtPositionStatus {
         int256 amount;
         int256 entryValue;
-        int256 stableRebalanceEntryValue;
-        int256 underlyingRebalanceEntryValue;
+        int256 quoteRebalanceEntryValue;
+        int256 baseRebalanceEntryValue;
         uint256 entryTradeFee0;
         uint256 entryTradeFee1;
     }
@@ -317,7 +317,7 @@ library Perp {
         // _currentSqrtPrice - tickSqrtPrice
         int256 deltaPosition1 =
             LPMath.calculateAmount1ForLiquidity(_currentSqrtPrice, tickSqrtPrice, _totalLiquidityAmount, true);
-        
+
         if (pairStatus.isMarginZero) {
             deltaPositionQuote = -deltaPosition0;
             deltaPositionBase = -deltaPosition1;
@@ -353,8 +353,8 @@ library Perp {
             return false;
         }
 
-        _userStatus.sqrtPerp.underlyingRebalanceEntryValue += deltaPositionUnderlying;
-        _userStatus.sqrtPerp.stableRebalanceEntryValue += deltaPositionStable;
+        _userStatus.sqrtPerp.baseRebalanceEntryValue += deltaPositionUnderlying;
+        _userStatus.sqrtPerp.quoteRebalanceEntryValue += deltaPositionStable;
 
         // already settled fee
 
@@ -501,8 +501,8 @@ library Perp {
         // Update entry value
         _userStatus.perp.entryValue += payoff.perpEntryUpdate;
         _userStatus.sqrtPerp.entryValue += payoff.sqrtEntryUpdate;
-        _userStatus.sqrtPerp.stableRebalanceEntryValue += payoff.sqrtRebalanceEntryUpdateStable;
-        _userStatus.sqrtPerp.underlyingRebalanceEntryValue += payoff.sqrtRebalanceEntryUpdateUnderlying;
+        _userStatus.sqrtPerp.quoteRebalanceEntryValue += payoff.sqrtRebalanceEntryUpdateStable;
+        _userStatus.sqrtPerp.baseRebalanceEntryValue += payoff.sqrtRebalanceEntryUpdateUnderlying;
 
         // Update sqrt position
         updateSqrtPosition(
@@ -838,9 +838,8 @@ library Perp {
         }
 
         if (closeAmount != 0) {
-            offsetStable += closeAmount * _userStatus.sqrtPerp.stableRebalanceEntryValue / _userStatus.sqrtPerp.amount;
-            offsetUnderlying +=
-                closeAmount * _userStatus.sqrtPerp.underlyingRebalanceEntryValue / _userStatus.sqrtPerp.amount;
+            offsetStable += closeAmount * _userStatus.sqrtPerp.quoteRebalanceEntryValue / _userStatus.sqrtPerp.amount;
+            offsetUnderlying += closeAmount * _userStatus.sqrtPerp.baseRebalanceEntryValue / _userStatus.sqrtPerp.amount;
         }
     }
 

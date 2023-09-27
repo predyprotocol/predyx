@@ -7,21 +7,21 @@ import "./BaseSettlement.sol";
 
 contract DirectSettlement is BaseSettlement {
     struct SettlementParams {
+        address filler;
         address quoteTokenAddress;
         address baseTokenAddress;
         uint256 price;
     }
 
-    constructor(IPredyPool _predyPool) BaseSettlement(_predyPool) {
-    }
+    constructor(IPredyPool _predyPool) BaseSettlement(_predyPool) {}
 
-    function getSettlementParams(address quoteTokenAddress, address baseTokenAddress, uint256 price)
+    function getSettlementParams(address filler, address quoteTokenAddress, address baseTokenAddress, uint256 price)
         external
         view
         returns (ISettlement.SettlementData memory)
     {
         return ISettlement.SettlementData(
-            address(this), abi.encode(SettlementParams(quoteTokenAddress, baseTokenAddress, price))
+            address(this), abi.encode(SettlementParams(filler, quoteTokenAddress, baseTokenAddress, price))
         );
     }
 
@@ -36,13 +36,17 @@ contract DirectSettlement is BaseSettlement {
 
             _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
-            IERC20(settlemendParams.quoteTokenAddress).transfer(address(_predyPool), quoteAmount);
+            IERC20(settlemendParams.quoteTokenAddress).transferFrom(
+                settlemendParams.filler, address(_predyPool), quoteAmount
+            );
         } else if (baseAmountDelta < 0) {
             uint256 quoteAmount = uint256(-baseAmountDelta) * settlemendParams.price / 1e4;
 
             _predyPool.take(true, address(this), quoteAmount);
 
-            IERC20(settlemendParams.baseTokenAddress).transfer(address(_predyPool), uint256(-baseAmountDelta));
+            IERC20(settlemendParams.baseTokenAddress).transferFrom(
+                settlemendParams.filler, address(_predyPool), uint256(-baseAmountDelta)
+            );
         }
     }
 }

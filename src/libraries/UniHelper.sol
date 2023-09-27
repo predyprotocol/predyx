@@ -66,7 +66,7 @@ library UniHelper {
         }
 
         int56[] memory tickCumulatives = abi.decode(data, (int56[]));
-        
+
         int24 tick = int24((tickCumulatives[1] - tickCumulatives[0]) / int56(int256(ago)));
 
         uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);

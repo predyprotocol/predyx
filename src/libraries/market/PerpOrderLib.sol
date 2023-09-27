@@ -93,8 +93,7 @@ library PerpOrderLib {
         }
 
         if (perpOrder.limitPrice > 0) {
-            if (perpOrder.tradeAmount > 0 && perpOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate))
-            {
+            if (perpOrder.tradeAmount > 0 && perpOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate)) {
                 revert PriceGreaterThanLimit();
             }
 
