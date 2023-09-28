@@ -8,6 +8,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
+import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
 import "./libraries/market/Permit2Lib.sol";
 import "./libraries/market/ResolvedOrder.sol";
@@ -84,7 +85,8 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
             }
         }
 
-        generalOrder.validateGeneralOrder(tradeResult);
+        // TODO: should have whote list for validatorAddress?
+        IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
 
         if (generalOrder.marginAmount < 0) {
             IERC20(_quoteTokenAddress).transfer(generalOrder.info.trader, uint256(-generalOrder.marginAmount));

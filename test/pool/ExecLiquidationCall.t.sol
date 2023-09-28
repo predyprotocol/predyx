@@ -45,7 +45,9 @@ contract TestExecLiquidationCall is TestPool {
     }
 
     // liquidate succeeds if the vault is danger
-    function testLiquidateSucceedsIfVaultIsDanger() public {
+    function testLiquidateSucceedsIfVaultIsDanger(uint256 closeRatio) public {
+        closeRatio = bound(closeRatio, 1e17, 1e18);
+
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
             1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
         );
@@ -55,9 +57,9 @@ contract TestExecLiquidationCall is TestPool {
         _movePrice(true, 6 * 1e16);
         //1000000 1106398
 
-        vm.warp(block.timestamp + 20 minutes);
+        vm.warp(block.timestamp + 30 minutes);
 
-        _tradeMarket.execLiquidationCall(1, 1e18, _getSettlementData(11000));
+        _tradeMarket.execLiquidationCall(1, closeRatio, _getSettlementData(11000));
 
         checkMarginGeZero(1);
     }
@@ -77,23 +79,23 @@ contract TestExecLiquidationCall is TestPool {
         {
             ISettlement.SettlementData memory settlementData = _getSettlementData(20000);
 
-            vm.expectRevert(IPredyPool.SlippageTooLarge.selector);
+            vm.expectRevert(LiquidationLogic.SlippageTooLarge.selector);
             _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
         }
     }
 
     // liquidate succeeds by premium payment
     function testLiquidateSucceedsByPremiumPayment() public {
-        predyPool.trade(
+        _tradeMarket.trade(
             IPredyPool.TradeParams(
                 1, 0, -2 * 1e8, 2 * 1e8, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
             ),
             _getSettlementData(1e4)
         );
 
-        predyPool.trade(
+        _tradeMarket.trade(
             IPredyPool.TradeParams(
-                2, 0, 1e8, -1e8, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
+                1, 0, 1e8, -1e8, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
             ),
             _getSettlementData(1e4)
         );
@@ -101,7 +103,7 @@ contract TestExecLiquidationCall is TestPool {
         _movePrice(true, 2 * 1e16);
         _movePrice(false, 2 * 1e16);
 
-        vm.warp(block.timestamp + 1 minutes);
+        vm.warp(block.timestamp + 10 minutes);
 
         predyPool.execLiquidationCall(2, 1e18, _getSettlementData(10000));
 
@@ -150,7 +152,7 @@ contract TestExecLiquidationCall is TestPool {
 
         _movePrice(true, 6 * 1e16);
 
-        vm.warp(block.timestamp + 20 minutes);
+        vm.warp(block.timestamp + 30 minutes);
 
         ISettlement.SettlementData memory settlementData = _getSettlementData(11000);
 

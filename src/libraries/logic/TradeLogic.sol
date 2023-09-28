@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {IHooks} from "../../interfaces/IHooks.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
+import {ApplyInterestLib} from "../ApplyInterestLib.sol";
 import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
@@ -27,6 +28,9 @@ library TradeLogic {
         ISettlement.SettlementData memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
+
+        // update interest growth
+        ApplyInterestLib.applyInterestForToken(globalData.pairs, tradeParams.pairId);
 
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
 

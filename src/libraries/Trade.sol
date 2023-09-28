@@ -6,7 +6,6 @@ import "@solmate/src/utils/FixedPointMathLib.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {IHooks} from "../interfaces/IHooks.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
-import {ApplyInterestLib} from "./ApplyInterestLib.sol";
 import {Constants} from "./Constants.sol";
 import {DataType} from "./DataType.sol";
 import {Perp} from "./Perp.sol";
@@ -15,6 +14,7 @@ import {GlobalDataLibrary} from "../types/GlobalData.sol";
 import {LockDataLibrary} from "../types/LockData.sol";
 import {PositionCalculator} from "./PositionCalculator.sol";
 import {Math} from "./math/Math.sol";
+import {UniHelper} from "./UniHelper.sol";
 
 library Trade {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
@@ -34,9 +34,6 @@ library Trade {
         Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
-        // update interest growth
-        ApplyInterestLib.applyInterestForToken(globalData.pairs, tradeParams.pairId);
-
         // update rebalance fee growth
         Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
@@ -49,12 +46,16 @@ library Trade {
             pairStatus.sqrtAssetStatus, pairStatus.isMarginZero, openPosition, tradeParams.tradeAmountSqrt
         );
 
+        tradeResult.sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
+
         // swap tokens
+
         SwapStableResult memory swapResult = swap(
             globalData,
             tradeParams.pairId,
             SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, underlyingFee, 0),
-            settlementData
+            settlementData,
+            tradeResult.sqrtPrice
         );
 
         tradeResult.averagePrice = swapResult.averagePrice;
@@ -78,9 +79,16 @@ library Trade {
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
         SwapStableResult memory swapParams,
-        ISettlement.SettlementData memory settlementData
+        ISettlement.SettlementData memory settlementData,
+        uint160 sqrtPrice
     ) internal returns (SwapStableResult memory) {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
+
+        if (totalBaseAmount == 0) {
+            int256 amountStable = int256(calculateStableAmount(sqrtPrice, 1e18));
+
+            return divToStable(swapParams, int256(1e18), amountStable, 0);
+        }
 
         globalData.initializeLock(pairId, settlementData.settlementContractAddress);
 
@@ -102,6 +110,20 @@ library Trade {
         delete globalData.lockData;
 
         return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
+    }
+
+    function getSqrtPrice(address _uniswapPool, bool _isMarginZero) internal view returns (uint160 sqrtPriceX96) {
+        return UniHelper.convertSqrtPrice(UniHelper.getSqrtPrice(_uniswapPool), _isMarginZero);
+    }
+
+    function calculateStableAmount(uint160 _currentSqrtPrice, uint256 _underlyingAmount)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 stableAmount = (_currentSqrtPrice * _underlyingAmount) >> Constants.RESOLUTION;
+
+        return (stableAmount * _currentSqrtPrice) >> Constants.RESOLUTION;
     }
 
     function divToStable(

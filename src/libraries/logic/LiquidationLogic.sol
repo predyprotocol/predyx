@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {IHooks} from "../../interfaces/IHooks.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
+import {ApplyInterestLib} from "../ApplyInterestLib.sol";
 import {Constants} from "../Constants.sol";
 import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
@@ -17,10 +18,17 @@ library LiquidationLogic {
     using Math for int256;
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
 
+    error SlippageTooLarge();
+
+    error OutOfAcceptablePriceRange();
+
     // 5%
     uint256 constant _MAX_SLIPPAGE = 500;
     // 0.5%
     uint256 constant _MIN_SLIPPAGE = 50;
+
+    // 3% scaled by 1e8
+    uint256 constant _MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
 
     event PositionLiquidated(
         uint256 vaultId,
@@ -40,6 +48,9 @@ library LiquidationLogic {
         require(closeRatio > 0);
         DataType.Vault storage vault = globalData.vaults[vaultId];
         Perp.PairStatus storage pairStatus = globalData.pairs[vault.openPosition.pairId];
+
+        // update interest growth
+        ApplyInterestLib.applyInterestForToken(globalData.pairs, vault.openPosition.pairId);
 
         // Checks the vault is danger
         (uint160 sqrtTwap, uint256 slippageTolerance) =
@@ -65,7 +76,7 @@ library LiquidationLogic {
             PositionCalculator.calculateMinDeposit(pairStatus, globalData.rebalanceFeeGrowthCache, vault);
 
         // TODO: compare tradeResult.averagePrice and TWAP, which averagePrice or entryPrice is better?
-        checkPrice(sqrtTwap, tradeParams, tradeResult, slippageTolerance);
+        checkPrice(sqrtTwap, tradeResult, slippageTolerance);
 
         if (!hasPosition) {
             if (vault.margin > 0) {
@@ -119,23 +130,45 @@ library LiquidationLogic {
         return (_MAX_SLIPPAGE - ratio * (_MAX_SLIPPAGE - _MIN_SLIPPAGE) / 1e4) + 1e4;
     }
 
-    function checkPrice(
-        uint256 sqrtTwap,
-        IPredyPool.TradeParams memory tradeParams,
-        IPredyPool.TradeResult memory tradeResult,
-        uint256 slippageTolerance
-    ) internal pure {
+    function checkPrice(uint256 sqrtTwap, IPredyPool.TradeResult memory tradeResult, uint256 slippageTolerance)
+        internal
+        pure
+    {
+        uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
+
+        if (tradeResult.averagePrice > 0) {
+            // long
+            if (twap * 1e4 / slippageTolerance > uint256(tradeResult.averagePrice)) {
+                revert SlippageTooLarge();
+            }
+        } else if (tradeResult.averagePrice < 0) {
+            // short
+            if (twap * slippageTolerance / 1e4 < uint256(-tradeResult.averagePrice)) {
+                revert SlippageTooLarge();
+            }
+        }
+
+        if (
+            tradeResult.sqrtPrice < sqrtTwap * 1e8 / _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
+                || sqrtTwap * _MAX_ACCEPTABLE_SQRT_PRICE_RANGE / 1e8 < tradeResult.sqrtPrice
+        ) {
+            revert OutOfAcceptablePriceRange();
+        }
+
+        /*
         if (tradeParams.tradeAmount != 0) {
             uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
             int256 closePrice = (
-                (tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff) * int256(Constants.Q96)
+                int256(Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff) * Constants.Q96)
             ) / tradeParams.tradeAmount;
 
             if (closePrice > 0) {
+                // long
                 if (twap * 1e4 / slippageTolerance > uint256(closePrice)) {
                     revert IPredyPool.SlippageTooLarge();
                 }
             } else if (closePrice < 0) {
+                // short
                 if (twap * slippageTolerance / 1e4 < uint256(-closePrice)) {
                     revert IPredyPool.SlippageTooLarge();
                 }
@@ -148,14 +181,17 @@ library LiquidationLogic {
             ) / tradeParams.tradeAmountSqrt;
 
             if (closeSqrtPrice > 0) {
+                // long
                 if (sqrtTwap * 1e4 / slippageTolerance > uint256(closeSqrtPrice)) {
                     revert IPredyPool.SlippageTooLarge();
                 }
             } else if (closeSqrtPrice < 0) {
+                // short
                 if (sqrtTwap * slippageTolerance / 1e4 < uint256(-closeSqrtPrice)) {
                     revert IPredyPool.SlippageTooLarge();
                 }
             }
         }
+        */
     }
 }

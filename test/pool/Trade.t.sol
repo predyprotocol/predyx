@@ -86,7 +86,6 @@ contract TestTrade is TestPool {
     // trade succeeds for update
     // trade succeeds after reallocated
 
-    // trade succeeds with callback
     // trade fails if currency not settled
     function testCannotTrade_IfCurrencyNotSettled() public {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(1, 0, -900, 1000, "");

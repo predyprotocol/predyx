@@ -9,7 +9,6 @@ import "./DataType.sol";
 import "./Constants.sol";
 import "./PerpFee.sol";
 import "./math/Math.sol";
-import "forge-std/console2.sol";
 
 library PositionCalculator {
     using ScaledAsset for ScaledAsset.AssetStatus;
@@ -34,9 +33,6 @@ library PositionCalculator {
         bool hasPosition;
 
         (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
-
-        console2.log(vaultValue);
-        console2.log(minMargin);
 
         bool isSafe = vaultValue >= minMargin && _vault.margin >= 0;
 
@@ -135,12 +131,12 @@ library PositionCalculator {
     }
 
     function getPositionWithUnrealizedFee(
-        Perp.PairStatus memory _underlyingAsset,
+        Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         Perp.UserStatus memory _perpUserStatus
     ) internal view returns (PositionParams memory positionParams) {
         (int256 unrealizedFeeUnderlying, int256 unrealizedFeeStable) =
-            PerpFee.computeUserFee(_underlyingAsset, _rebalanceFeeGrowthCache, _perpUserStatus);
+            PerpFee.computeUserFee(pairStatus, _rebalanceFeeGrowthCache, _perpUserStatus);
 
         return PositionParams(
             _perpUserStatus.perp.entryValue + _perpUserStatus.sqrtPerp.entryValue + unrealizedFeeStable,

@@ -113,13 +113,14 @@ contract ReallocationTest is Test, PairStatusUtils {
         assertEq(upper, -500);
     }
 
-    function testIsInRange() public {
-        assertTrue(Reallocation._isInRange(underlyingAssetStatus.sqrtAssetStatus, 0));
-    }
+    function testIsInRange(int24 tick) public {
+        bool isInRange = Reallocation._isInRange(underlyingAssetStatus.sqrtAssetStatus, tick);
 
-    function testIsOutOfRange() public {
-        assertFalse(Reallocation._isInRange(underlyingAssetStatus.sqrtAssetStatus, -1001));
-        assertFalse(Reallocation._isInRange(underlyingAssetStatus.sqrtAssetStatus, 1000));
+        if (-1000 <= tick && tick < 1000) {
+            assertTrue(isInRange);
+        } else {
+            assertFalse(isInRange);
+        }
     }
 
     function testCalculateMinLowerTick() public {

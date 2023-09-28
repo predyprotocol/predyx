@@ -5,12 +5,15 @@ import "../pool/Setup.t.sol";
 import "../../src/interfaces/ISettlement.sol";
 import "../../src/GammaTradeMarket.sol";
 import "../../src/settlements/UniswapSettlement.sol";
+import "../../src/libraries/market/LimitOrder.sol";
+import "../../src/libraries/Constants.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 
 contract TestMarket is TestPool {
     UniswapSettlement settlement;
     GammaTradeMarket fillerMarket;
     IPermit2 permit2;
+    LimitOrderValidator limitOrderValidator;
 
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
@@ -31,5 +34,11 @@ contract TestMarket is TestPool {
 
         currency0.approve(address(fillerMarket), type(uint256).max);
         currency1.approve(address(fillerMarket), type(uint256).max);
+
+        limitOrderValidator = new LimitOrderValidator();
+    }
+
+    function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {
+        return quoteAmount * Constants.Q96 / baseAmount;
     }
 }

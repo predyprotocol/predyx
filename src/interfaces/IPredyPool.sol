@@ -22,8 +22,6 @@ interface IPredyPool {
 
     error VaultIsNotDanger();
 
-    error SlippageTooLarge();
-
     struct TradeParams {
         uint256 pairId;
         uint256 vaultId;
@@ -39,6 +37,7 @@ interface IPredyPool {
         int256 minMargin;
         int256 averagePrice;
         uint160 sqrtTwap;
+        uint160 sqrtPrice;
     }
 
     struct Payoff {

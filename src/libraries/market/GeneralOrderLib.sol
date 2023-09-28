@@ -13,12 +13,10 @@ struct GeneralOrder {
     uint64 pairId;
     int256 tradeAmount;
     int256 tradeAmountSqrt;
-    uint256 triggerPrice;
-    uint256 triggerPriceSqrt;
-    uint256 limitPrice;
-    uint256 limitPriceSqrt;
     int256 marginAmount;
     uint256 marginRatio;
+    address validatorAddress;
+    bytes validationData;
 }
 
 /// @notice helpers for handling general order objects
@@ -37,12 +35,8 @@ library GeneralOrderLib {
         "uint256 pairId,",
         "int256 tradeAmount,",
         "int256 tradeAmountSqrt,",
-        "uint256 triggerPrice,",
-        "uint256 triggerPriceSqrt,",
-        "uint256 limitPrice,",
-        "uint256 limitPriceSqrt,",
         "int256 marginAmount,",
-        "uint256 marginRatio)"
+        "uint256 marginRatio" "address validatorAddress" "bytes validationData)"
     );
 
     /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
@@ -64,12 +58,10 @@ library GeneralOrderLib {
                 order.pairId,
                 order.tradeAmount,
                 order.tradeAmountSqrt,
-                order.triggerPrice,
-                order.triggerPriceSqrt,
-                order.limitPrice,
-                order.limitPriceSqrt,
                 order.marginAmount,
-                order.marginRatio
+                order.marginRatio,
+                order.validatorAddress,
+                order.validationData
             )
         );
     }
@@ -84,57 +76,5 @@ library GeneralOrderLib {
         uint256 amount = generalOrder.marginAmount > 0 ? uint256(generalOrder.marginAmount) : 0;
 
         return (generalOrder, ResolvedOrder(generalOrder.info, token, amount, hash(generalOrder), order.sig));
-    }
-
-    function validateGeneralOrder(GeneralOrder memory generalOrder, IPredyPool.TradeResult memory tradeResult)
-        internal
-        pure
-    {
-        if (generalOrder.triggerPrice > 0) {
-            uint256 twap = (tradeResult.sqrtTwap * tradeResult.sqrtTwap) >> Constants.RESOLUTION;
-
-            if (generalOrder.tradeAmount > 0 && generalOrder.triggerPrice < twap) {
-                revert TriggerNotMatched();
-            }
-            if (generalOrder.tradeAmount < 0 && generalOrder.triggerPrice > twap) {
-                revert TriggerNotMatched();
-            }
-        }
-
-        if (generalOrder.triggerPriceSqrt > 0) {
-            if (generalOrder.tradeAmountSqrt > 0 && generalOrder.triggerPriceSqrt < tradeResult.sqrtTwap) {
-                revert TriggerNotMatched();
-            }
-            if (generalOrder.tradeAmountSqrt < 0 && generalOrder.triggerPriceSqrt > tradeResult.sqrtTwap) {
-                revert TriggerNotMatched();
-            }
-        }
-
-        if (generalOrder.limitPrice > 0) {
-            if (generalOrder.tradeAmount > 0 && generalOrder.limitPrice < uint256(-tradeResult.payoff.perpEntryUpdate))
-            {
-                revert PriceGreaterThanLimit();
-            }
-
-            if (generalOrder.tradeAmount < 0 && generalOrder.limitPrice > uint256(tradeResult.payoff.perpEntryUpdate)) {
-                revert PriceLessThanLimit();
-            }
-        }
-
-        if (generalOrder.limitPriceSqrt > 0) {
-            if (
-                generalOrder.tradeAmountSqrt > 0
-                    && generalOrder.limitPriceSqrt < uint256(-tradeResult.payoff.sqrtEntryUpdate)
-            ) {
-                revert PriceGreaterThanLimit();
-            }
-
-            if (
-                generalOrder.tradeAmountSqrt < 0
-                    && generalOrder.limitPriceSqrt > uint256(tradeResult.payoff.sqrtEntryUpdate)
-            ) {
-                revert PriceLessThanLimit();
-            }
-        }
     }
 }
