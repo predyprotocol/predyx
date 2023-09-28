@@ -13,6 +13,9 @@ struct LimitOrderValidationData {
     uint256 limitPriceSqrt;
 }
 
+/**
+ * @notice The LimitOrderValidator contract is responsible for validating the limit orders based on the trigger and limit prices.
+ */
 contract LimitOrderValidator {
     error PriceGreaterThanLimit();
 
@@ -44,7 +47,7 @@ contract LimitOrderValidator {
             }
         }
 
-        if (validationData.limitPrice > 0) {
+        if (validationData.limitPrice > 0 && generalOrder.tradeAmount != 0) {
             uint256 tradePrice = Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff)
                 * Constants.Q96 / Math.abs(generalOrder.tradeAmount);
 
@@ -57,7 +60,7 @@ contract LimitOrderValidator {
             }
         }
 
-        if (validationData.limitPriceSqrt > 0) {
+        if (validationData.limitPriceSqrt > 0 && generalOrder.tradeAmountSqrt != 0) {
             uint256 tradePriceSqrt = Math.abs(tradeResult.payoff.sqrtEntryUpdate + tradeResult.payoff.sqrtPayoff)
                 * Constants.Q96 / Math.abs(generalOrder.tradeAmountSqrt);
 

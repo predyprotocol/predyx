@@ -2,20 +2,15 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-import {GeneralOrderLib} from "../../src/libraries/market/GeneralOrderLib.sol";
 import {ISettlement} from "../../src/interfaces/ISettlement.sol";
-import {SigUtils} from "../utils/SigUtils.sol";
 import "forge-std/console2.sol";
 
-contract TestExecuteOrder is TestMarket, SigUtils {
-    using GeneralOrderLib for GeneralOrder;
-
+contract TestExecuteOrder is TestMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;
     uint256 fromPrivateKey2;
     address from2;
-    bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public override {
         TestMarket.setUp();
@@ -33,7 +28,6 @@ contract TestExecuteOrder is TestMarket, SigUtils {
         from1 = vm.addr(fromPrivateKey1);
         fromPrivateKey2 = 0x1235678;
         from2 = vm.addr(fromPrivateKey2);
-        DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
         currency1.mint(from1, type(uint128).max);
         currency1.mint(from2, type(uint128).max);
@@ -43,39 +37,6 @@ contract TestExecuteOrder is TestMarket, SigUtils {
 
         vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
-    }
-
-    function _toPermit(GeneralOrder memory order)
-        internal
-        view
-        returns (ISignatureTransfer.PermitTransferFrom memory)
-    {
-        uint256 amount = order.marginAmount > 0 ? uint256(order.marginAmount) : 0;
-
-        return ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({token: address(currency1), amount: amount}),
-            nonce: order.info.nonce,
-            deadline: order.info.deadline
-        });
-    }
-
-    function _createSignedOrder(GeneralOrder memory marketOrder, uint256 fromPrivateKey)
-        internal
-        view
-        returns (IFillerMarket.SignedOrder memory signedOrder)
-    {
-        bytes32 witness = marketOrder.hash();
-
-        bytes memory sig = getPermitSignature(
-            fromPrivateKey,
-            _toPermit(marketOrder),
-            address(fillerMarket),
-            GeneralOrderLib.PERMIT2_ORDER_TYPE,
-            witness,
-            DOMAIN_SEPARATOR
-        );
-
-        signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
     }
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)

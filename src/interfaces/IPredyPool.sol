@@ -16,7 +16,7 @@ interface IPredyPool {
 
     error InvalidAddress();
 
-    error PairIdIsDifferent();
+    error VaultAlreadyHasAnotherPair();
 
     error CallerIsNotVaultOwner();
 

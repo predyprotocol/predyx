@@ -79,12 +79,16 @@ library LiquidationLogic {
         checkPrice(sqrtTwap, tradeResult, slippageTolerance);
 
         if (!hasPosition) {
-            if (vault.margin > 0) {
+            int256 remainingMargin = vault.margin;
+
+            vault.margin = 0;
+
+            if (remainingMargin > 0) {
                 // Send the remaining margin to the recipient.
-                IERC20(pairStatus.quotePool.token).transfer(vault.recepient, uint256(vault.margin));
-            } else if (vault.margin < 0) {
+                IERC20(pairStatus.quotePool.token).transfer(vault.recepient, uint256(remainingMargin));
+            } else if (remainingMargin < 0) {
                 // If the margin is negative, the liquidator will make up for it.
-                IERC20(pairStatus.quotePool.token).transferFrom(msg.sender, address(this), uint256(-vault.margin));
+                IERC20(pairStatus.quotePool.token).transferFrom(msg.sender, address(this), uint256(-remainingMargin));
             }
         }
     }

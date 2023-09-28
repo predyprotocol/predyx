@@ -53,7 +53,8 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     }
 
     /**
-     * @notice Adds new pair
+     * @notice Adds a new trading pair.
+     * @param addPairParam AddPairParams struct containing pair information.
      */
     function registerPair(AddPairLogic.AddPairParams memory addPairParam) external {
         AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
@@ -90,7 +91,10 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     }
 
     /**
-     * @notice Opens or closes perp positions
+     * @notice This function allows users to open or close perpetual future positions.
+     * @param tradeParams trade details
+     * @param settlementData byte data for settlement contract.
+     * @return tradeResult The result of the trade.
      */
     function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
         external
@@ -99,7 +103,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         if (tradeParams.vaultId == 0) {
             tradeParams.vaultId = globalData.vaultCount;
 
-            // initialize vault
+            // Initialize a new vault
             DataType.Vault storage vault = globalData.vaults[tradeParams.vaultId];
 
             vault.owner = msg.sender;
@@ -110,12 +114,13 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         } else {
             DataType.Vault memory vault = globalData.vaults[tradeParams.vaultId];
 
+            // Ensure the caller is the owner of the existing vault
             if (vault.owner != msg.sender) {
                 revert CallerIsNotVaultOwner();
             }
 
             if (vault.openPosition.pairId != tradeParams.pairId) {
-                revert PairIdIsDifferent();
+                revert VaultAlreadyHasAnotherPair();
             }
         }
 
@@ -137,7 +142,11 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     }
 
     /**
-     * @notice Executed liquidation call to close an unsafe vault
+     * @notice Executes a liquidation call to close an unsafe vault.
+     * @param vaultId The identifier of the vault to be liquidated.
+     * @param closeRatio The ratio at which the position will be closed.
+     * @param settlementData SettlementData struct for trade settlement.
+     * @return tradeResult TradeResult struct with the result of the liquidation.
      */
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
         external
