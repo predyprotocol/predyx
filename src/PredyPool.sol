@@ -166,6 +166,13 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         );
     }
 
+    function getSqrtPrice(uint256 pairId) external view returns (uint160) {
+        return UniHelper.convertSqrtPrice(
+            UniHelper.getSqrtPrice(globalData.pairs[pairId].sqrtAssetStatus.uniswapPool),
+            globalData.pairs[pairId].isMarginZero
+        );
+    }
+
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint160) {
         return UniHelper.convertSqrtPrice(
             UniHelper.getSqrtTWAP(globalData.pairs[pairId].sqrtAssetStatus.uniswapPool),

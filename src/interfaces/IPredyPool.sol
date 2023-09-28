@@ -67,6 +67,8 @@ interface IPredyPool {
 
     function updateMargin(uint256 vaultId, int256 marginAmount) external;
 
+    function getSqrtPrice(uint256 pairId) external view returns (uint160);
+
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint160);
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);

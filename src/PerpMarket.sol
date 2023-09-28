@@ -215,31 +215,34 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     }
 
     function updateFundingFee(UserPosition storage userPosition) internal {
-        fundingRateGrobalGrowth +=
-            getFundingRate() * int256(block.timestamp - lastFundingRateCalculationTime) / int256(365 days);
+        fundingRateGrobalGrowth += getFundingRate(userPosition.pairId)
+            * int256(block.timestamp - lastFundingRateCalculationTime) / int256(365 days);
 
         lastFundingRateCalculationTime = block.timestamp;
 
-        int256 fundingFee =
-            (fundingRateGrobalGrowth - userPosition.cumulativeFundingRates) * userPosition.positionAmount / 1e18;
+        int256 fundingFee = (fundingRateGrobalGrowth - userPosition.cumulativeFundingRates)
+            * userPosition.positionAmount / int256(Constants.Q96);
 
         userPosition.cumulativeFundingRates = fundingRateGrobalGrowth;
 
         userPosition.marginAmount += fundingFee;
 
         // TODO: +- fee to filler margin
-        fillerMarginAmount += (fillerCumulativeFundingRates - userPosition.cumulativeFundingRates)
-            * (int256(totalPosition.totalLongAmount) - int256(totalPosition.totalShortAmount)) / 1e18;
+        fillerMarginAmount += (fundingRateGrobalGrowth - fillerCumulativeFundingRates)
+            * (int256(totalPosition.totalLongAmount) - int256(totalPosition.totalShortAmount)) / int256(Constants.Q96);
 
-        fillerCumulativeFundingRates = userPosition.cumulativeFundingRates;
+        fillerCumulativeFundingRates = fundingRateGrobalGrowth;
     }
 
-    function getFundingRate() internal view returns (int256) {
-        // TODO: per ETH
+    function getFundingRate(uint256 pairId) internal view returns (int256) {
+        uint160 sqrtPrice = _predyPool.getSqrtPrice(pairId);
+        uint256 price = sqrtPrice * sqrtPrice / Constants.Q96;
+
+        // TODO: Quote Token per Base Token
         if (totalPosition.totalLongAmount > totalPosition.totalShortAmount) {
-            return 12 * 1e16;
+            return int256(price) * 12 / 100;
         } else {
-            return -12 * 1e16;
+            return -int256(price) * 12 / 100;
         }
     }
 
