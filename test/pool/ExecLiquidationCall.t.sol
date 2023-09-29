@@ -30,14 +30,14 @@ contract TestExecLiquidationCall is TestPool {
         filler = address(this);
     }
 
-    function checkMarginGeZero(uint256 vaultId) internal {
+    function checkMarginEqZero(uint256 vaultId) internal {
         DataType.Vault memory vault = predyPool.getVault(vaultId);
-        assertGe(vault.margin, 0);
+        assertEq(vault.margin, 0);
     }
 
-    function checkMarginLeZero(uint256 vaultId) internal {
+    function checkMarginGtZero(uint256 vaultId) internal {
         DataType.Vault memory vault = predyPool.getVault(vaultId);
-        assertLe(vault.margin, 0);
+        assertGt(vault.margin, 0);
     }
 
     function _getSettlementData(uint256 price) internal view returns (ISettlement.SettlementData memory) {
@@ -55,13 +55,18 @@ contract TestExecLiquidationCall is TestPool {
         _tradeMarket.trade(tradeParams, _getSettlementData(1e4));
 
         _movePrice(true, 6 * 1e16);
-        //1000000 1106398
 
         vm.warp(block.timestamp + 30 minutes);
 
+        uint256 beforeMargin = currency1.balanceOf(address(_tradeMarket));
         _tradeMarket.execLiquidationCall(1, closeRatio, _getSettlementData(11000));
+        uint256 afterMargin = currency1.balanceOf(address(_tradeMarket));
 
-        checkMarginGeZero(1);
+        if (closeRatio == 1e18) {
+            assertGt(afterMargin - beforeMargin, 0);
+        } else {
+            checkMarginGtZero(1);
+        }
     }
 
     // liquidate fails if slippage too large
@@ -107,7 +112,7 @@ contract TestExecLiquidationCall is TestPool {
 
         predyPool.execLiquidationCall(2, 1e18, _getSettlementData(10000));
 
-        checkMarginGeZero(2);
+        checkMarginEqZero(2);
     }
 
     // liquidate succeeds with insolvent vault
@@ -122,9 +127,12 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 30 minutes);
 
+        uint256 beforeMargin = currency1.balanceOf(address(this));
         predyPool.execLiquidationCall(1, 1e18, _getSettlementData(12100));
+        uint256 afterMargin = currency1.balanceOf(address(this));
 
-        checkMarginLeZero(1);
+        assertGt(beforeMargin - afterMargin, 0);
+        checkMarginEqZero(1);
     }
 
     // liquidate fails if the vault is safe

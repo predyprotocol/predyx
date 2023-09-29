@@ -20,8 +20,6 @@ contract TestExecLiquidationCall is TestMarket {
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        // fillerMarket.depositToFillerPool(100 * 1e6);
-
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
         fromPrivateKey2 = 0x1235678;

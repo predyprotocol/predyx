@@ -100,6 +100,8 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         external
         returns (TradeResult memory tradeResult)
     {
+        globalData.validate(tradeParams.pairId);
+
         if (tradeParams.vaultId == 0) {
             tradeParams.vaultId = globalData.vaultCount;
 

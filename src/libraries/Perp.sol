@@ -28,6 +28,9 @@ library Perp {
     using SafeCastLib for uint256;
     using Math for int256;
 
+    error SqrtAssetCanNotCoverBorrow();
+    error NoCFMMLiquidity();
+
     struct PairStatus {
         uint256 id;
         address marginId;
@@ -552,7 +555,9 @@ library Perp {
         if (closeAmount > 0) {
             _assetStatus.borrowedAmount -= uint256(closeAmount);
         } else if (closeAmount < 0) {
-            require(getAvailableSqrtAmount(_assetStatus, true) >= uint256(-closeAmount), "S0");
+            if (getAvailableSqrtAmount(_assetStatus, true) < uint256(-closeAmount)) {
+                revert SqrtAssetCanNotCoverBorrow();
+            }
             _assetStatus.totalAmount -= uint256(-closeAmount);
         }
 
@@ -562,7 +567,9 @@ library Perp {
             _userStatus.sqrtPerp.entryTradeFee0 = _assetStatus.fee0Growth;
             _userStatus.sqrtPerp.entryTradeFee1 = _assetStatus.fee1Growth;
         } else if (openAmount < 0) {
-            require(getAvailableSqrtAmount(_assetStatus, false) >= uint256(-openAmount), "S0");
+            if (getAvailableSqrtAmount(_assetStatus, false) < uint256(-openAmount)) {
+                revert SqrtAssetCanNotCoverBorrow();
+            }
 
             _assetStatus.borrowedAmount += uint256(-openAmount);
 
@@ -719,7 +726,9 @@ library Perp {
         internal
         returns (int256 receivedAmount0, int256 receivedAmount1)
     {
-        require(_assetStatus.totalAmount - _assetStatus.borrowedAmount >= _liquidityAmount, "P1");
+        if (_assetStatus.totalAmount - _assetStatus.borrowedAmount < _liquidityAmount) {
+            revert NoCFMMLiquidity();
+        }
 
         (uint256 amount0, uint256 amount1) = IUniswapV3Pool(_assetStatus.uniswapPool).burn(
             _assetStatus.tickLower, _assetStatus.tickUpper, _liquidityAmount.safeCastTo128()

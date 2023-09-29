@@ -20,6 +20,8 @@ library AddPairLogic {
         InterestRateModel.IRMParams underlyingIrmParams;
     }
 
+    error InvalidUniswapPool();
+
     event PairAdded(uint256 pairId, address marginId, address uniswapPool);
     event PairGroupAdded(uint256 id, address stableAsset);
     event AssetRiskParamsUpdated(uint256 pairId, Perp.AssetRiskParams riskParams);
@@ -60,11 +62,12 @@ library AddPairLogic {
         IUniswapV3Factory uniswapV3Factory = IUniswapV3Factory(_global.uniswapFactory);
 
         // check the uniswap pool is registered in UniswapV3Factory
-        require(
+        if (
             uniswapV3Factory.getPool(uniswapPool.token0(), uniswapPool.token1(), uniswapPool.fee())
-                == _addPairParam.uniswapPool,
-            "RIF"
-        );
+                != _addPairParam.uniswapPool
+        ) {
+            revert InvalidUniswapPool();
+        }
 
         require(uniswapPool.token0() == stableTokenAddress || uniswapPool.token1() == stableTokenAddress, "C3");
 

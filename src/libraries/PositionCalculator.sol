@@ -14,6 +14,8 @@ library PositionCalculator {
     using ScaledAsset for ScaledAsset.AssetStatus;
     using SafeCast for uint256;
 
+    error NotSafe();
+
     uint256 internal constant RISK_RATIO_ONE = 1e8;
 
     struct PositionParams {
@@ -48,7 +50,9 @@ library PositionCalculator {
 
         (minMargin, isSafe,) = getIsSafe(pairStatus, _rebalanceFeeGrowthCache, _vault);
 
-        require(isSafe, "NS");
+        if (!isSafe) {
+            revert NotSafe();
+        }
     }
 
     function getIsSafe(

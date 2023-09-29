@@ -23,12 +23,28 @@ contract TestSupply is TestPool {
     }
 
     // supply succeeds
-    function testSupplySucceeds() public {
-        vm.expectEmit(true, true, true, true);
-        emit TokenSupplied(address(this), 1, false, 100);
-        predyPool.supply(1, false, 100);
+    function testSupplySucceeds(uint256 amount) public {
+        amount = bound(amount, 1, type(uint128).max);
 
-        assertEq(IERC20(supplyTokenAddress).balanceOf(address(this)), 100);
+        uint256 beforeBalance = IERC20(currency0).balanceOf(address(this));
+
+        currency0.approve(address(predyPool), 1e6);
+
+        if (amount <= 1e6) {
+            vm.expectEmit(true, true, true, true);
+            emit TokenSupplied(address(this), 1, false, amount);
+        } else {
+            vm.expectRevert(bytes("STF"));
+        }
+        predyPool.supply(1, false, amount);
+
+        if (amount <= 1e6) {
+            uint256 afterBalance = IERC20(currency0).balanceOf(address(this));
+
+            assertEq(beforeBalance - afterBalance, amount);
+
+            assertEq(IERC20(supplyTokenAddress).balanceOf(address(this)), amount);
+        }
     }
 
     // Amount must be greater than 0
