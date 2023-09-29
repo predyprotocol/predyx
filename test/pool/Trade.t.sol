@@ -86,12 +86,22 @@ contract TestTrade is TestPool {
     // trade succeeds after reallocated
 
     // trade fails if currency not settled
-    function testCannotTrade_IfCurrencyNotSettled() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(1, 0, -900, 1000, "");
-        bytes memory settlementData =
-            abi.encode(TestSettlementCurrencyNotSettled.SettlementParams(address(currency1), 100, 70));
+    function testCannotTradeIfCurrencyNotSettled(uint256 a, uint256 b) public {
+        int256 baseTokenAmount = int256(bound(a, 0, 3000)) - 1500;
+        int256 quoteTokenAmount = int256(bound(b, 0, 3000)) - 1500;
 
-        vm.expectRevert(IPredyPool.CurrencyNotSettled.selector);
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
+            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+        );
+        bytes memory settlementData = abi.encode(
+            TestSettlementCurrencyNotSettled.SettlementParams(
+                address(currency0), address(currency1), baseTokenAmount, quoteTokenAmount
+            )
+        );
+
+        if (baseTokenAmount != -100 || quoteTokenAmount <= 0) {
+            vm.expectRevert(IPredyPool.CurrencyNotSettled.selector);
+        }
         tradeMarket.trade(
             tradeParams, ISettlement.SettlementData(address(testSettlementCurrencyNotSettled), settlementData)
         );
@@ -110,7 +120,7 @@ contract TestTrade is TestPool {
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
 
-        vm.expectRevert(IPredyPool.CallerIsNotVaultOwner.selector);
+        vm.expectRevert(VaultLib.CallerIsNotVaultOwner.selector);
         tradeMarket2.trade(IPredyPool.TradeParams(1, tradeResult.vaultId, 99 * 1e4, 0, extraData), settlementData);
     }
 

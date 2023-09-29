@@ -16,10 +16,6 @@ interface IPredyPool {
 
     error InvalidAddress();
 
-    error VaultAlreadyHasAnotherPair();
-
-    error CallerIsNotVaultOwner();
-
     error VaultIsNotDanger();
 
     struct TradeParams {
@@ -66,6 +62,7 @@ interface IPredyPool {
     function take(bool isQuoteAsset, address to, uint256 amount) external;
 
     function updateMargin(uint256 vaultId, int256 marginAmount) external;
+    function createVault(uint256 vaultId, uint256 pairId) external returns (uint256);
 
     function getSqrtPrice(uint256 pairId) external view returns (uint160);
 

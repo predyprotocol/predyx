@@ -17,6 +17,10 @@ library GlobalDataLibrary {
         LockDataLibrary.LockData lockData;
     }
 
+    function validateVaultId(GlobalDataLibrary.GlobalData storage globalData, uint256 vaultId) internal view {
+        if (vaultId <= 0 || globalData.vaultCount <= vaultId) revert IPredyPool.InvalidPairId();
+    }
+
     function validate(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId) internal view {
         if (pairId <= 0 || globalData.pairsCount <= pairId) revert IPredyPool.InvalidPairId();
     }

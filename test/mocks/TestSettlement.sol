@@ -6,9 +6,10 @@ import "../../src/settlements/BaseSettlement.sol";
 
 contract TestSettlementCurrencyNotSettled is BaseSettlement {
     struct SettlementParams {
+        address baseTokenAddress;
         address settleTokenAddress;
-        uint256 takeAmount;
-        uint256 settleAmount;
+        int256 takeAmount;
+        int256 settleAmount;
     }
 
     constructor(IPredyPool predyPool) BaseSettlement(predyPool) {}
@@ -16,9 +17,21 @@ contract TestSettlementCurrencyNotSettled is BaseSettlement {
     function predySettlementCallback(bytes memory settlementData, int256) external override(BaseSettlement) {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
-        _predyPool.take(false, address(this), settlemendParams.takeAmount);
+        if (settlemendParams.takeAmount >= 0) {
+            _predyPool.take(false, address(this), uint256(settlemendParams.takeAmount));
+        } else {
+            IERC20(settlemendParams.baseTokenAddress).transfer(
+                address(_predyPool), uint256(-settlemendParams.takeAmount)
+            );
+        }
 
-        IERC20(settlemendParams.settleTokenAddress).transfer(address(_predyPool), settlemendParams.settleAmount);
+        if (settlemendParams.settleAmount >= 0) {
+            _predyPool.take(true, address(this), uint256(settlemendParams.settleAmount));
+        } else {
+            IERC20(settlemendParams.settleTokenAddress).transfer(
+                address(_predyPool), uint256(-settlemendParams.settleAmount)
+            );
+        }
     }
 }
 

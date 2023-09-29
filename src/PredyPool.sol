@@ -8,6 +8,7 @@ import "./interfaces/IPredyPool.sol";
 import "./interfaces/IHooks.sol";
 import "./interfaces/ISettlement.sol";
 import "./libraries/Perp.sol";
+import "./libraries/VaultLib.sol";
 import "./libraries/logic/AddPairLogic.sol";
 import "./libraries/logic/LiquidationLogic.sol";
 import "./libraries/logic/ReallocationLogic.sol";
@@ -22,6 +23,7 @@ import {GlobalDataLibrary} from "./types/GlobalData.sol";
 contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
+    using VaultLib for GlobalDataLibrary.GlobalData;
 
     GlobalDataLibrary.GlobalData public globalData;
 
@@ -56,8 +58,8 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
      * @notice Adds a new trading pair.
      * @param addPairParam AddPairParams struct containing pair information.
      */
-    function registerPair(AddPairLogic.AddPairParams memory addPairParam) external {
-        AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
+    function registerPair(AddPairLogic.AddPairParams memory addPairParam) external returns (uint256) {
+        return AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
     }
 
     /**
@@ -102,42 +104,18 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     {
         globalData.validate(tradeParams.pairId);
 
-        if (tradeParams.vaultId == 0) {
-            tradeParams.vaultId = globalData.vaultCount;
+        DataType.Vault storage vault = globalData.createOrGetVault(tradeParams.vaultId, tradeParams.pairId);
 
-            // Initialize a new vault
-            DataType.Vault storage vault = globalData.vaults[tradeParams.vaultId];
-
-            vault.owner = msg.sender;
-            vault.recepient = msg.sender;
-            vault.openPosition.pairId = tradeParams.pairId;
-
-            globalData.vaultCount++;
-        } else {
-            DataType.Vault memory vault = globalData.vaults[tradeParams.vaultId];
-
-            // Ensure the caller is the owner of the existing vault
-            if (vault.owner != msg.sender) {
-                revert CallerIsNotVaultOwner();
-            }
-
-            if (vault.openPosition.pairId != tradeParams.pairId) {
-                revert VaultAlreadyHasAnotherPair();
-            }
-        }
+        tradeParams.vaultId = vault.id;
 
         return TradeLogic.trade(globalData, tradeParams, settlementData);
     }
 
     function updateRecepient(uint256 vaultId, address recepient) external {
-        DataType.Vault storage vault = globalData.vaults[vaultId];
+        DataType.Vault storage vault = globalData.getVault(vaultId);
 
         if (recepient == address(0)) {
             revert InvalidAddress();
-        }
-
-        if (vault.owner != msg.sender) {
-            revert CallerIsNotVaultOwner();
         }
 
         vault.recepient = recepient;
@@ -170,11 +148,17 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
      * @dev Only locker can call this function
      */
     function updateMargin(uint256 vaultId, int256 marginAmount) external {
-        DataType.Vault storage vault = globalData.vaults[vaultId];
+        globalData.getVault(vaultId);
 
-        MarginLogic.updateMargin(
-            vault, globalData.pairs[vault.openPosition.pairId], globalData.rebalanceFeeGrowthCache, marginAmount
-        );
+        MarginLogic.updateMargin(globalData, vaultId, marginAmount);
+    }
+
+    function createVault(uint256 vaultId, uint256 pairId) external returns (uint256) {
+        globalData.validate(pairId);
+
+        DataType.Vault storage vault = globalData.createOrGetVault(vaultId, pairId);
+
+        return vault.id;
     }
 
     function getSqrtPrice(uint256 pairId) external view returns (uint160) {

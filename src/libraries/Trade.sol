@@ -15,6 +15,7 @@ import {LockDataLibrary} from "../types/LockData.sol";
 import {PositionCalculator} from "./PositionCalculator.sol";
 import {Math} from "./math/Math.sol";
 import {UniHelper} from "./UniHelper.sol";
+import "forge-std/console.sol";
 
 library Trade {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;

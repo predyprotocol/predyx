@@ -17,6 +17,7 @@ import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
 import "./libraries/DataType.sol";
+import "forge-std/console.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -42,6 +43,12 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 marginCoveredByFiller;
     }
 
+    struct PerpTradeResult {
+        int256 tradeAmount;
+        int256 entryUpdate;
+        int256 payoff;
+    }
+
     error CallerIsNotFiller();
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
@@ -62,13 +69,21 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     TotalPosition public totalPosition;
 
-    constructor(IPredyPool _predyPool, address quoteTokenAddress, address permit2Address, address fillerAddress)
-        BaseHookCallback(_predyPool)
-    {
+    constructor(
+        IPredyPool _predyPool,
+        address quoteTokenAddress,
+        address permit2Address,
+        address fillerAddress,
+        uint256 pairId
+    ) BaseHookCallback(_predyPool) {
         _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
         _fillerAddress = fillerAddress;
         positionCounts = 1;
+
+        vaultId = _predyPool.createVault(vaultId, pairId);
+
+        lastFundingRateCalculationTime = block.timestamp;
     }
 
     function predyTradeAfterCallback(
@@ -82,9 +97,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
      * @param settlementData The route of settlement created by filler
      * @dev Fillers call this function
      */
-    function executeOrder(SignedOrder memory order, bytes memory settlementData)
+    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
-        returns (IPredyPool.TradeResult memory tradeResult)
+        returns (PerpTradeResult memory perpTradeResult)
     {
         (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
             GeneralOrderLib.resolve(order, _quoteTokenAddress);
@@ -105,7 +120,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         updateFundingFee(userPositions[generalOrder.positionId]);
 
-        tradeResult = coverPosition(
+        IPredyPool.TradeResult memory tradeResult;
+
+        (perpTradeResult, tradeResult) = coverPosition(
             generalOrder.pairId,
             generalOrder.positionId,
             generalOrder.tradeAmount,
@@ -137,7 +154,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         sendMarginToUser(generalOrder.positionId);
 
-        return tradeResult;
+        return perpTradeResult;
     }
 
     function depositMargin(uint256 marginAmount) external {}
@@ -149,7 +166,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
      * @param positionId The id of position
      * @param settlementData The route of settlement created by liquidator
      */
-    function execLiquidationCall(uint64 positionId, bytes memory settlementData) external {
+    function execLiquidationCall(uint64 positionId, ISettlement.SettlementData memory settlementData) external {
         UserPosition storage userPosition = userPositions[positionId];
 
         updateFundingFee(userPosition);
@@ -188,6 +205,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         fillerMarginAmount += int256(depositAmount);
 
+        IERC20(_quoteTokenAddress).approve(address(_predyPool), depositAmount);
         _predyPool.updateMargin(vaultId, int256(depositAmount));
     }
 
@@ -235,7 +253,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     }
 
     function getFundingRate(uint256 pairId) internal view returns (int256) {
-        uint160 sqrtPrice = _predyPool.getSqrtPrice(pairId);
+        uint256 sqrtPrice = _predyPool.getSqrtPrice(pairId);
         uint256 price = sqrtPrice * sqrtPrice / Constants.Q96;
 
         // TODO: Quote Token per Base Token
@@ -251,36 +269,42 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         uint256 positionId,
         int256 tradeAmount,
         int256 marginAmount,
-        bytes memory settlementData
-    ) internal returns (IPredyPool.TradeResult memory tradeResult) {
+        ISettlement.SettlementData memory settlementData
+    ) internal returns (PerpTradeResult memory perpTradeResult, IPredyPool.TradeResult memory tradeResult) {
         tradeResult = _predyPool.trade(
-            IPredyPool.TradeParams(pairId, vaultId, tradeAmount, 0, abi.encode(marginAmount)),
-            ISettlement.SettlementData(address(this), settlementData)
+            IPredyPool.TradeParams(pairId, vaultId, tradeAmount, 0, abi.encode(marginAmount)), settlementData
         );
 
         vaultId = tradeResult.vaultId;
 
-        performTradePostProcessing(positionId, tradeAmount, tradeResult);
+        perpTradeResult = performTradePostProcessing(positionId, tradeAmount, tradeResult);
     }
 
     function performTradePostProcessing(
         uint256 positionId,
         int256 tradeAmount,
         IPredyPool.TradeResult memory tradeResult
-    ) internal returns (int256 payoff) {
+    ) internal returns (PerpTradeResult memory perpTradeResult) {
         UserPosition storage userPosition = userPositions[positionId];
 
-        (userPosition.entryValue, payoff) = Perp.calculateEntry(
+        perpTradeResult.tradeAmount = tradeAmount;
+
+        (perpTradeResult.entryUpdate, perpTradeResult.payoff) = Perp.calculateEntry(
             userPosition.positionAmount,
             userPosition.entryValue,
             tradeAmount,
             tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff
         );
 
+        userPosition.entryValue += perpTradeResult.entryUpdate;
+
         updateLongShort(userPosition.positionAmount, tradeAmount);
 
         userPosition.positionAmount += tradeAmount;
-        userPosition.marginAmount += payoff;
+        userPosition.marginAmount += perpTradeResult.payoff;
+
+        //
+        userPosition.cumulativeFundingRates = fundingRateGrobalGrowth;
     }
 
     function updateLongShort(int256 positionAmount, int256 tradeAmount) internal {
@@ -312,8 +336,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
-    function calculatePositionValue(UserPosition memory userPosition, uint160 sqrtPrice) internal pure returns (bool) {
-        int256 price = int256(uint256(sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
+    function calculatePositionValue(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
+        int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
             - userPosition.entryValue;
@@ -330,7 +354,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         require(vault.margin >= int256(minDeposit), "MIN");
     }
 
-    function getFillerMinDeposit(uint160 sqrtPrice) internal view returns (uint256) {
+    function getFillerMinDeposit(uint256 sqrtPrice) internal view returns (uint256) {
         uint256 price = uint256(sqrtPrice * sqrtPrice) >> Constants.RESOLUTION;
 
         uint256 longSideMinDeposit = totalPosition.totalLongAmount * price / (Constants.Q96 * 5);

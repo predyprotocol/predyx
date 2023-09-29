@@ -80,10 +80,10 @@ contract TestPool is Test {
         }
     }
 
-    function registerPair(address marginId) public {
+    function registerPair(address marginId) public returns (uint256) {
         InterestRateModel.IRMParams memory irmParams = InterestRateModel.IRMParams(1e16, 9 * 1e17, 5 * 1e17, 1e18);
 
-        predyPool.registerPair(
+        return predyPool.registerPair(
             AddPairLogic.AddPairParams(
                 marginId,
                 address(this),
