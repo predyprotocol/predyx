@@ -87,8 +87,8 @@ contract TestTrade is TestPool {
 
     // trade fails if currency not settled
     function testCannotTradeIfCurrencyNotSettled(uint256 a, uint256 b) public {
-        int256 baseTokenAmount = int256(bound(a, 0, 3000)) - 1500;
-        int256 quoteTokenAmount = int256(bound(b, 0, 3000)) - 1500;
+        int256 baseTokenAmount = int256(bound(a, 0, 1000000)) - 500000;
+        int256 quoteTokenAmount = int256(bound(b, 0, 1000000)) - 500000;
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
             1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
@@ -146,7 +146,7 @@ contract TestTrade is TestPool {
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
 
-        if (marginAmount <= 16658333) {
+        if (marginAmount < 16658333) {
             vm.expectRevert(PositionCalculator.NotSafe.selector);
         }
         tradeMarket.trade(tradeParams, settlementData);

@@ -7,8 +7,15 @@ import "../interfaces/IHooks.sol";
 abstract contract BaseHookCallback is IHooks {
     IPredyPool _predyPool;
 
+    error CallerIsNotPredyPool();
+
     constructor(IPredyPool predyPool) {
         _predyPool = predyPool;
+    }
+
+    modifier onlyPredyPool() {
+        if (msg.sender != address(_predyPool)) revert CallerIsNotPredyPool();
+        _;
     }
 
     function predyTradeAfterCallback(

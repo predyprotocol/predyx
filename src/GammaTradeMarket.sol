@@ -39,6 +39,7 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
     function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
         external
         override(BaseHookCallback)
+        onlyPredyPool
     {
         int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
 

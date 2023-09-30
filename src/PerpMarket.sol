@@ -89,7 +89,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) {}
+    ) external override(BaseHookCallback) onlyPredyPool {}
 
     /**
      * @notice Verifies signature of the order and executes trade
