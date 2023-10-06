@@ -81,7 +81,7 @@ library Trade {
         uint256 pairId,
         SwapStableResult memory swapParams,
         ISettlement.SettlementData memory settlementData,
-        uint160 sqrtPrice
+        uint256 sqrtPrice
     ) internal returns (SwapStableResult memory) {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
@@ -113,11 +113,11 @@ library Trade {
         return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
     }
 
-    function getSqrtPrice(address _uniswapPool, bool _isMarginZero) internal view returns (uint160 sqrtPriceX96) {
+    function getSqrtPrice(address _uniswapPool, bool _isMarginZero) internal view returns (uint256 sqrtPriceX96) {
         return UniHelper.convertSqrtPrice(UniHelper.getSqrtPrice(_uniswapPool), _isMarginZero);
     }
 
-    function calculateStableAmount(uint160 _currentSqrtPrice, uint256 _underlyingAmount)
+    function calculateStableAmount(uint256 _currentSqrtPrice, uint256 _underlyingAmount)
         internal
         pure
         returns (uint256)

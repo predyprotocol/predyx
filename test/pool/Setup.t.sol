@@ -88,6 +88,7 @@ contract TestPool is Test {
                 marginId,
                 address(this),
                 address(uniswapPool),
+                address(0),
                 0,
                 Perp.AssetRiskParams(RISK_RATIO, 1000, 500),
                 irmParams,

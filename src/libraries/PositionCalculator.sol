@@ -9,6 +9,7 @@ import "./DataType.sol";
 import "./Constants.sol";
 import "./PerpFee.sol";
 import "./math/Math.sol";
+import "../PriceFeed.sol";
 
 library PositionCalculator {
     using ScaledAsset for ScaledAsset.AssetStatus;
@@ -31,7 +32,7 @@ library PositionCalculator {
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         DataType.Vault memory _vault
-    ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint160 twap) {
+    ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint256 twap) {
         bool hasPosition;
 
         (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
@@ -71,11 +72,11 @@ library PositionCalculator {
         Perp.PairStatus memory pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
         DataType.Vault memory vault
-    ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint160 twap) {
+    ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint256 twap) {
         int256 minValue;
         uint256 debtValue;
 
-        twap = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
+        twap = getSqrtIndexPrice(pairStatus);
 
         (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
             vault,
@@ -107,7 +108,7 @@ library PositionCalculator {
     function calculateMinValue(
         DataType.Vault memory vault,
         PositionParams memory positionParams,
-        uint160 sqrtPrice,
+        uint256 sqrtPrice,
         uint256 riskRatio
     ) internal pure returns (int256 minValue, int256 vaultValue, uint256 debtValue, bool hasPosition) {
         Perp.UserStatus memory userStatus = vault.openPosition;
@@ -130,8 +131,14 @@ library PositionCalculator {
         hasPosition = hasPosition || getHasPositionFlag(userStatus);
     }
 
-    function getSqrtPrice(address _uniswapPool, bool _isMarginZero) internal view returns (uint160 sqrtPriceX96) {
-        return UniHelper.convertSqrtPrice(UniHelper.getSqrtTWAP(_uniswapPool), _isMarginZero);
+    function getSqrtIndexPrice(Perp.PairStatus memory pairStatus) internal view returns (uint256 sqrtPriceX96) {
+        if (pairStatus.priceFeed != address(0)) {
+            return PriceFeed(pairStatus.priceFeed).getSqrtPrice();
+        } else {
+            return UniHelper.convertSqrtPrice(
+                UniHelper.getSqrtTWAP(pairStatus.sqrtAssetStatus.uniswapPool), pairStatus.isMarginZero
+            );
+        }
     }
 
     function getPositionWithUnrealizedFee(

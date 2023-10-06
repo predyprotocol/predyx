@@ -53,7 +53,7 @@ library LiquidationLogic {
         ApplyInterestLib.applyInterestForToken(globalData.pairs, vault.openPosition.pairId);
 
         // Checks the vault is danger
-        (uint160 sqrtTwap, uint256 slippageTolerance) =
+        (uint256 sqrtTwap, uint256 slippageTolerance) =
             checkVaultIsDanger(pairStatus, vault, globalData.rebalanceFeeGrowthCache);
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
@@ -105,7 +105,7 @@ library LiquidationLogic {
         Perp.PairStatus memory pairStatus,
         DataType.Vault memory vault,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache
-    ) internal view returns (uint160 sqrtTwap, uint256 slippageTolerance) {
+    ) internal view returns (uint256 sqrtTwap, uint256 slippageTolerance) {
         bool isLiquidatable;
         int256 minMargin;
         int256 vaultValue;

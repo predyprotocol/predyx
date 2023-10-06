@@ -39,6 +39,7 @@ library Perp {
         AssetPoolStatus basePool;
         AssetRiskParams riskParams;
         Perp.SqrtPerpAssetStatus sqrtAssetStatus;
+        address priceFeed;
         bool isMarginZero;
         uint8 feeRatio;
         uint256 lastUpdateTimestamp;

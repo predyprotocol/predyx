@@ -69,6 +69,15 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     TotalPosition public totalPosition;
 
+    mapping(address => bool) public whitelist;
+
+    error CallerIsNotInWhitelist();
+
+    modifier onlyWhitelisted() {
+        if (!whitelist[msg.sender]) revert CallerIsNotInWhitelist();
+        _;
+    }
+
     constructor(
         IPredyPool _predyPool,
         address quoteTokenAddress,
@@ -84,6 +93,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         vaultId = _predyPool.createVault(vaultId, pairId);
 
         lastFundingRateCalculationTime = block.timestamp;
+
+        whitelist[msg.sender] = true;
     }
 
     function predyTradeAfterCallback(
@@ -200,7 +211,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
-    function depositToFillerPool(uint256 depositAmount) external {
+    function depositToFillerPool(uint256 depositAmount) external onlyWhitelisted {
         IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
 
         fillerMarginAmount += int256(depositAmount);
@@ -209,7 +220,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         _predyPool.updateMargin(vaultId, int256(depositAmount));
     }
 
-    function withdrawFromFillerPool(uint256 withdrawAmount) external {
+    function withdrawFromFillerPool(uint256 withdrawAmount) external onlyWhitelisted {
         _predyPool.updateMargin(vaultId, -int256(withdrawAmount));
 
         fillerMarginAmount -= int256(withdrawAmount);

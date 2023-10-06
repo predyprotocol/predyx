@@ -35,6 +35,7 @@ contract PairStatusUtils {
             ),
             Perp.AssetRiskParams(_RISK_RATIO, 1000, 500),
             Perp.createAssetStatus(_uniswapPool, -100, 100),
+            address(0),
             false,
             0,
             block.timestamp
