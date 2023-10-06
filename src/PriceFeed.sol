@@ -21,7 +21,8 @@ contract PriceFeed {
         require(quoteAnswer > 0 && baseAnswer > 0);
 
         uint256 price = uint256(baseAnswer) * Constants.Q96 / uint256(quoteAnswer);
+        price = price * Constants.Q96 / 1e12;
 
-        sqrtPrice = FixedPointMathLib.sqrt(price * Constants.Q96);
+        sqrtPrice = FixedPointMathLib.sqrt(price);
     }
 }
