@@ -47,7 +47,8 @@ interface IPredyPool {
 
     struct VaultStatus {
         uint256 id;
-        int256 margin;
+        int256 vaultValue;
+        int256 minMargin;
     }
 
     function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
@@ -69,4 +70,5 @@ interface IPredyPool {
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint160);
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
+    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);
 }

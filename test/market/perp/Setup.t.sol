@@ -20,6 +20,8 @@ contract TestPerpMarket is TestPool, SigUtils {
     LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
+    uint256 pairId;
+
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
@@ -34,11 +36,9 @@ contract TestPerpMarket is TestPool, SigUtils {
 
         settlement = new UniswapSettlement(predyPool, swapRouter);
 
-        address filler = address(this);
+        pairId = registerPair(address(currency1));
 
-        uint256 pairId = registerPair(address(currency1));
-
-        fillerMarket = new PerpMarket(predyPool, address(currency1), address(permit2), filler, pairId);
+        fillerMarket = new PerpMarket(predyPool, address(currency1), address(permit2));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);

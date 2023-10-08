@@ -183,5 +183,13 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         return globalData.vaults[vaultId];
     }
 
-    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {}
+    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {
+        uint256 pairId = globalData.vaults[vaultId].openPosition.pairId;
+
+        (int256 minMargin, int256 vaultValue,,) = PositionCalculator.calculateMinDeposit(
+            globalData.pairs[pairId], globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
+        );
+
+        return VaultStatus(vaultId, vaultValue, minMargin);
+    }
 }

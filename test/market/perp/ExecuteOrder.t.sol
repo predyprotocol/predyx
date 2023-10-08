@@ -11,6 +11,8 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     uint256 fromPrivateKey2;
     address from2;
 
+    uint256 fillerPoolId;
+
     function setUp() public override {
         TestPerpMarket.setUp();
 
@@ -19,7 +21,9 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        fillerMarket.depositToFillerPool(100 * 1e6);
+        fillerPoolId = fillerMarket.addFillerPool(pairId);
+
+        fillerMarket.depositToFillerPool(1, 100 * 1e6);
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -53,7 +57,9 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         PerpMarket.PerpTradeResult memory tradeResult = fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            fillerPoolId,
+            signedOrder,
+            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
         );
 
         assertEq(tradeResult.entryUpdate, 998);
@@ -78,6 +84,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
+                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
             );
@@ -99,6 +106,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
+                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
             );
@@ -138,7 +146,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert();
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        fillerMarket.executeOrder(1, signedOrder, settlementData);
     }
 
     // executeOrder fails if signature is invalid
@@ -161,7 +169,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(signedOrder, settlementData);
+            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
         }
 
         {
@@ -180,7 +188,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
 
             vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
-            fillerMarket.executeOrder(signedOrder, settlementData);
+            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
         }
     }
 
@@ -206,7 +214,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert(GeneralOrderLib.PriceGreaterThanLimit.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        fillerMarket.executeOrder(1, signedOrder, settlementData);
     }
 
     // executeOrder fails if price is less than limit
@@ -229,7 +237,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
         vm.expectRevert(GeneralOrderLib.PriceLessThanLimit.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        fillerMarket.executeOrder(1, signedOrder, settlementData);
     }
 
     // executeOrder fails if filler pool is not enough
