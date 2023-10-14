@@ -71,4 +71,5 @@ interface IPredyPool {
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
     function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);
+    function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory);
 }
