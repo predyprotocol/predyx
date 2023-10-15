@@ -40,6 +40,30 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         currency1.approve(address(permit2), type(uint256).max);
     }
 
+    function testExecuteOrderFailedIfTraderOpens() public {
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            0,
+            1,
+            -1000,
+            0,
+            2 * 1e6,
+            0,
+            address(limitOrderValidator),
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
+
+        vm.startPrank(from1);
+        vm.expectRevert(PerpMarket.CallerIsNotFiller.selector);
+        fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+        vm.stopPrank();
+    }
+
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         GeneralOrder memory order = GeneralOrder(
@@ -114,6 +138,54 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     }
 
     // executeOrder succeeds for close
+    function testExecuteOrderSucceedsForClosing() public {
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                0,
+                1,
+                -1000 * 1e4,
+                0,
+                2 * 1e8,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            fillerMarket.executeOrder(
+                1,
+                signedOrder,
+                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            );
+        }
+
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                1,
+                1,
+                1000 * 1e4,
+                0,
+                0,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            vm.startPrank(from1);
+            fillerMarket.executeOrder(
+                1,
+                signedOrder,
+                settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
+            );
+            vm.stopPrank();
+        }
+    }
+
     // executeOrder succeeds with market order
     // executeOrder succeeds with limit order
     // executeOrder succeeds with stop order

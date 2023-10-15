@@ -67,8 +67,6 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     error CallerIsNotFiller();
 
-    error CallerIsNotInWhitelist();
-
     error MarginIsNegative();
 
     error FillerPoolIsNotSafe();
@@ -80,7 +78,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     mapping(uint256 => Filler) public fillers;
 
     modifier onlyFiller(uint256 fillerPoolId) {
-        if (fillers[fillerPoolId].fillerAddress != msg.sender) revert CallerIsNotInWhitelist();
+        if (fillers[fillerPoolId].fillerAddress != msg.sender) revert CallerIsNotFiller();
         _;
     }
 
@@ -94,7 +92,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     }
 
     /**
-     * @notice Registers new filler.
+     * @notice Registers a new filler.
      */
     function addFillerPool(uint256 pairId) external returns (uint256) {
         return initFillerPool(pairId, msg.sender);
@@ -163,6 +161,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         // transfer token from trader to the contract
         _verifyOrder(resolvedOrder);
 
+        // Check if position needs to be created or updated
         if (generalOrder.positionId == 0) {
             // Creates position
             generalOrder.positionId = positionCounts;
@@ -196,6 +195,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         checkFillerPoolIsSafe(fillerPoolId);
 
+        // Validate the trade
         IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
 
         userPositions[generalOrder.positionId].marginAmount += generalOrder.marginAmount;
@@ -207,13 +207,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             "SAFE"
         );
 
-        if (generalOrder.marginAmount < 0) {
-            IERC20(_quoteTokenAddress).transfer(
-                userPositions[generalOrder.positionId].owner, uint256(-generalOrder.marginAmount)
-            );
-        }
-
-        sendMarginToUser(generalOrder.positionId);
+        // TODO: deposit user margin to the vault
+        sendMarginToUser(generalOrder.positionId, generalOrder.marginAmount);
 
         return perpTradeResult;
     }
@@ -240,7 +235,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         // TODO: - filler margin
 
-        sendMarginToUser(positionId);
+        sendMarginToUser(positionId, 0);
     }
 
     function confirmLiquidation(uint256 fillerPoolId) external {
@@ -297,12 +292,14 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         return vaultId;
     }
 
-    function sendMarginToUser(uint64 positionId) internal {
+    function sendMarginToUser(uint64 positionId, int256 withdrawAmount) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.positionAmount == 0) {
             if (userPosition.marginAmount > 0) {
                 uint256 marginAmount = uint256(userPosition.marginAmount);
+
+                // TODO: withdraw user margin from the vault
 
                 userPosition.marginAmount = 0;
 
@@ -314,6 +311,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
                 // TODO: What happens if fillers[userPosition.fillerMarketId].marginAmount < 0
 
                 userPosition.marginAmount = 0;
+            }
+        } else {
+            if (withdrawAmount < 0) {
+                IERC20(_quoteTokenAddress).transfer(userPosition.owner, uint256(-withdrawAmount));
             }
         }
     }
