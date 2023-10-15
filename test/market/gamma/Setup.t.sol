@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../pool/Setup.t.sol";
-import "../../src/interfaces/ISettlement.sol";
-import "../../src/GammaTradeMarket.sol";
-import "../../src/settlements/UniswapSettlement.sol";
-import "../../src/libraries/market/LimitOrder.sol";
-import {GeneralOrderLib} from "../../src/libraries/market/GeneralOrderLib.sol";
-import "../../src/libraries/Constants.sol";
+import "../../pool/Setup.t.sol";
+import "../../../src/interfaces/ISettlement.sol";
+import "../../../src/GammaTradeMarket.sol";
+import "../../../src/settlements/UniswapSettlement.sol";
+import "../../../src/libraries/market/LimitOrder.sol";
+import {GeneralOrderLib} from "../../../src/libraries/market/GeneralOrderLib.sol";
+import "../../../src/libraries/Constants.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {SigUtils} from "../utils/SigUtils.sol";
+import {SigUtils} from "../../utils/SigUtils.sol";
 
 contract TestMarket is TestPool, SigUtils {
     using GeneralOrderLib for GeneralOrder;

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-import {ISettlement} from "../../src/interfaces/ISettlement.sol";
-import {BaseHookCallback} from "../../src/base/BaseHookCallback.sol";
+import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
+import {BaseHookCallback} from "../../../src/base/BaseHookCallback.sol";
 
 contract TestPerpMarketCallback is TestMarket {
     function setUp() public override {
