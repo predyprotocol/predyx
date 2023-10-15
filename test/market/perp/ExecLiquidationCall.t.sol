@@ -13,6 +13,9 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceedsIfVaultIsDanger(uint256 closeRatio) public {}
 
+    // liquidate succeeds and filler should cover negative margin
+    function testLiquidateSucceedsIfFillerCoverNegativeMargin() public {}
+
     // liquidate fails if slippage too large
     function testLiquidateFailIfSlippageTooLarge() public {
         //

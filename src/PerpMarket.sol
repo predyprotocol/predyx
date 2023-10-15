@@ -71,6 +71,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     error FillerPoolIsNotSafe();
 
+    error SlippageTooLarge();
+
     uint64 public positionCounts;
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
@@ -144,10 +146,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     /**
      * @notice Verifies signature of the order and executes trade
+     * @dev Fillers can open position and anyone can close position
      * @param fillerPoolId The id of filler pool
      * @param order The order signed by trader
      * @param settlementData The route of settlement created by filler
-     * @dev Fillers can open position and anyone can close position
      */
     function executeOrder(
         uint256 fillerPoolId,
@@ -160,6 +162,12 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         // validate resolved order and verify for permit2
         // transfer token from trader to the contract
         _verifyOrder(resolvedOrder);
+
+        // deposit margin to the vault if required
+        if (generalOrder.marginAmount > 0) {
+            IERC20(_quoteTokenAddress).approve(address(_predyPool), uint256(generalOrder.marginAmount));
+            _predyPool.updateMargin(fillers[fillerPoolId].vaultId, generalOrder.marginAmount);
+        }
 
         // Check if position needs to be created or updated
         if (generalOrder.positionId == 0) {
@@ -201,9 +209,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         userPositions[generalOrder.positionId].marginAmount += generalOrder.marginAmount;
 
         require(
-            calculatePositionValue(
-                userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)
-            ),
+            isPositionSafe(userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)),
             "SAFE"
         );
 
@@ -219,6 +225,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     /**
      * @notice Executes liquidation call for the position
+     * @dev Anyone can liquidate position but only filler can cover negative margin
      * @param positionId The id of position
      * @param settlementData The route of settlement created by liquidator
      */
@@ -228,14 +235,34 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         updateFundingFee(fillerPool, userPosition);
 
+        uint256 indexPrice = _predyPool.getSqrtIndexPrice(fillerPool.pairId);
+
         // check vault is danger
-        require(!calculatePositionValue(userPosition, _predyPool.getSqrtIndexPrice(fillerPool.pairId)), "NOT SAFE");
+        require(!isPositionSafe(userPosition, indexPrice), "NOT SAFE");
 
-        coverPosition(fillerPool, positionId, -userPosition.positionAmount, 0, settlementData);
+        (PerpTradeResult memory perpTradeResult,) =
+            coverPosition(fillerPool, positionId, -userPosition.positionAmount, 0, settlementData);
 
-        // TODO: - filler margin
+        {
+            // TODO: compare indexPrice and closePrice
+            int256 closePrice = int256(Math.abs(perpTradeResult.entryUpdate + perpTradeResult.payoff) * Constants.Q96)
+                / perpTradeResult.tradeAmount;
+            uint256 slippageTolerance = 10050;
 
-        sendMarginToUser(positionId, 0);
+            if (closePrice > 0) {
+                // long
+                if (indexPrice * 1e4 / slippageTolerance > uint256(closePrice)) {
+                    revert SlippageTooLarge();
+                }
+            } else if (closePrice < 0) {
+                // short
+                if (indexPrice * slippageTolerance / 1e4 < uint256(-closePrice)) {
+                    revert SlippageTooLarge();
+                }
+            }
+        }
+
+        handlePositionMargin(positionId);
     }
 
     function confirmLiquidation(uint256 fillerPoolId) external {
@@ -303,18 +330,57 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
                 userPosition.marginAmount = 0;
 
-                IERC20(_quoteTokenAddress).transfer(userPosition.owner, marginAmount);
-            } else if (userPosition.marginAmount < 0) {
-                // filler should cover negative margin
-                fillers[userPosition.fillerMarketId].marginAmount += userPosition.marginAmount;
-
-                // TODO: What happens if fillers[userPosition.fillerMarketId].marginAmount < 0
-
-                userPosition.marginAmount = 0;
+                transferMargin(userPosition, marginAmount);
             }
         } else {
             if (withdrawAmount < 0) {
-                IERC20(_quoteTokenAddress).transfer(userPosition.owner, uint256(-withdrawAmount));
+                transferMargin(userPosition, uint256(-withdrawAmount));
+            }
+        }
+    }
+
+    function transferMargin(UserPosition memory userPosition, uint256 marginAmount) internal {
+        Filler memory filler = fillers[userPosition.fillerMarketId];
+
+        _predyPool.updateMargin(filler.vaultId, -int256(marginAmount));
+
+        IERC20(_quoteTokenAddress).transfer(userPosition.owner, marginAmount);
+    }
+
+    function handlePositionMargin(uint64 positionId) internal {
+        UserPosition storage userPosition = userPositions[positionId];
+
+        if (userPosition.positionAmount == 0) {
+            if (userPosition.marginAmount > 0) {
+                uint256 marginAmount = uint256(userPosition.marginAmount);
+
+                // TODO: withdraw user margin from the vault
+
+                userPosition.marginAmount = 0;
+
+                transferMargin(userPosition, marginAmount);
+            } else if (userPosition.marginAmount < 0) {
+                Filler storage filler = fillers[userPosition.fillerMarketId];
+
+                // TODO: if caller is filler then filler should cover negative margin
+                // if not user margin must be grater than 0
+                if (msg.sender == filler.fillerAddress) {
+                    filler.marginAmount += userPosition.marginAmount;
+
+                    // TODO: What happens if filler.marginAmount < 0
+                    require(filler.marginAmount >= 0);
+
+                    userPosition.marginAmount = 0;
+                } else {
+                    uint256 requiredMargin = uint256(-userPosition.marginAmount);
+
+                    userPosition.marginAmount = 0;
+
+                    IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), requiredMargin);
+
+                    IERC20(_quoteTokenAddress).approve(address(_predyPool), requiredMargin);
+                    _predyPool.updateMargin(filler.vaultId, int256(requiredMargin));
+                }
             }
         }
     }
@@ -443,7 +509,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
-    function calculatePositionValue(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
+    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
         int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)

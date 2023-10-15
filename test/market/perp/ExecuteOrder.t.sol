@@ -186,6 +186,8 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         }
     }
 
+    // executeOrder fails if close and user margin is negative
+
     // executeOrder succeeds with market order
     // executeOrder succeeds with limit order
     // executeOrder succeeds with stop order
