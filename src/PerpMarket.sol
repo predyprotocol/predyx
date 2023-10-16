@@ -17,7 +17,7 @@ import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
 import "./libraries/DataType.sol";
-import "forge-std/console.sol";
+// import "forge-std/console.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -68,6 +68,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     error CallerIsNotFiller();
 
     error MarginIsNegative();
+
+    error UserMarginIsNegative();
 
     error FillerPoolIsNotSafe();
 
@@ -207,6 +209,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
 
         userPositions[generalOrder.positionId].marginAmount += generalOrder.marginAmount;
+
+        if (userPositions[generalOrder.positionId].marginAmount < 0) {
+            revert UserMarginIsNegative();
+        }
 
         require(
             isPositionSafe(userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)),
@@ -442,7 +448,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             IPredyPool.TradeParams(filler.pairId, filler.vaultId, tradeAmount, 0, abi.encode(marginAmount)),
             settlementData
         );
-        
+
         perpTradeResult = performTradePostProcessing(
             filler, positionId, tradeAmount, tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff
         );
@@ -509,11 +515,11 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     /**
      * @notice If position is safe return true, if not return false.
      */
-    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
+    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal view returns (bool) {
         int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
-            - userPosition.entryValue;
+            + userPosition.entryValue;
         int256 min = int256(Math.abs(userPosition.positionAmount)) * price / int256(Constants.Q96 * 50);
 
         return value >= min;

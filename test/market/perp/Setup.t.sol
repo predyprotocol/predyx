@@ -6,6 +6,7 @@ import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import "../../../src/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
+import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/libraries/market/LimitOrder.sol";
 import {GeneralOrderLib} from "../../../src/libraries/market/GeneralOrderLib.sol";
 import "../../../src/libraries/Constants.sol";
@@ -15,6 +16,7 @@ contract TestPerpMarket is TestPool, SigUtils {
     using GeneralOrderLib for GeneralOrder;
 
     UniswapSettlement settlement;
+    DirectSettlement directSettlement;
     PerpMarket fillerMarket;
     IPermit2 permit2;
     LimitOrderValidator limitOrderValidator;
@@ -35,6 +37,7 @@ contract TestPerpMarket is TestPool, SigUtils {
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
         settlement = new UniswapSettlement(predyPool, swapRouter);
+        directSettlement = new DirectSettlement(predyPool);
 
         pairId = registerPair(address(currency1));
 
@@ -45,6 +48,9 @@ contract TestPerpMarket is TestPool, SigUtils {
 
         currency0.approve(address(fillerMarket), type(uint256).max);
         currency1.approve(address(fillerMarket), type(uint256).max);
+
+        currency0.approve(address(directSettlement), type(uint256).max);
+        currency1.approve(address(directSettlement), type(uint256).max);
 
         limitOrderValidator = new LimitOrderValidator();
     }

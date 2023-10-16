@@ -187,6 +187,53 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     }
 
     // executeOrder fails if close and user margin is negative
+    function testExecuteOrderFailsIfMarginIsNegative() public {
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                0,
+                1,
+                -1000 * 1e4,
+                0,
+                210000,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            fillerMarket.executeOrder(
+                1,
+                signedOrder,
+                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            );
+        }
+
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                1,
+                1,
+                1000 * 1e4,
+                0,
+                0,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1500, 1000), 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            ISettlement.SettlementData memory settlementData =
+                directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 12000);
+
+            vm.startPrank(from1);
+            vm.expectRevert(PerpMarket.UserMarginIsNegative.selector);
+            fillerMarket.executeOrder(1, signedOrder, settlementData);
+            vm.stopPrank();
+        }
+    }
 
     // executeOrder succeeds with market order
     // executeOrder succeeds with limit order

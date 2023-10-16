@@ -24,7 +24,9 @@ library SupplyLogic {
         // Checks pair exists
         globalData.validate(_pairId);
         // Checks amount is not 0
-        if (_amount <= 0) revert IPredyPool.InvalidAmount();
+        if (_amount <= 0) {
+            revert IPredyPool.InvalidAmount();
+        }
         // Updates interest rate related to the pair
         ApplyInterestLib.applyInterestForToken(globalData.pairs, _pairId);
 
