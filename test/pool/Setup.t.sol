@@ -80,7 +80,7 @@ contract TestPool is Test {
         }
     }
 
-    function registerPair(address marginId) public returns (uint256) {
+    function registerPair(address marginId, address priceFeed) public returns (uint256) {
         InterestRateModel.IRMParams memory irmParams = InterestRateModel.IRMParams(1e16, 9 * 1e17, 5 * 1e17, 1e18);
 
         return predyPool.registerPair(
@@ -88,7 +88,8 @@ contract TestPool is Test {
                 marginId,
                 address(this),
                 address(uniswapPool),
-                address(0),
+                // set up oracle
+                priceFeed,
                 0,
                 Perp.AssetRiskParams(RISK_RATIO, 1000, 500),
                 irmParams,

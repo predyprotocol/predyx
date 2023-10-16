@@ -12,7 +12,7 @@ contract TestSupply is TestPool {
     function setUp() public override {
         TestPool.setUp();
 
-        registerPair(address(currency1));
+        registerPair(address(currency1), address(0));
 
         Perp.PairStatus memory pair = predyPool.getPairStatus(1);
 

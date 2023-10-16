@@ -15,7 +15,7 @@ contract TestExecuteOrder is TestMarket {
     function setUp() public override {
         TestMarket.setUp();
 
-        registerPair(address(currency1));
+        registerPair(address(currency1), address(0));
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);

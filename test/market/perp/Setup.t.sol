@@ -11,6 +11,7 @@ import "../../../src/libraries/market/LimitOrder.sol";
 import {GeneralOrderLib} from "../../../src/libraries/market/GeneralOrderLib.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
+import "../../mocks/MockPriceFeed.sol";
 
 contract TestPerpMarket is TestPool, SigUtils {
     using GeneralOrderLib for GeneralOrder;
@@ -23,6 +24,8 @@ contract TestPerpMarket is TestPool, SigUtils {
     bytes32 DOMAIN_SEPARATOR;
 
     uint256 pairId;
+
+    MockPriceFeed priceFeed;
 
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
@@ -39,7 +42,9 @@ contract TestPerpMarket is TestPool, SigUtils {
         settlement = new UniswapSettlement(predyPool, swapRouter);
         directSettlement = new DirectSettlement(predyPool);
 
-        pairId = registerPair(address(currency1));
+        priceFeed = new MockPriceFeed();
+        priceFeed.setSqrtPrice(2 ** 96);
+        pairId = registerPair(address(currency1), address(priceFeed));
 
         fillerMarket = new PerpMarket(predyPool, address(currency1), address(permit2));
 
@@ -53,6 +58,9 @@ contract TestPerpMarket is TestPool, SigUtils {
         currency1.approve(address(directSettlement), type(uint256).max);
 
         limitOrderValidator = new LimitOrderValidator();
+
+        predyPool.supply(1, true, 1e10);
+        predyPool.supply(1, false, 1e10);
     }
 
     function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {

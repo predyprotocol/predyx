@@ -13,7 +13,7 @@ contract TestReallocate is TestPool {
     function setUp() public override {
         TestPool.setUp();
 
-        registerPair(address(currency1));
+        registerPair(address(currency1), address(0));
 
         predyPool.supply(1, true, 1e8);
         predyPool.supply(1, false, 1e8);

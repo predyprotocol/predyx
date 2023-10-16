@@ -67,7 +67,7 @@ interface IPredyPool {
 
     function getSqrtPrice(uint256 pairId) external view returns (uint160);
 
-    function getSqrtIndexPrice(uint256 pairId) external view returns (uint160);
+    function getSqrtIndexPrice(uint256 pairId) external view returns (uint256);
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
     function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);

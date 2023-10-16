@@ -6,15 +6,76 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {BaseHookCallback} from "../../../src/base/BaseHookCallback.sol";
 
 contract TestPerpExecLiquidationCall is TestPerpMarket {
+    bytes normalSwapRoute;
+    uint256 fromPrivateKey1;
+    address from1;
+    uint256 fromPrivateKey2;
+    address from2;
+
+    uint256 fillerPoolId;
+
     function setUp() public override {
         TestPerpMarket.setUp();
+
+        normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
+
+        fillerPoolId = fillerMarket.addFillerPool(pairId);
+
+        fillerMarket.depositToFillerPool(1, 100 * 1e6);
+
+        fromPrivateKey1 = 0x12341234;
+        from1 = vm.addr(fromPrivateKey1);
+        fromPrivateKey2 = 0x1235678;
+        from2 = vm.addr(fromPrivateKey2);
+
+        currency1.mint(from1, type(uint128).max);
+        currency1.mint(from2, type(uint128).max);
+
+        vm.prank(from1);
+        currency1.approve(address(permit2), type(uint256).max);
+
+        vm.prank(from2);
+        currency1.approve(address(permit2), type(uint256).max);
+
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            0,
+            1,
+            -1000 * 1e4,
+            0,
+            210000,
+            0,
+            address(limitOrderValidator),
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        fillerMarket.executeOrder(
+            fillerPoolId,
+            signedOrder,
+            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+        );
     }
 
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceedsIfVaultIsDanger(uint256 closeRatio) public {}
 
     // liquidate succeeds and only filler can cover negative margin
-    function testLiquidateSucceedsIfFillerCoverNegativeMargin() public {}
+    function testLiquidateSucceedsIfFillerCoverNegativeMargin() public {
+        ISettlement.SettlementData memory settlementData =
+            directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 12000);
+
+        priceFeed.setSqrtPrice(12 * Constants.Q96 / 10);
+
+        // vm.startPrank(from1);
+        fillerMarket.execLiquidationCall(1, settlementData);
+        // vm.stopPrank();
+
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.fillers(fillerPoolId);
+
+        assertLt(fillerMarginAmount, int256(100 * 1e6));
+    }
 
     // liquidate fails if slippage too large
     function testLiquidateFailIfSlippageTooLarge() public {
@@ -28,7 +89,13 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
     function testLiquidateSucceedsWithInsolvent() public {}
 
     // liquidate fails if the vault is safe
-    function testLiquidateFailsIfVaultIsSafe() public {}
+    function testLiquidateFailsIfVaultIsSafe() public {
+        ISettlement.SettlementData memory settlementData =
+            directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 10000);
+
+        vm.expectRevert(bytes("NOT SAFE"));
+        fillerMarket.execLiquidationCall(1, settlementData);
+    }
 
     // liquidate fails after liquidation
     function testLiquidateFailsAfterLiquidation() public {}

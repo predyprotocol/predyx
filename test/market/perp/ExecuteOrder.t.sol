@@ -16,9 +16,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     function setUp() public override {
         TestPerpMarket.setUp();
 
-        predyPool.supply(1, true, 1e10);
-        predyPool.supply(1, false, 1e10);
-
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
         fillerPoolId = fillerMarket.addFillerPool(pairId);
