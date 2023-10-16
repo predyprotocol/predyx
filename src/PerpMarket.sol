@@ -442,10 +442,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             IPredyPool.TradeParams(filler.pairId, filler.vaultId, tradeAmount, 0, abi.encode(marginAmount)),
             settlementData
         );
-
-        // TODO: unrequired
-        // filler.vaultId = tradeResult.vaultId;
-
+        
         perpTradeResult = performTradePostProcessing(
             filler, positionId, tradeAmount, tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff
         );
@@ -509,12 +506,15 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
+    /**
+     * @notice If position is safe return true, if not return false.
+     */
     function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
         int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
             - userPosition.entryValue;
-        int256 min = userPosition.positionAmount * price / int256(Constants.Q96 * 50);
+        int256 min = int256(Math.abs(userPosition.positionAmount)) * price / int256(Constants.Q96 * 50);
 
         return value >= min;
     }
@@ -524,8 +524,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
      * longPosition * price * (R - 1) / (R)
      * shortPosition * price * (R - 1)
      */
-    function calculateFillerMinMargin(uint256 fillerPoolId, uint256 sqrtPrice) internal view returns (int256) {
-        Filler memory filler = fillers[fillerPoolId];
+    function calculateFillerMinMargin(Filler memory filler, uint256 sqrtPrice) internal view returns (int256) {
         Perp.PairStatus memory pairStatus = _predyPool.getPairStatus(filler.pairId);
 
         uint256 price = (sqrtPrice * sqrtPrice) >> Constants.RESOLUTION;
@@ -549,16 +548,16 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     function checkFillerPoolIsSafe(uint256 fillerPoolId) internal view {
         Filler memory filler = fillers[fillerPoolId];
 
-        IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(fillerPoolId);
-
         // fillerPoolId is vaultId
+        IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(filler.vaultId);
+
         uint256 price = _predyPool.getSqrtIndexPrice(filler.pairId);
 
         if (filler.marginAmount < 0) {
             revert MarginIsNegative();
         }
 
-        if (vaultStatus.vaultValue < calculateFillerMinMargin(fillerPoolId, price)) {
+        if (vaultStatus.vaultValue < calculateFillerMinMargin(filler, price)) {
             revert FillerPoolIsNotSafe();
         }
     }
