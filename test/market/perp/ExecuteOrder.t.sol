@@ -37,6 +37,20 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         currency1.approve(address(permit2), type(uint256).max);
     }
 
+    function withdrawAll() internal {
+        // DataType.Vault memory vault = predyPool.getVault(1);
+        // assertEq(vault.margin, 0);
+
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.fillers(fillerPoolId);
+
+        fillerMarket.withdrawFromFillerPool(fillerPoolId, uint256(fillerMarginAmount));
+
+        uint256 balance1 = currency1.balanceOf(address(fillerMarket));
+
+        // assertEq(fillerMarginAmount, 0);
+        assertEq(balance1, 0);
+    }
+
     function testExecuteOrderFailedIfTraderOpens() public {
         GeneralOrder memory order = GeneralOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
@@ -158,6 +172,8 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             );
         }
 
+        vm.warp(block.timestamp + 1 days);
+
         {
             GeneralOrder memory order = GeneralOrder(
                 OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
@@ -181,6 +197,8 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             );
             vm.stopPrank();
         }
+
+        withdrawAll();
     }
 
     // executeOrder fails if close and user margin is negative
@@ -231,10 +249,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             vm.stopPrank();
         }
     }
-
-    // executeOrder succeeds with market order
-    // executeOrder succeeds with limit order
-    // executeOrder succeeds with stop order
 
     // executeOrder succeeds with 0 amount
 

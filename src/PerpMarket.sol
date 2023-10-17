@@ -17,7 +17,7 @@ import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
 import "./libraries/DataType.sol";
-import "forge-std/console.sol";
+// import "forge-std/console.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -329,6 +329,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.positionAmount == 0) {
+            // TODO: case withdrawAmount < 0
             if (userPosition.marginAmount > 0) {
                 uint256 marginAmount = uint256(userPosition.marginAmount);
 
@@ -419,7 +420,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         // TODO: +- fee to filler margin
         filler.marginAmount += (filler.fundingRateGrobalGrowth - filler.fillercumulativeFundingRates)
-            * (int256(filler.totalPosition.totalLongAmount) - int256(filler.totalPosition.totalShortAmount))
+            * (int256(filler.totalPosition.totalShortAmount) - int256(filler.totalPosition.totalLongAmount))
             / int256(Constants.Q96);
 
         filler.fillercumulativeFundingRates = filler.fundingRateGrobalGrowth;
@@ -517,7 +518,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     /**
      * @notice If position is safe return true, if not return false.
      */
-    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal view returns (bool) {
+    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
         int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
