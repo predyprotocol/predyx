@@ -102,7 +102,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
 
         priceFeed.setSqrtPrice(sqrtPrice);
         if (sqrtPrice <= 100049009804 * Constants.Q96 / 1e11) {
-            vm.expectRevert(bytes("NOT DANGER"));
+            vm.expectRevert(PerpMarket.UserPositionIsNotDanger.selector);
         }
         fillerMarket.execLiquidationCall(1, settlementData);
     }

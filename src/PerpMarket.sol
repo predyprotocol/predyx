@@ -71,6 +71,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     error UserMarginIsNegative();
 
+    error UserPositionIsNotSafe();
+
+    error UserPositionIsNotDanger();
+
     error FillerPoolIsNotSafe();
 
     error SlippageTooLarge();
@@ -214,10 +218,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             revert UserMarginIsNegative();
         }
 
-        require(
-            isPositionSafe(userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)),
-            "DANGER"
-        );
+        if (!isPositionSafe(userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)))
+        {
+            revert UserPositionIsNotSafe();
+        }
 
         // TODO: deposit user margin to the vault
         sendMarginToUser(generalOrder.positionId, generalOrder.marginAmount);
@@ -244,7 +248,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         uint256 indexPrice = _predyPool.getSqrtIndexPrice(fillerPool.pairId);
 
         // check vault is danger
-        require(!isPositionSafe(userPosition, indexPrice), "NOT DANGER");
+        if (isPositionSafe(userPosition, indexPrice)) {
+            revert UserPositionIsNotDanger();
+        }
 
         (PerpTradeResult memory perpTradeResult,) =
             coverPosition(fillerPool, positionId, -userPosition.positionAmount, 0, settlementData);

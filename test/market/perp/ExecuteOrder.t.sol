@@ -461,7 +461,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(bytes("DANGER"));
+        vm.expectRevert(PerpMarket.UserPositionIsNotSafe.selector);
         fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
     }
 
