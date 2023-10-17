@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {IHooks} from "../../interfaces/IHooks.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
@@ -86,7 +87,7 @@ library LiquidationLogic {
                 if (vault.recepient != address(0)) {
                     vault.margin = 0;
 
-                    IERC20(pairStatus.quotePool.token).transfer(vault.recepient, uint256(remainingMargin));
+                    TransferHelper.safeTransfer(pairStatus.quotePool.token, vault.recepient, uint256(remainingMargin));
                 }
             } else if (remainingMargin < 0) {
                 vault.margin = 0;

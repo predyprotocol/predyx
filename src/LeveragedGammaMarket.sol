@@ -118,11 +118,10 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
      * @param settlementData The route of settlement created by filler
      * @dev Fillers call this function
      */
-    function executeOrder(
-        uint256 fillerPoolId,
-        SignedOrder memory order,
-        ISettlement.SettlementData memory settlementData
-    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
         (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
             GeneralOrderLib.resolve(order, _quoteTokenAddress);
 

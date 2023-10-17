@@ -64,7 +64,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
     // liquidate succeeds and only filler can cover negative margin
     function testLiquidateSucceedsIfFillerCoverNegativeMargin() public {
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 12000);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 12000);
 
         priceFeed.setSqrtPrice(12 * Constants.Q96 / 10);
 
@@ -97,7 +97,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         fillerMarket.depositToFillerPool(1, 1e12);
 
         ISettlement.SettlementData memory settlementData = directSettlement.getSettlementParams(
-            address(this), address(currency1), address(currency0), sqrtPrice * 1e4 / Constants.Q96
+            address(currency1), address(currency0), sqrtPrice * 1e4 / Constants.Q96
         );
 
         priceFeed.setSqrtPrice(sqrtPrice);

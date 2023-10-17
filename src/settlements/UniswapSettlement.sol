@@ -62,8 +62,8 @@ contract UniswapSettlement is BaseSettlement {
                 )
             );
 
-            IERC20(settlementParams.quoteTokenAddress).transfer(
-                address(_predyPool), quoteAmount.addDelta(-settlementParams.fee)
+            TransferHelper.safeTransfer(
+                settlementParams.quoteTokenAddress, address(_predyPool), quoteAmount.addDelta(-settlementParams.fee)
             );
         } else {
             IERC20(settlementParams.quoteTokenAddress).approve(
@@ -82,7 +82,8 @@ contract UniswapSettlement is BaseSettlement {
                 )
             );
 
-            IERC20(settlementParams.quoteTokenAddress).transfer(
+            TransferHelper.safeTransfer(
+                settlementParams.quoteTokenAddress,
                 address(_predyPool),
                 settlementParams.amountOutMinimumOrInMaximum - quoteAmount.addDelta(-settlementParams.fee)
             );

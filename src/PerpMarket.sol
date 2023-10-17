@@ -51,6 +51,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     }
 
     struct UserPosition {
+        uint256 id;
         uint256 fillerMarketId;
         address owner;
         int256 positionAmount;
@@ -79,11 +80,15 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     error SlippageTooLarge();
 
-    uint64 public positionCounts;
+    uint256 public positionCounts;
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
     mapping(uint256 => Filler) public fillers;
+
+    event PositionUpdated(uint256 positionId, uint256 fillerMarketId, PerpTradeResult tradeResult);
+
+    event FundingPayment(uint256 positionId, uint256 fillerMarketId, int256 fundingFee, int256 fillerFundingFee);
 
     modifier onlyFiller(uint256 fillerPoolId) {
         if (fillers[fillerPoolId].fillerAddress != msg.sender) revert CallerIsNotFiller();
@@ -147,7 +152,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         checkFillerPoolIsSafe(fillerPoolId);
 
-        IERC20(_quoteTokenAddress).transfer(msg.sender, withdrawAmount);
+        TransferHelper.safeTransfer(_quoteTokenAddress, msg.sender, withdrawAmount);
     }
 
     /**
@@ -180,6 +185,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             // Creates position
             generalOrder.positionId = positionCounts;
 
+            userPositions[generalOrder.positionId].id = generalOrder.positionId;
             userPositions[generalOrder.positionId].owner = generalOrder.info.trader;
             userPositions[generalOrder.positionId].fillerMarketId = fillerPoolId;
 
@@ -226,6 +232,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         // TODO: deposit user margin to the vault
         sendMarginToUser(generalOrder.positionId, generalOrder.marginAmount);
 
+        emit PositionUpdated(generalOrder.positionId, fillerPoolId, perpTradeResult);
+
         return perpTradeResult;
     }
 
@@ -239,7 +247,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
      * @param positionId The id of position
      * @param settlementData The route of settlement created by liquidator
      */
-    function execLiquidationCall(uint64 positionId, ISettlement.SettlementData memory settlementData) external {
+    function execLiquidationCall(uint256 positionId, ISettlement.SettlementData memory settlementData) external {
         UserPosition storage userPosition = userPositions[positionId];
         Filler storage fillerPool = fillers[userPosition.fillerMarketId];
 
@@ -277,8 +285,13 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         handlePositionMargin(positionId);
     }
 
+    /**
+     * @dev Confirms the liquidation for a given filler pool.
+     * @param fillerPoolId The id of the filler pool.
+     */
     function confirmLiquidation(uint256 fillerPoolId) external {
         Filler storage filler = fillers[fillerPoolId];
+
         // TODO: check liquidated
         IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(filler.vaultId);
 
@@ -294,10 +307,19 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         filler.isLiquidated = true;
     }
 
-    function close(uint256 fillerPoolId, uint64 positionId) external returns (PerpTradeResult memory perpTradeResult) {
+    /**
+     * @dev Closes the user's position and returns the trade result after processing.
+     * @param fillerPoolId Thss id of the filler pool.
+     * @param positionId Ths id of the user position to be closed.
+     * @return perpTradeResult The result of the processed trade.
+     */
+    function close(uint256 fillerPoolId, uint256 positionId)
+        external
+        returns (PerpTradeResult memory perpTradeResult)
+    {
         Filler storage filler = fillers[fillerPoolId];
 
-        require(filler.isLiquidated);
+        require(filler.isLiquidated, "filler is not liquidated");
 
         UserPosition storage userPosition = userPositions[positionId];
 
@@ -308,6 +330,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 quoteAmount = -tradeAmount * int256(price) / int256(Constants.Q96);
 
         perpTradeResult = performTradePostProcessing(filler, positionId, tradeAmount, quoteAmount);
+
+        sendMarginToUser(positionId, 0);
 
         // all positions have been processed for settlement
         if (filler.totalPosition.totalLongAmount == 0 && filler.totalPosition.totalShortAmount == 0) {
@@ -331,7 +355,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         return vaultId;
     }
 
-    function sendMarginToUser(uint64 positionId, int256 withdrawAmount) internal {
+    function sendMarginToUser(uint256 positionId, int256 withdrawAmount) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.positionAmount == 0) {
@@ -357,10 +381,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         _predyPool.updateMargin(filler.vaultId, -int256(marginAmount));
 
-        IERC20(_quoteTokenAddress).transfer(userPosition.owner, marginAmount);
+        TransferHelper.safeTransfer(_quoteTokenAddress, userPosition.owner, marginAmount);
     }
 
-    function handlePositionMargin(uint64 positionId) internal {
+    function handlePositionMargin(uint256 positionId) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.positionAmount == 0) {
@@ -411,36 +435,54 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         );
     }
 
+    /**
+     * @dev Updates the funding fee for the user and filler based on their positions and the global growth rate.
+     * @param filler The filler's position data.
+     * @param userPosition The user's position data.
+     */
     function updateFundingFee(Filler storage filler, UserPosition storage userPosition) internal {
         filler.fundingRateGrobalGrowth +=
             getFundingRate(filler) * int256(block.timestamp - filler.lastFundingRateCalculationTime) / int256(365 days);
 
+        // Update the timestamp for last funding rate calculation
         filler.lastFundingRateCalculationTime = block.timestamp;
 
+        // Calculate user's funding fee
         int256 fundingFee = (filler.fundingRateGrobalGrowth - userPosition.cumulativeFundingRates)
             * userPosition.positionAmount / int256(Constants.Q96);
 
-        userPosition.cumulativeFundingRates = filler.fundingRateGrobalGrowth;
-
         userPosition.marginAmount += fundingFee;
 
-        // TODO: +- fee to filler margin
-        filler.marginAmount += (filler.fundingRateGrobalGrowth - filler.fillercumulativeFundingRates)
+        userPosition.cumulativeFundingRates = filler.fundingRateGrobalGrowth;
+
+        // Calculate filler's funding fee
+        int256 fillerFundingFee = (filler.fundingRateGrobalGrowth - filler.fillercumulativeFundingRates)
             * (int256(filler.totalPosition.totalShortAmount) - int256(filler.totalPosition.totalLongAmount))
             / int256(Constants.Q96);
 
+        filler.marginAmount += fillerFundingFee;
+
         filler.fillercumulativeFundingRates = filler.fundingRateGrobalGrowth;
+
+        // Emitting an event for the funding payment
+        emit FundingPayment(userPosition.id, userPosition.fillerMarketId, fundingFee, fillerFundingFee);
     }
 
-    function getFundingRate(Filler memory filler) internal view returns (int256) {
+    /**
+     * @dev Calculates the funding rate based on the total position and market price.
+     * @param filler The filler's position data.
+     * @return fundingRate The calculated funding rate.
+     */
+    function getFundingRate(Filler memory filler) internal view returns (int256 fundingRate) {
         uint256 sqrtPrice = _predyPool.getSqrtPrice(filler.pairId);
         uint256 price = sqrtPrice * sqrtPrice / Constants.Q96;
 
-        // TODO: Quote Token per Base Token
+        fundingRate = int256(price) * 12 / 100;
+
         if (filler.totalPosition.totalLongAmount > filler.totalPosition.totalShortAmount) {
-            return int256(price) * 12 / 100;
+            return fundingRate;
         } else {
-            return -int256(price) * 12 / 100;
+            return -fundingRate;
         }
     }
 

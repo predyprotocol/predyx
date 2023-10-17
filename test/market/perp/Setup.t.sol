@@ -40,7 +40,7 @@ contract TestPerpMarket is TestPool, SigUtils {
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
         settlement = new UniswapSettlement(predyPool, swapRouter);
-        directSettlement = new DirectSettlement(predyPool);
+        directSettlement = new DirectSettlement(predyPool, address(this));
 
         priceFeed = new MockPriceFeed();
         priceFeed.setSqrtPrice(2 ** 96);

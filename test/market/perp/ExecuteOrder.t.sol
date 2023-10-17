@@ -241,7 +241,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             ISettlement.SettlementData memory settlementData =
-                directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 12000);
+                directSettlement.getSettlementParams(address(currency1), address(currency0), 12000);
 
             vm.startPrank(from1);
             vm.expectRevert(PerpMarket.UserMarginIsNegative.selector);

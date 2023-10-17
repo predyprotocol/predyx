@@ -26,7 +26,7 @@ contract TestTrade is TestPool {
         tradeMarket2 = new TestTradeMarket(predyPool);
         testSettlementCurrencyNotSettled = new TestSettlementCurrencyNotSettled(predyPool);
         testSettlementReentrant = new TestSettlementReentrant(predyPool);
-        directSettlement = new DirectSettlement(predyPool);
+        directSettlement = new DirectSettlement(predyPool, address(this));
 
         currency1.transfer(address(tradeMarket), 1e10);
 
@@ -48,7 +48,7 @@ contract TestTrade is TestPool {
         );
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
-            tradeParams, directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+            tradeParams, directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 900);
@@ -68,14 +68,14 @@ contract TestTrade is TestPool {
             IPredyPool.TradeParams(
                 1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
             ),
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
             IPredyPool.TradeParams(
                 1, 1, 99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))
             ),
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         assertEq(tradeResult.payoff.perpPayoff, 0);
@@ -113,12 +113,12 @@ contract TestTrade is TestPool {
             IPredyPool.TradeParams(
                 1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
             ),
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         bytes memory extraData = abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0));
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         vm.expectRevert(VaultLib.CallerIsNotVaultOwner.selector);
         tradeMarket2.trade(IPredyPool.TradeParams(1, tradeResult.vaultId, 99 * 1e4, 0, extraData), settlementData);
@@ -130,7 +130,7 @@ contract TestTrade is TestPool {
             100, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
         );
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         vm.expectRevert(IPredyPool.InvalidPairId.selector);
         tradeMarket.trade(tradeParams, settlementData);
@@ -144,7 +144,7 @@ contract TestTrade is TestPool {
             1, 0, 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), marginAmount))
         );
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         if (marginAmount < 16658333) {
             vm.expectRevert(PositionCalculator.NotSafe.selector);
@@ -162,7 +162,7 @@ contract TestTrade is TestPool {
             1, 0, int256(tradeAmount), 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e10))
         );
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         if (tradeAmount > 100000000) {
             vm.expectRevert(bytes("S0"));
@@ -178,14 +178,14 @@ contract TestTrade is TestPool {
             IPredyPool.TradeParams(
                 1, 0, -9000, 10000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
             ),
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
             1, 0, 10000, -int256(borrowAmount), abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
         );
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         if (borrowAmount > 10000) {
             vm.expectRevert(Perp.NoCFMMLiquidity.selector);
@@ -204,7 +204,7 @@ contract TestTrade is TestPool {
             );
 
             tradeMarket.trade(
-                tradeParams, directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+                tradeParams, directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
             );
         }
 
@@ -216,7 +216,7 @@ contract TestTrade is TestPool {
             );
 
             ISettlement.SettlementData memory settlementData =
-                directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+                directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
             vm.expectRevert(bytes("P2"));
             tradeMarket.trade(tradeParams, settlementData);
@@ -232,7 +232,7 @@ contract TestTrade is TestPool {
                 100,
                 70,
                 tradeParams,
-                directSettlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4)
+                directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
             )
         );
 

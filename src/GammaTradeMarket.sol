@@ -44,7 +44,7 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
 
         if (marginAmountUpdate > 0) {
-            IERC20(_quoteTokenAddress).transfer(address(_predyPool), uint256(marginAmountUpdate));
+            TransferHelper.safeTransfer(_quoteTokenAddress, address(_predyPool), uint256(marginAmountUpdate));
         } else if (marginAmountUpdate < 0) {
             _predyPool.take(true, address(this), uint256(-marginAmountUpdate));
         }
@@ -90,7 +90,9 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
 
         if (generalOrder.marginAmount < 0) {
-            IERC20(_quoteTokenAddress).transfer(generalOrder.info.trader, uint256(-generalOrder.marginAmount));
+            TransferHelper.safeTransfer(
+                _quoteTokenAddress, generalOrder.info.trader, uint256(-generalOrder.marginAmount)
+            );
         }
 
         return tradeResult;

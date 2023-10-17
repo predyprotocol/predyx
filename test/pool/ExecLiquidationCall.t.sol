@@ -19,7 +19,7 @@ contract TestExecLiquidationCall is TestPool {
         predyPool.supply(1, false, 1e10);
 
         _tradeMarket = new TestTradeMarket(predyPool);
-        _settlement = new DirectSettlement(predyPool);
+        _settlement = new DirectSettlement(predyPool, address(this));
 
         currency0.transfer(address(_tradeMarket), 1e10);
         currency1.transfer(address(_tradeMarket), 1e10);
@@ -41,7 +41,7 @@ contract TestExecLiquidationCall is TestPool {
     }
 
     function _getSettlementData(uint256 price) internal view returns (ISettlement.SettlementData memory) {
-        return _settlement.getSettlementParams(filler, address(currency1), address(currency0), price);
+        return _settlement.getSettlementParams(address(currency1), address(currency0), price);
     }
 
     // liquidate succeeds if the vault is danger
@@ -142,7 +142,7 @@ contract TestExecLiquidationCall is TestPool {
         );
 
         ISettlement.SettlementData memory settlementData =
-            _settlement.getSettlementParams(filler, address(currency1), address(currency0), 1e4);
+            _settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         _tradeMarket.trade(tradeParams, settlementData);
 

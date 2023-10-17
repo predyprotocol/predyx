@@ -23,7 +23,7 @@ contract TestWithdraw is TestPool {
 
         tradeMarket = new TestTradeMarket(predyPool);
 
-        directSettlement = new DirectSettlement(predyPool);
+        directSettlement = new DirectSettlement(predyPool, address(this));
 
         currency1.transfer(address(tradeMarket), 1e8);
 
@@ -66,7 +66,7 @@ contract TestWithdraw is TestPool {
             IPredyPool.TradeParams(
                 1, 0, -10000, 9000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
             ),
-            directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 1e4)
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         if (amount >= 998562) {

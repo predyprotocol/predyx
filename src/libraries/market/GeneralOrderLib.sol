@@ -9,7 +9,7 @@ import "../Constants.sol";
 
 struct GeneralOrder {
     OrderInfo info;
-    uint64 positionId;
+    uint256 positionId;
     uint64 pairId;
     int256 tradeAmount;
     int256 tradeAmountSqrt;
@@ -32,7 +32,7 @@ library GeneralOrderLib {
     bytes internal constant GENERAL_ORDER_TYPE = abi.encodePacked(
         "GeneralOrder(",
         "uint256 positionId,",
-        "uint256 pairId,",
+        "uint64 pairId,",
         "int256 tradeAmount,",
         "int256 tradeAmountSqrt,",
         "int256 marginAmount,",

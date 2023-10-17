@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {Constants} from "../Constants.sol";
 import {DataType} from "../DataType.sol";
@@ -29,7 +30,7 @@ library MarginLogic {
         if (updateMarginAmount > 0) {
             IERC20(vault.marginId).transferFrom(msg.sender, address(this), uint256(updateMarginAmount));
         } else if (updateMarginAmount < 0) {
-            IERC20(vault.marginId).transfer(vault.owner, uint256(-updateMarginAmount));
+            TransferHelper.safeTransfer(vault.marginId, vault.owner, uint256(-updateMarginAmount));
         }
     }
 }

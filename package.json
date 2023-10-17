@@ -5,7 +5,8 @@
   "main": "index.js",
   "directories": {
     "lib": "lib",
-    "test": "test"
+    "test": "test",
+    "slither": "slither ."
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
