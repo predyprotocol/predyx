@@ -17,7 +17,7 @@ import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
 import "./libraries/DataType.sol";
-// import "forge-std/console.sol";
+import "forge-std/console.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -216,7 +216,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         require(
             isPositionSafe(userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)),
-            "SAFE"
+            "DANGER"
         );
 
         // TODO: deposit user margin to the vault
@@ -244,7 +244,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         uint256 indexPrice = _predyPool.getSqrtIndexPrice(fillerPool.pairId);
 
         // check vault is danger
-        require(!isPositionSafe(userPosition, indexPrice), "NOT SAFE");
+        require(!isPositionSafe(userPosition, indexPrice), "NOT DANGER");
 
         (PerpTradeResult memory perpTradeResult,) =
             coverPosition(fillerPool, positionId, -userPosition.positionAmount, 0, settlementData);
@@ -449,6 +449,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             settlementData
         );
 
+        filler.marginAmount += tradeResult.fee;
+
         perpTradeResult = performTradePostProcessing(
             filler, positionId, tradeAmount, tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff
         );
@@ -521,6 +523,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
             + userPosition.entryValue;
         int256 min = int256(Math.abs(userPosition.positionAmount)) * price / int256(Constants.Q96 * 50);
+
+        // console.log(uint256(value), uint256(min), uint256(userPosition.entryValue));
 
         return value >= min;
     }

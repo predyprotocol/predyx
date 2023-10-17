@@ -59,8 +59,8 @@ contract TestPerpMarket is TestPool, SigUtils {
 
         limitOrderValidator = new LimitOrderValidator();
 
-        predyPool.supply(1, true, 1e10);
-        predyPool.supply(1, false, 1e10);
+        predyPool.supply(1, true, 1e18);
+        predyPool.supply(1, false, 1e18);
     }
 
     function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {

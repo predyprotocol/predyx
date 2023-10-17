@@ -89,11 +89,21 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
     function testLiquidateSucceedsWithInsolvent() public {}
 
     // liquidate fails if the vault is safe
-    function testLiquidateFailsIfVaultIsSafe() public {
-        ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(this), address(currency1), address(currency0), 10000);
+    function testLiquidateFailsIfVaultIsSafe(uint256 sqrtPrice) public {
+        vm.assume(sqrtPrice <= 100 * Constants.Q96);
 
-        vm.expectRevert(bytes("NOT SAFE"));
+        // 79247578957702974831301681716
+
+        fillerMarket.depositToFillerPool(1, 1e12);
+
+        ISettlement.SettlementData memory settlementData = directSettlement.getSettlementParams(
+            address(this), address(currency1), address(currency0), sqrtPrice * 1e4 / Constants.Q96
+        );
+
+        priceFeed.setSqrtPrice(sqrtPrice);
+        if (sqrtPrice <= 100049009804 * Constants.Q96 / 1e11) {
+            vm.expectRevert(bytes("NOT DANGER"));
+        }
         fillerMarket.execLiquidationCall(1, settlementData);
     }
 

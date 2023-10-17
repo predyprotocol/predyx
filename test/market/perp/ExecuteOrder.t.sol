@@ -20,7 +20,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         fillerPoolId = fillerMarket.addFillerPool(pairId);
 
-        fillerMarket.depositToFillerPool(1, 100 * 1e6);
+        fillerMarket.depositToFillerPool(1, 1e8);
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -359,7 +359,97 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     }
 
     // executeOrder fails if filler pool is not enough
-    // executeOrder fails if the vault is danger
+    function testExecuteOrderFailedIfFillerPoolIsNotEnough() public {
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                0,
+                1,
+                -1e8,
+                0,
+                5 * 1e6,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
+
+            // vm.expectRevert(PerpMarket.FillerPoolIsNotSafe.selector);
+            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+        }
+
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from2, 0, block.timestamp + 100),
+                0,
+                1,
+                1e8,
+                0,
+                5 * 1e6,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
+
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(normalSwapRoute, 1e10, address(currency1), address(currency0), 0);
+
+            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+        }
+
+        fillerMarket.withdrawFromFillerPool(1, 89 * 1e6);
+
+        {
+            GeneralOrder memory order = GeneralOrder(
+                OrderInfo(address(fillerMarket), from2, 1, block.timestamp + 100),
+                0,
+                1,
+                1e8,
+                0,
+                5 * 1e6,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
+
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(normalSwapRoute, 1e10, address(currency1), address(currency0), 0);
+
+            vm.expectRevert(PerpMarket.FillerPoolIsNotSafe.selector);
+            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+        }
+    }
+
+    // executeOrder fails if the position is danger
+    function testExecuteOrderFailedIfPositionIsDanger() public {
+        GeneralOrder memory order = GeneralOrder(
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            0,
+            1,
+            -1e6,
+            0,
+            1e4,
+            0,
+            address(limitOrderValidator),
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
+
+        vm.expectRevert(bytes("DANGER"));
+        fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+    }
 
     // executeOrder fails if pairId does not exist
 }
