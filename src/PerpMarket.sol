@@ -80,7 +80,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     error SlippageTooLarge();
 
-    uint256 public positionCounts;
+    uint256 public positionCount;
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
@@ -101,7 +101,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
 
-        positionCounts = 1;
+        positionCount = 1;
     }
 
     /**
@@ -150,7 +150,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         fillers[fillerPoolId].marginAmount -= int256(withdrawAmount);
 
-        checkFillerPoolIsSafe(fillerPoolId);
+        validateFillerPoolSafety(fillerPoolId);
 
         TransferHelper.safeTransfer(_quoteTokenAddress, msg.sender, withdrawAmount);
     }
@@ -183,13 +183,13 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         // Check if position needs to be created or updated
         if (generalOrder.positionId == 0) {
             // Creates position
-            generalOrder.positionId = positionCounts;
+            generalOrder.positionId = positionCount;
 
             userPositions[generalOrder.positionId].id = generalOrder.positionId;
             userPositions[generalOrder.positionId].owner = generalOrder.info.trader;
             userPositions[generalOrder.positionId].fillerMarketId = fillerPoolId;
 
-            positionCounts++;
+            positionCount++;
         } else {
             // Updates position
             UserPosition memory userPosition = userPositions[generalOrder.positionId];
@@ -197,14 +197,15 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
                 revert IFillerMarket.SignerIsNotVaultOwner();
             }
 
-            // TODO: check pairId
             require(generalOrder.pairId == fillers[userPosition.fillerMarketId].pairId);
         }
 
+        // Update the funding fees for the user position in the filler pool
         updateFundingFee(fillers[fillerPoolId], userPositions[generalOrder.positionId]);
 
         IPredyPool.TradeResult memory tradeResult;
 
+        // Execute the trade for the user position in the filler pool
         (perpTradeResult, tradeResult) = coverPosition(
             fillers[fillerPoolId],
             generalOrder.positionId,
@@ -213,7 +214,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             settlementData
         );
 
-        checkFillerPoolIsSafe(fillerPoolId);
+        validateFillerPoolSafety(fillerPoolId);
 
         // Validate the trade
         IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
@@ -229,8 +230,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             revert UserPositionIsNotSafe();
         }
 
-        // TODO: deposit user margin to the vault
-        sendMarginToUser(generalOrder.positionId, generalOrder.marginAmount);
+        sendMarginToUser(generalOrder.positionId, generalOrder.marginAmount < 0 ? uint256(-generalOrder.marginAmount) : 0);
 
         emit PositionUpdated(generalOrder.positionId, fillerPoolId, perpTradeResult);
 
@@ -355,23 +355,25 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         return vaultId;
     }
 
-    function sendMarginToUser(uint256 positionId, int256 withdrawAmount) internal {
+    function sendMarginToUser(uint256 positionId, uint256 withdrawAmount) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.positionAmount == 0) {
-            // TODO: case withdrawAmount < 0
+            uint256 marginAmount = 0;
+
             if (userPosition.marginAmount > 0) {
-                uint256 marginAmount = uint256(userPosition.marginAmount);
+                marginAmount = uint256(userPosition.marginAmount);
 
                 // TODO: withdraw user margin from the vault
 
                 userPosition.marginAmount = 0;
 
-                transferMargin(userPosition, marginAmount);
             }
+
+            transferMargin(userPosition, marginAmount + withdrawAmount);
         } else {
-            if (withdrawAmount < 0) {
-                transferMargin(userPosition, uint256(-withdrawAmount));
+            if (withdrawAmount > 0) {
+                transferMargin(userPosition, withdrawAmount);
             }
         }
     }
@@ -604,7 +606,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
-    function checkFillerPoolIsSafe(uint256 fillerPoolId) internal view {
+    function validateFillerPoolSafety(uint256 fillerPoolId) internal view {
         Filler memory filler = fillers[fillerPoolId];
 
         // fillerPoolId is vaultId
