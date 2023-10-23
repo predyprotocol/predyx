@@ -16,6 +16,7 @@ import "./libraries/logic/ReallocationLogic.sol";
 import "./libraries/logic/SupplyLogic.sol";
 import "./libraries/logic/TradeLogic.sol";
 import "./libraries/logic/MarginLogic.sol";
+import "./libraries/logic/ReaderLogic.sol";
 import {GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /**
@@ -154,14 +155,15 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         MarginLogic.updateMargin(globalData, vaultId, marginAmount);
     }
 
-    function createVault(uint256 vaultId, uint256 pairId) external returns (uint256) {
+    function createVault(uint256 pairId) external returns (uint256) {
         globalData.validate(pairId);
 
-        DataType.Vault storage vault = globalData.createOrGetVault(vaultId, pairId);
+        DataType.Vault storage vault = globalData.createOrGetVault(0, pairId);
 
         return vault.id;
     }
 
+    /// @notice Gets the square root of the AMM price
     function getSqrtPrice(uint256 pairId) external view returns (uint160) {
         return UniHelper.convertSqrtPrice(
             UniHelper.getSqrtPrice(globalData.pairs[pairId].sqrtAssetStatus.uniswapPool),
@@ -169,18 +171,22 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         );
     }
 
+    /// @notice Gets the square root of the index price
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint256) {
         return PositionCalculator.getSqrtIndexPrice(globalData.pairs[pairId]);
     }
 
+    /// @notice Gets the status of pair
     function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory) {
         return globalData.pairs[pairId];
     }
 
+    /// @notice Gets the vault
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory) {
         return globalData.vaults[vaultId];
     }
 
+    /// @notice Gets the status of the vault
     function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {
         uint256 pairId = globalData.vaults[vaultId].openPosition.pairId;
 
@@ -189,5 +195,17 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         );
 
         return VaultStatus(vaultId, vaultValue, minMargin);
+    }
+
+    /// @notice Gets the status of pair
+    /// @dev This function always reverts
+    function revertPairStatus(uint256 pairId) external {
+        ReaderLogic.getPairStatus(globalData, pairId);
+    }
+
+    /// @notice Gets the status of the vault
+    /// @dev This function always reverts
+    function revertVaultStatus(uint256 vaultId) external {
+        ReaderLogic.getVaultStatus(globalData, vaultId);
     }
 }

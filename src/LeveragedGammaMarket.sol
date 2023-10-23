@@ -203,7 +203,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     // Private Functions
 
     function initFillerPool(uint256 pairId, address fillerAddress) internal returns (uint256) {
-        uint256 vaultId = _predyPool.createVault(0, pairId);
+        uint256 vaultId = _predyPool.createVault(pairId);
 
         Filler storage fillerPool = fillers[fillerAddress];
 

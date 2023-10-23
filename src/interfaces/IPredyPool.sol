@@ -63,7 +63,7 @@ interface IPredyPool {
     function take(bool isQuoteAsset, address to, uint256 amount) external;
 
     function updateMargin(uint256 vaultId, int256 marginAmount) external;
-    function createVault(uint256 vaultId, uint256 pairId) external returns (uint256);
+    function createVault(uint256 pairId) external returns (uint256);
 
     function getSqrtPrice(uint256 pairId) external view returns (uint160);
 
@@ -72,4 +72,7 @@ interface IPredyPool {
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
     function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);
     function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory);
+
+    function revertPairStatus(uint256 pairId) external;
+    function revertVaultStatus(uint256 vaultId) external;
 }

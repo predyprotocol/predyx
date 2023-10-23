@@ -31,6 +31,7 @@ library GeneralOrderLib {
 
     bytes internal constant GENERAL_ORDER_TYPE = abi.encodePacked(
         "GeneralOrder(",
+        "OrderInfo info,",
         "uint256 positionId,",
         "uint64 pairId,",
         "int256 tradeAmount,",
@@ -54,6 +55,7 @@ library GeneralOrderLib {
         return keccak256(
             abi.encode(
                 GENERAL_ORDER_TYPE_HASH,
+                order.info.hash(),
                 order.positionId,
                 order.pairId,
                 order.tradeAmount,
