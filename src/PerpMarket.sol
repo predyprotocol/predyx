@@ -6,6 +6,7 @@ import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/Transfer
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@solmate/src/utils/FixedPointMathLib.sol";
 import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./interfaces/IOrderValidator.sol";
@@ -515,6 +516,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 fundingFee = (filler.fundingRateGrobalGrowth - userPosition.cumulativeFundingRates)
             * userPosition.positionAmount / int256(Constants.Q96);
 
+        fundingFee = _roundAndAddToProtocolFee(filler, fundingFee, 4);
         userPosition.marginAmount += fundingFee;
 
         userPosition.cumulativeFundingRates = filler.fundingRateGrobalGrowth;
@@ -585,6 +587,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         updateLongShort(filler, userPosition.positionAmount, tradeAmount);
 
         userPosition.positionAmount += tradeAmount;
+        perpTradeResult.payoff = _roundAndAddToProtocolFee(filler, perpTradeResult.payoff, 4);
         userPosition.marginAmount += perpTradeResult.payoff;
 
         //
@@ -680,6 +683,27 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         if (vaultStatus.vaultValue < calculateFillerMinMargin(filler, price)) {
             revert FillerPoolIsNotSafe();
+        }
+    }
+
+    function _roundAndAddToProtocolFee(Filler storage filler, int256 _amount, uint8 _marginRoundedDecimal)
+        internal
+        returns (int256)
+    {
+        int256 rounded = _roundMargin(_amount, 10 ** _marginRoundedDecimal);
+
+        if (_amount > rounded) {
+            filler.marginAmount += _amount - rounded;
+        }
+
+        return rounded;
+    }
+
+    function _roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
+        if (_amount > 0) {
+            return int256(FixedPointMathLib.mulDivDown(uint256(_amount), 1, _roundedDecimals) * _roundedDecimals);
+        } else {
+            return -int256(FixedPointMathLib.mulDivUp(uint256(-_amount), 1, _roundedDecimals) * _roundedDecimals);
         }
     }
 }

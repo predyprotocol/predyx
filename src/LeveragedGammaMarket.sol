@@ -44,10 +44,21 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         address filler;
         address owner;
         int256 positionAmount;
+        int256 positionAmountSqrt;
         int256 assuranceMargin;
         int256 marginAmount;
         bool isLiquidated;
         int256 liquidatedPrice;
+    }
+
+    enum CallbackSource {
+        TRADE,
+        LIQUIDATION
+    }
+
+    struct CallbackData {
+        CallbackSource callbackSource;
+        int256 marginAmountUpdate;
     }
 
     error CallerIsNotFiller();
@@ -69,22 +80,26 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     ) external override(BaseHookCallback) onlyPredyPool {
         int256 margin = _predyPool.getVault(tradeParams.vaultId).margin;
         int256 currentAssuranceMargin = userPositions[tradeParams.vaultId].assuranceMargin;
+        CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
-        int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
-        int256 fillerMinDeposit = 9 * tradeResult.minMargin / 10;
+        if (callbackData.callbackSource == CallbackSource.TRADE) {
+            int256 fillerMinDeposit = 9 * tradeResult.minMargin / 10;
 
-        int256 userMargin = margin - currentAssuranceMargin;
+            int256 userMargin = margin - currentAssuranceMargin;
 
-        require(userMargin + marginAmountUpdate >= 0);
+            require(userMargin + callbackData.marginAmountUpdate >= 0);
 
-        userPositions[tradeParams.vaultId].assuranceMargin = fillerMinDeposit;
+            userPositions[tradeParams.vaultId].assuranceMargin = fillerMinDeposit;
 
-        int256 diff = userMargin + marginAmountUpdate + fillerMinDeposit - currentAssuranceMargin;
+            int256 diff = userMargin + callbackData.marginAmountUpdate + fillerMinDeposit - currentAssuranceMargin;
 
-        if (diff > 0) {
-            IERC20(_quoteTokenAddress).transfer(address(_predyPool), uint256(diff));
-        } else if (diff < 0) {
-            _predyPool.take(true, address(this), uint256(-diff));
+            if (diff > 0) {
+                IERC20(_quoteTokenAddress).transfer(address(_predyPool), uint256(diff));
+            } else if (diff < 0) {
+                _predyPool.take(true, address(this), uint256(-diff));
+            }
+        } else if (callbackData.callbackSource == CallbackSource.LIQUIDATION) {
+            _predyPool.take(true, address(this), uint256(margin));
         }
     }
 
@@ -133,7 +148,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
                 generalOrder.positionId,
                 generalOrder.tradeAmount,
                 generalOrder.tradeAmountSqrt,
-                abi.encode(generalOrder.marginAmount)
+                abi.encode(CallbackData(CallbackSource.TRADE, generalOrder.marginAmount))
             ),
             settlementData
         );
@@ -148,7 +163,10 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
             }
         }
 
-        // TODO: should have whote list for validatorAddress?
+        userPositions[tradeResult.vaultId].positionAmount += generalOrder.tradeAmount;
+        userPositions[tradeResult.vaultId].positionAmountSqrt += generalOrder.tradeAmountSqrt;
+
+        // TODO: should have white list for validatorAddress?
         IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
 
         if (generalOrder.marginAmount < 0) {
@@ -175,6 +193,17 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         require(!calculatePositionValue(userPosition, _predyPool.getSqrtIndexPrice(fillerPool.pairId)), "NOT SAFE");
 
         // TODO: close position
+        _predyPool.trade(
+            IPredyPool.TradeParams(
+                fillerPool.pairId,
+                positionId,
+                -userPosition.positionAmount,
+                -userPosition.positionAmountSqrt,
+                abi.encode(CallbackData(CallbackSource.LIQUIDATION, 0))
+            ),
+            settlementData
+        );
+
         // TODO: - filler margin
 
         sendMarginToUser(positionId);
@@ -187,12 +216,15 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(vaultId);
 
         // vault has positions but has no cover positions
-        require(vaultStatus.minMargin == 0);
-        // TODO: userPosition has positionAmounts
+        require(
+            vaultStatus.minMargin == 0 && (userPosition.positionAmount != 0 || userPosition.positionAmountSqrt != 0)
+        );
 
         DataType.Vault memory vault = _predyPool.getVault(vaultId);
 
         _predyPool.updateMargin(vaultId, -vault.margin);
+
+        userPosition.positionAmount = 0;
 
         // TODO: clear userPosition
         Filler storage filler = fillers[userPosition.filler];
@@ -254,5 +286,26 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         int256 min = userPosition.positionAmount * price / int256(Constants.Q96 * 50);
 
         return value >= min;
+    }
+
+    function _roundAndAddToProtocolFee(Filler storage filler, int256 _amount, uint8 _marginRoundedDecimal)
+        internal
+        returns (int256)
+    {
+        int256 rounded = _roundMargin(_amount, 10 ** _marginRoundedDecimal);
+
+        if (_amount > rounded) {
+            filler.marginAmount += _amount - rounded;
+        }
+
+        return rounded;
+    }
+
+    function _roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
+        if (_amount > 0) {
+            return int256(FixedPointMathLib.mulDivDown(uint256(_amount), 1, _roundedDecimals) * _roundedDecimals);
+        } else {
+            return -int256(FixedPointMathLib.mulDivUp(uint256(-_amount), 1, _roundedDecimals) * _roundedDecimals);
+        }
     }
 }

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@solmate/src/utils/FixedPointMathLib.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {IHooks} from "../interfaces/IHooks.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
@@ -15,7 +14,6 @@ import {LockDataLibrary} from "../types/LockData.sol";
 import {PositionCalculator} from "./PositionCalculator.sol";
 import {Math} from "./math/Math.sol";
 import {UniHelper} from "./UniHelper.sol";
-import "forge-std/console.sol";
 
 library Trade {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
@@ -69,10 +67,6 @@ library Trade {
             Perp.UpdateSqrtPerpParams(tradeParams.tradeAmountSqrt, swapResult.amountSqrtPerp + stableAmountForSqrt)
         );
 
-        // round up or down payoff and fee
-        tradeResult.payoff.perpPayoff = roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.perpPayoff, 4);
-        tradeResult.payoff.sqrtPayoff = roundAndAddToProtocolFee(pairStatus, tradeResult.payoff.sqrtPayoff, 4);
-        tradeResult.fee = roundAndAddToProtocolFee(pairStatus, stableFee + swapResult.fee, 4);
         tradeResult.vaultId = tradeParams.vaultId;
     }
 
@@ -148,26 +142,5 @@ library Trade {
         (underlyingFee, stableFee) = PerpFee.settleUserFee(_pairStatus, rebalanceFeeGrowthCache, _userStatus);
 
         Perp.settleUserBalance(_pairStatus, _userStatus);
-    }
-
-    function roundAndAddToProtocolFee(Perp.PairStatus storage _pairStatus, int256 _amount, uint8 _marginRoundedDecimal)
-        internal
-        returns (int256)
-    {
-        int256 rounded = roundMargin(_amount, 10 ** _marginRoundedDecimal);
-
-        if (_amount > rounded) {
-            _pairStatus.quotePool.accumulatedProtocolRevenue += uint256(_amount - rounded);
-        }
-
-        return rounded;
-    }
-
-    function roundMargin(int256 _amount, uint256 _roundedDecimals) internal pure returns (int256) {
-        if (_amount > 0) {
-            return int256(FixedPointMathLib.mulDivDown(uint256(_amount), 1, _roundedDecimals) * _roundedDecimals);
-        } else {
-            return -int256(FixedPointMathLib.mulDivUp(uint256(-_amount), 1, _roundedDecimals) * _roundedDecimals);
-        }
     }
 }
