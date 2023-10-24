@@ -210,7 +210,7 @@ contract TestExecuteOrder is TestMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(GeneralOrderLib.PriceGreaterThanLimit.selector);
+        vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -233,7 +233,7 @@ contract TestExecuteOrder is TestMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(GeneralOrderLib.PriceLessThanLimit.selector);
+        vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 

@@ -23,12 +23,6 @@ struct GeneralOrder {
 library GeneralOrderLib {
     using OrderInfoLib for OrderInfo;
 
-    error PriceGreaterThanLimit();
-
-    error PriceLessThanLimit();
-
-    error TriggerNotMatched();
-
     bytes internal constant GENERAL_ORDER_TYPE = abi.encodePacked(
         "GeneralOrder(",
         "OrderInfo info,",

@@ -2,15 +2,12 @@
 pragma solidity ^0.8.17;
 
 import "../interfaces/IPredyPool.sol";
-import "../interfaces/IOrderValidator.sol";
 import "../base/BaseHookCallback.sol";
 
 /**
  * @notice Quoter contract for PredyPool
  */
 contract PredyPoolQuoter is BaseHookCallback {
-    using GeneralOrderLib for GeneralOrder;
-
     address _revertSettlement;
 
     constructor(IPredyPool _predyPool, address revertSettlement) BaseHookCallback(_predyPool) {
@@ -44,7 +41,10 @@ contract PredyPoolQuoter is BaseHookCallback {
         }
     }
 
-    function quoteBaseAmountDelta(IPredyPool.TradeParams memory tradeParams) external returns (int256) {
+    function quoteBaseAmountDelta(IPredyPool.TradeParams memory tradeParams)
+        external
+        returns (int256 baseAmountDelta)
+    {
         try _predyPool.trade(tradeParams, ISettlement.SettlementData(_revertSettlement, "")) {}
         catch (bytes memory reason) {
             return _parseRevertReasonAsBaseAmountDelta(reason);
