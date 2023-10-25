@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../../src/libraries/market/DutchOrder.sol";
+import "../../../src/libraries/orders/DutchOrder.sol";
 
 contract DutchOrderValidatorTest is Test {
     DutchOrderValidator dutchOrderValidator;

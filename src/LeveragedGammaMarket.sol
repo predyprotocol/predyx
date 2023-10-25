@@ -10,9 +10,9 @@ import "./interfaces/IPredyPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
-import "./libraries/market/Permit2Lib.sol";
-import "./libraries/market/ResolvedOrder.sol";
-import "./libraries/market/GeneralOrderLib.sol";
+import "./libraries/orders/Permit2Lib.sol";
+import "./libraries/orders/ResolvedOrder.sol";
+import "./libraries/orders/GeneralOrderLib.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
@@ -190,7 +190,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         Filler storage fillerPool = fillers[userPosition.filler];
 
         // check vault is danger
-        require(!calculatePositionValue(userPosition, _predyPool.getSqrtIndexPrice(fillerPool.pairId)), "NOT SAFE");
+        require(!isPositionSafe(userPosition, _predyPool.getSqrtIndexPrice(fillerPool.pairId)), "NOT SAFE");
 
         // TODO: close position
         _predyPool.trade(
@@ -278,7 +278,8 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         );
     }
 
-    function calculatePositionValue(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
+    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
+        // vaultStatus.minMargin / 5
         int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
 
         // TODO:

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../../src/libraries/market/LimitOrder.sol";
+import "../../../src/libraries/orders/LimitOrder.sol";
 
 contract LimitOrderValidatorTest is Test {
     LimitOrderValidator limitOrderValidator;
