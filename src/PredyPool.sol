@@ -179,7 +179,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
     function getPositionWithUnrealizedFee(uint256 vaultId)
         external
         view
-        returns (PositionCalculator.PositionParams memory positionParams)
+        returns (PositionCalculator.PositionParams memory)
     {
         ReaderLogic.getPositionWithUnrealizedFee(globalData, vaultId);
     }
