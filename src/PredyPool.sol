@@ -176,6 +176,14 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         return PositionCalculator.getSqrtIndexPrice(globalData.pairs[pairId]);
     }
 
+    function getPositionWithUnrealizedFee(uint256 vaultId)
+        external
+        view
+        returns (PositionCalculator.PositionParams memory positionParams)
+    {
+        ReaderLogic.getPositionWithUnrealizedFee(globalData, vaultId);
+    }
+
     /// @notice Gets the status of pair
     function getPairStatus(uint256 pairId) external view returns (Perp.PairStatus memory) {
         return globalData.pairs[pairId];

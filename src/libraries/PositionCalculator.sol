@@ -82,7 +82,7 @@ library PositionCalculator {
         twap = getSqrtIndexPrice(pairStatus);
 
         (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
-            vault,
+            vault.margin,
             getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, vault.openPosition),
             twap,
             pairStatus.riskParams.riskRatio
@@ -103,35 +103,33 @@ library PositionCalculator {
 
     /**
      * @notice Calculates min value of the vault.
-     * @param vault The target vault for calculation
+     * @param marginAmount The target vault for calculation
      * @param positionParams The position parameters
      * @param sqrtPrice The square root of time-weighted average price
      * @param riskRatio risk ratio of price
      */
     function calculateMinValue(
-        DataType.Vault memory vault,
+        int256 marginAmount,
         PositionParams memory positionParams,
         uint256 sqrtPrice,
         uint256 riskRatio
     ) internal pure returns (int256 minValue, int256 vaultValue, uint256 debtValue, bool hasPosition) {
-        Perp.UserStatus memory userStatus = vault.openPosition;
-
         minValue += calculateMinValue(sqrtPrice, positionParams, riskRatio);
 
         vaultValue += calculateValue(sqrtPrice, positionParams);
 
-        debtValue += calculateSquartDebtValue(sqrtPrice, userStatus);
+        debtValue += calculateSquartDebtValue(sqrtPrice, positionParams);
 
-        hasPosition = hasPosition || getHasPositionFlag(userStatus);
+        hasPosition = hasPosition || getHasPositionFlag(positionParams);
 
-        minValue += int256(vault.margin);
-        vaultValue += int256(vault.margin);
+        minValue += marginAmount;
+        vaultValue += marginAmount;
     }
 
     function getHasPosition(DataType.Vault memory _vault) internal pure returns (bool hasPosition) {
         Perp.UserStatus memory userStatus = _vault.openPosition;
 
-        hasPosition = hasPosition || getHasPositionFlag(userStatus);
+        hasPosition = hasPosition || getHasPositionFlag(getPosition(userStatus));
     }
 
     function getSqrtIndexPrice(Perp.PairStatus memory pairStatus) internal view returns (uint256 sqrtPriceX96) {
@@ -171,9 +169,8 @@ library PositionCalculator {
         );
     }
 
-    function getHasPositionFlag(Perp.UserStatus memory _perpUserStatus) internal pure returns (bool) {
-        return _perpUserStatus.stable.positionAmount < 0 || _perpUserStatus.sqrtPerp.amount < 0
-            || _perpUserStatus.underlying.positionAmount < 0;
+    function getHasPositionFlag(PositionParams memory _positionParams) internal pure returns (bool) {
+        return _positionParams.amountSqrt != 0 || _positionParams.amountUnderlying != 0;
     }
 
     /**
@@ -235,12 +232,12 @@ library PositionCalculator {
             + _positionParams.amountStable;
     }
 
-    function calculateSquartDebtValue(uint256 _sqrtPrice, Perp.UserStatus memory _perpUserStatus)
+    function calculateSquartDebtValue(uint256 _sqrtPrice, PositionParams memory positionParams)
         internal
         pure
         returns (uint256)
     {
-        int256 squartPosition = _perpUserStatus.sqrtPerp.amount;
+        int256 squartPosition = positionParams.amountSqrt;
 
         if (squartPosition > 0) {
             return 0;

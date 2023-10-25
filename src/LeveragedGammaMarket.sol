@@ -41,6 +41,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     }
 
     struct UserPosition {
+        uint256 id;
         address filler;
         address owner;
         int256 positionAmount;
@@ -154,6 +155,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         );
 
         if (generalOrder.positionId == 0) {
+            userPositions[tradeResult.vaultId].id = generalOrder.positionId;
             userPositions[tradeResult.vaultId].owner = generalOrder.info.trader;
 
             _predyPool.updateRecepient(tradeResult.vaultId, generalOrder.info.trader);
@@ -278,15 +280,40 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         );
     }
 
-    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal pure returns (bool) {
-        // vaultStatus.minMargin / 5
-        int256 price = int256((sqrtPrice * sqrtPrice) >> Constants.RESOLUTION);
+    function isPositionSafe(UserPosition memory userPosition, uint256 sqrtPrice) internal view returns (bool) {
+        (int256 minMargin, int256 vaultValue,) = calculateMinDeposit(userPosition);
 
-        // TODO:
-        int256 value = 0;
-        int256 min = userPosition.positionAmount * price / int256(Constants.Q96 * 50);
+        return vaultValue >= minMargin;
+    }
 
-        return value >= min;
+    function calculateMinDeposit(UserPosition memory userPosition)
+        internal
+        view
+        returns (int256 minMargin, int256 vaultValue, bool hasPosition)
+    {
+        PositionCalculator.PositionParams memory positionParams =
+            _predyPool.getPositionWithUnrealizedFee(userPosition.id);
+
+        int256 minValue;
+        uint256 debtValue;
+
+        uint256 indexPrice = _predyPool.getSqrtIndexPrice(fillers[userPosition.filler].pairId);
+
+        (minValue, vaultValue, debtValue, hasPosition) = PositionCalculator.calculateMinValue(
+            userPosition.marginAmount,
+            positionParams,
+            indexPrice,
+            // square root of 1%
+            100498756
+        );
+
+        int256 minMinValue = SafeCast.toInt256(2000 * debtValue / 1e6);
+
+        minMargin = vaultValue - minValue + minMinValue;
+
+        if (hasPosition && minMargin < Constants.MIN_MARGIN_AMOUNT) {
+            minMargin = Constants.MIN_MARGIN_AMOUNT;
+        }
     }
 
     function _roundAndAddToProtocolFee(Filler storage filler, int256 _amount, uint8 _marginRoundedDecimal)

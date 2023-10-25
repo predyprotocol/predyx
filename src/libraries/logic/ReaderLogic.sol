@@ -32,6 +32,18 @@ library ReaderLogic {
         revertVaultStatus(IPredyPool.VaultStatus(vaultId, vaultValue, minMargin));
     }
 
+    function getPositionWithUnrealizedFee(GlobalDataLibrary.GlobalData storage globalData, uint256 vaultId)
+        external
+        view
+        returns (PositionCalculator.PositionParams memory positionParams)
+    {
+        uint256 pairId = globalData.vaults[vaultId].openPosition.pairId;
+
+        return PositionCalculator.getPositionWithUnrealizedFee(
+            globalData.pairs[pairId], globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId].openPosition
+        );
+    }
+
     function revertPairStatus(Perp.PairStatus memory pairStatus) internal pure {
         bytes memory data = abi.encode(pairStatus);
 

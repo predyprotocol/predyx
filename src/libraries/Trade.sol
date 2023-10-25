@@ -67,6 +67,7 @@ library Trade {
             Perp.UpdateSqrtPerpParams(tradeParams.tradeAmountSqrt, swapResult.amountSqrtPerp + stableAmountForSqrt)
         );
 
+        tradeResult.fee = stableFee + swapResult.fee;
         tradeResult.vaultId = tradeParams.vaultId;
     }
 

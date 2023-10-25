@@ -4,6 +4,7 @@ pragma solidity >=0.8.0;
 import "./IHooks.sol";
 import "./ISettlement.sol";
 import "../libraries/DataType.sol";
+import "../libraries/PositionCalculator.sol";
 
 interface IPredyPool {
     error LockedBy(address locker);
@@ -68,6 +69,10 @@ interface IPredyPool {
     function getSqrtPrice(uint256 pairId) external view returns (uint160);
 
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint256);
+    function getPositionWithUnrealizedFee(uint256 vaultId)
+        external
+        view
+        returns (PositionCalculator.PositionParams memory positionParams);
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
     function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);
