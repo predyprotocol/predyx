@@ -13,7 +13,7 @@ import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
 import "./libraries/orders/Permit2Lib.sol";
 import "./libraries/orders/ResolvedOrder.sol";
-import "./libraries/orders/GeneralOrderLib.sol";
+import "./libraries/orders/PerpOrder.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
@@ -26,7 +26,7 @@ import "./lens/PredyPoolQuoter.sol";
  */
 contract PerpMarket is IFillerMarket, BaseHookCallback {
     using ResolvedOrderLib for ResolvedOrder;
-    using GeneralOrderLib for GeneralOrder;
+    using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
     using Math for int256;
@@ -168,107 +168,94 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         SignedOrder memory order,
         ISettlement.SettlementData memory settlementData
     ) external returns (PerpTradeResult memory perpTradeResult) {
-        (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
-            GeneralOrderLib.resolve(order, _quoteTokenAddress);
+        (PerpOrder memory perpOrder, ResolvedOrder memory resolvedOrder) =
+            PerpOrderLib.resolve(order, _quoteTokenAddress);
 
         // validate resolved order and verify for permit2
         // transfer token from trader to the contract
         _verifyOrder(resolvedOrder);
 
         // deposit margin to the vault if required
-        if (generalOrder.marginAmount > 0) {
-            IERC20(_quoteTokenAddress).approve(address(_predyPool), uint256(generalOrder.marginAmount));
-            _predyPool.updateMargin(fillers[fillerPoolId].vaultId, generalOrder.marginAmount);
+        if (perpOrder.marginAmount > 0) {
+            IERC20(_quoteTokenAddress).approve(address(_predyPool), uint256(perpOrder.marginAmount));
+            _predyPool.updateMargin(fillers[fillerPoolId].vaultId, perpOrder.marginAmount);
         }
 
         // Check if position needs to be created or updated
-        if (generalOrder.positionId == 0) {
+        if (perpOrder.positionId == 0) {
             // Creates position
-            generalOrder.positionId = positionCount;
+            perpOrder.positionId = positionCount;
 
-            userPositions[generalOrder.positionId].id = generalOrder.positionId;
-            userPositions[generalOrder.positionId].owner = generalOrder.info.trader;
-            userPositions[generalOrder.positionId].fillerMarketId = fillerPoolId;
+            userPositions[perpOrder.positionId].id = perpOrder.positionId;
+            userPositions[perpOrder.positionId].owner = perpOrder.info.trader;
+            userPositions[perpOrder.positionId].fillerMarketId = fillerPoolId;
 
             positionCount++;
         } else {
             // Updates position
-            UserPosition memory userPosition = userPositions[generalOrder.positionId];
-            if (generalOrder.info.trader != userPosition.owner) {
+            UserPosition memory userPosition = userPositions[perpOrder.positionId];
+            if (perpOrder.info.trader != userPosition.owner) {
                 revert IFillerMarket.SignerIsNotVaultOwner();
             }
 
-            require(generalOrder.pairId == fillers[userPosition.fillerMarketId].pairId);
+            require(perpOrder.pairId == fillers[userPosition.fillerMarketId].pairId);
         }
 
         // Update the funding fees for the user position in the filler pool
-        updateFundingFee(fillers[fillerPoolId], userPositions[generalOrder.positionId]);
+        updateFundingFee(fillers[fillerPoolId], userPositions[perpOrder.positionId]);
 
         IPredyPool.TradeResult memory tradeResult;
 
         // Execute the trade for the user position in the filler pool
         (perpTradeResult, tradeResult) = coverPosition(
-            fillers[fillerPoolId],
-            generalOrder.positionId,
-            generalOrder.tradeAmount,
-            generalOrder.marginAmount,
-            settlementData
+            fillers[fillerPoolId], perpOrder.positionId, perpOrder.tradeAmount, perpOrder.marginAmount, settlementData
         );
 
         validateFillerPoolSafety(fillerPoolId);
 
         // Validate the trade
-        IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
+        IPerpOrderValidator(perpOrder.validatorAddress).validate(perpOrder, tradeResult);
 
-        userPositions[generalOrder.positionId].marginAmount += generalOrder.marginAmount;
+        userPositions[perpOrder.positionId].marginAmount += perpOrder.marginAmount;
 
-        if (userPositions[generalOrder.positionId].marginAmount < 0) {
+        if (userPositions[perpOrder.positionId].marginAmount < 0) {
             revert UserMarginIsNegative();
         }
 
-        if (!isPositionSafe(userPositions[generalOrder.positionId], _predyPool.getSqrtIndexPrice(generalOrder.pairId)))
-        {
+        if (!isPositionSafe(userPositions[perpOrder.positionId], _predyPool.getSqrtIndexPrice(perpOrder.pairId))) {
             revert UserPositionIsNotSafe();
         }
 
-        sendMarginToUser(
-            generalOrder.positionId, generalOrder.marginAmount < 0 ? uint256(-generalOrder.marginAmount) : 0
-        );
+        sendMarginToUser(perpOrder.positionId, perpOrder.marginAmount < 0 ? uint256(-perpOrder.marginAmount) : 0);
 
-        emit PositionUpdated(generalOrder.positionId, fillerPoolId, generalOrder.tradeAmount, perpTradeResult);
+        emit PositionUpdated(perpOrder.positionId, fillerPoolId, perpOrder.tradeAmount, perpTradeResult);
 
         return perpTradeResult;
     }
 
     function quoteExecuteOrder(
-        GeneralOrder memory generalOrder,
+        PerpOrder memory perpOrder,
         ISettlement.SettlementData memory settlementData,
         PredyPoolQuoter quoter
     ) external {
         PerpTradeResult memory perpTradeResult;
 
-        if (generalOrder.positionId == 0) {
-            generalOrder.positionId = positionCount;
+        if (perpOrder.positionId == 0) {
+            perpOrder.positionId = positionCount;
         }
 
-        UserPosition memory userPosition = userPositions[generalOrder.positionId];
+        UserPosition memory userPosition = userPositions[perpOrder.positionId];
 
         // Execute the trade for the user position in the filler pool
         IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
-            IPredyPool.TradeParams(
-                generalOrder.pairId,
-                generalOrder.positionId,
-                generalOrder.tradeAmount,
-                generalOrder.tradeAmountSqrt,
-                bytes("")
-            ),
+            IPredyPool.TradeParams(perpOrder.pairId, perpOrder.positionId, perpOrder.tradeAmount, 0, bytes("")),
             settlementData
         );
 
         (perpTradeResult.entryUpdate, perpTradeResult.payoff) = Perp.calculateEntry(
             userPosition.positionAmount,
             userPosition.entryValue,
-            generalOrder.tradeAmount,
+            perpOrder.tradeAmount,
             tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff
         );
 
@@ -495,7 +482,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             order.transferDetails(address(this)),
             order.info.trader,
             order.hash,
-            GeneralOrderLib.PERMIT2_ORDER_TYPE,
+            PerpOrderLib.PERMIT2_ORDER_TYPE,
             order.sig
         );
     }

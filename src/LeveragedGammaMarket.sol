@@ -12,7 +12,7 @@ import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
 import "./libraries/orders/Permit2Lib.sol";
 import "./libraries/orders/ResolvedOrder.sol";
-import "./libraries/orders/GeneralOrderLib.sol";
+import "./libraries/orders/GammaOrder.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
@@ -23,7 +23,7 @@ import "./libraries/DataType.sol";
  */
 contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     using ResolvedOrderLib for ResolvedOrder;
-    using GeneralOrderLib for GeneralOrder;
+    using GammaOrderLib for GammaOrder;
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
     using Math for int256;
@@ -152,8 +152,8 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
-            GeneralOrderLib.resolve(order, _quoteTokenAddress);
+        (GammaOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
+            GammaOrderLib.resolve(order, _quoteTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
@@ -295,7 +295,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
             order.transferDetails(address(this)),
             order.info.trader,
             order.hash,
-            GeneralOrderLib.PERMIT2_ORDER_TYPE,
+            GammaOrderLib.PERMIT2_ORDER_TYPE,
             order.sig
         );
     }

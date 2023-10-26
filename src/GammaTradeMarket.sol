@@ -12,7 +12,7 @@ import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
 import "./libraries/orders/Permit2Lib.sol";
 import "./libraries/orders/ResolvedOrder.sol";
-import "./libraries/orders/GeneralOrderLib.sol";
+import "./libraries/orders/GammaOrder.sol";
 import "./libraries/math/Math.sol";
 
 /**
@@ -20,7 +20,7 @@ import "./libraries/math/Math.sol";
  */
 contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
     using ResolvedOrderLib for ResolvedOrder;
-    using GeneralOrderLib for GeneralOrder;
+    using GammaOrderLib for GammaOrder;
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
 
@@ -60,39 +60,37 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        (GeneralOrder memory generalOrder, ResolvedOrder memory resolvedOrder) =
-            GeneralOrderLib.resolve(order, _quoteTokenAddress);
+        (GammaOrder memory gammaOrder, ResolvedOrder memory resolvedOrder) =
+            GammaOrderLib.resolve(order, _quoteTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
-                generalOrder.pairId,
-                generalOrder.positionId,
-                generalOrder.tradeAmount,
-                generalOrder.tradeAmountSqrt,
-                abi.encode(generalOrder.marginAmount)
+                gammaOrder.pairId,
+                gammaOrder.positionId,
+                gammaOrder.tradeAmount,
+                gammaOrder.tradeAmountSqrt,
+                abi.encode(gammaOrder.marginAmount)
             ),
             settlementData
         );
 
-        if (generalOrder.positionId == 0) {
-            userPositions[tradeResult.vaultId] = generalOrder.info.trader;
+        if (gammaOrder.positionId == 0) {
+            userPositions[tradeResult.vaultId] = gammaOrder.info.trader;
 
-            _predyPool.updateRecepient(tradeResult.vaultId, generalOrder.info.trader);
+            _predyPool.updateRecepient(tradeResult.vaultId, gammaOrder.info.trader);
         } else {
-            if (generalOrder.info.trader != userPositions[tradeResult.vaultId]) {
+            if (gammaOrder.info.trader != userPositions[tradeResult.vaultId]) {
                 revert IFillerMarket.SignerIsNotVaultOwner();
             }
         }
 
         // TODO: should have whote list for validatorAddress?
-        IOrderValidator(generalOrder.validatorAddress).validate(generalOrder, tradeResult);
+        IOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
-        if (generalOrder.marginAmount < 0) {
-            TransferHelper.safeTransfer(
-                _quoteTokenAddress, generalOrder.info.trader, uint256(-generalOrder.marginAmount)
-            );
+        if (gammaOrder.marginAmount < 0) {
+            TransferHelper.safeTransfer(_quoteTokenAddress, gammaOrder.info.trader, uint256(-gammaOrder.marginAmount));
         }
 
         return tradeResult;
@@ -115,7 +113,7 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
             order.transferDetails(address(this)),
             order.info.trader,
             order.hash,
-            GeneralOrderLib.PERMIT2_ORDER_TYPE,
+            GammaOrderLib.PERMIT2_ORDER_TYPE,
             order.sig
         );
     }

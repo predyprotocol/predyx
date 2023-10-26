@@ -52,16 +52,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     }
 
     function testExecuteOrderFailedIfTraderOpens() public {
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1000,
-            0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            abi.encode(PerpLimitOrderValidationData(0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -77,16 +75,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1000,
-            0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            abi.encode(PerpLimitOrderValidationData(0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -104,16 +100,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     // netting
     function testExecuteOrderSucceedsWithNetting() public {
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
                 0,
                 1,
                 -1000 * 1e4,
-                0,
                 2 * 1e8,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(PerpLimitOrderValidationData(0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -126,16 +120,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         }
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
                 1,
                 1,
                 1000 * 1e4,
                 0,
-                0,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -151,16 +143,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     // executeOrder succeeds for close
     function testExecuteOrderSucceedsForClosing() public {
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
                 0,
                 1,
                 -1000 * 1e4,
-                0,
                 2 * 1e8,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(PerpLimitOrderValidationData(0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -175,16 +165,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         vm.warp(block.timestamp + 1 days);
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
                 1,
                 1,
                 1000 * 1e4,
                 0,
-                0,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -204,16 +192,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     // executeOrder fails if close and user margin is negative
     function testExecuteOrderFailsIfMarginIsNegative() public {
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
                 0,
                 1,
                 -1000 * 1e4,
-                0,
                 210000,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(PerpLimitOrderValidationData(0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -226,16 +212,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         }
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
                 1,
                 1,
                 1000 * 1e4,
                 0,
-                0,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1500, 1000), 0))
+                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1500, 1000)))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -260,16 +244,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, 1),
             1,
             1,
             1000,
-            0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+            abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -287,16 +269,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp),
                 0,
                 1,
                 1000,
-                0,
                 2 * 1e6,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -305,16 +285,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         }
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from2, 0, block.timestamp),
                 1,
                 1,
                 1000,
                 0,
-                0,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
@@ -328,16 +306,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             1000,
-            0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
+            abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(999, 1000)))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -345,22 +321,20 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
+        vm.expectRevert(PerpLimitOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(1, signedOrder, settlementData);
     }
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1000,
-            0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
+            abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1001, 1000)))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -368,23 +342,21 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
+        vm.expectRevert(PerpLimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(1, signedOrder, settlementData);
     }
 
     // executeOrder fails if filler pool is not enough
     function testExecuteOrderFailedIfFillerPoolIsNotEnough() public {
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
                 0,
                 1,
                 -1e8,
-                0,
                 5 * 1e6,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(PerpLimitOrderValidationData(0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -397,16 +369,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         }
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from2, 0, block.timestamp + 100),
                 0,
                 1,
                 1e8,
-                0,
                 5 * 1e6,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(PerpLimitOrderValidationData(0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
@@ -420,16 +390,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         fillerMarket.withdrawFromFillerPool(1, 89 * 1e6);
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            PerpOrder memory order = PerpOrder(
                 OrderInfo(address(fillerMarket), from2, 1, block.timestamp + 100),
                 0,
                 1,
                 1e8,
-                0,
                 5 * 1e6,
-                0,
                 address(limitOrderValidator),
-                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(PerpLimitOrderValidationData(0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
@@ -444,16 +412,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
     // executeOrder fails if the position is danger
     function testExecuteOrderFailedIfPositionIsDanger() public {
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1e6,
-            0,
             1e4,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            abi.encode(PerpLimitOrderValidationData(0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);

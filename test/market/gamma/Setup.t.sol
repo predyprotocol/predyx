@@ -5,14 +5,14 @@ import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import "../../../src/GammaTradeMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
-import "../../../src/libraries/orders/LimitOrder.sol";
-import {GeneralOrderLib} from "../../../src/libraries/orders/GeneralOrderLib.sol";
+import "../../../src/libraries/orders/LimitOrderValidator.sol";
+import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 
 contract TestMarket is TestPool, SigUtils {
-    using GeneralOrderLib for GeneralOrder;
+    using GammaOrderLib for GammaOrder;
 
     UniswapSettlement settlement;
     GammaTradeMarket fillerMarket;
@@ -49,11 +49,7 @@ contract TestMarket is TestPool, SigUtils {
         return quoteAmount * Constants.Q96 / baseAmount;
     }
 
-    function _toPermit(GeneralOrder memory order)
-        internal
-        view
-        returns (ISignatureTransfer.PermitTransferFrom memory)
-    {
+    function _toPermit(GammaOrder memory order) internal view returns (ISignatureTransfer.PermitTransferFrom memory) {
         uint256 amount = order.marginAmount > 0 ? uint256(order.marginAmount) : 0;
 
         return ISignatureTransfer.PermitTransferFrom({
@@ -63,7 +59,7 @@ contract TestMarket is TestPool, SigUtils {
         });
     }
 
-    function _createSignedOrder(GeneralOrder memory marketOrder, uint256 fromPrivateKey)
+    function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view
         returns (IFillerMarket.SignedOrder memory signedOrder)
@@ -74,7 +70,7 @@ contract TestMarket is TestPool, SigUtils {
             fromPrivateKey,
             _toPermit(marketOrder),
             address(fillerMarket),
-            GeneralOrderLib.PERMIT2_ORDER_TYPE,
+            GammaOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
         );

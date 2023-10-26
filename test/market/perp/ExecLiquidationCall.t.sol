@@ -37,16 +37,14 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
 
-        GeneralOrder memory order = GeneralOrder(
+        PerpOrder memory order = PerpOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1000 * 1e4,
-            0,
             210000,
-            0,
             address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            abi.encode(PerpLimitOrderValidationData(0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);

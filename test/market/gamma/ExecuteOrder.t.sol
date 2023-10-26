@@ -41,14 +41,13 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
-        GeneralOrder memory order = GeneralOrder(
+        GammaOrder memory order = GammaOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1000,
             900,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
@@ -68,14 +67,13 @@ contract TestExecuteOrder is TestMarket {
     // netting
     function testExecuteOrderSucceedsWithNetting() public {
         {
-            GeneralOrder memory order = GeneralOrder(
+            GammaOrder memory order = GammaOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
                 0,
                 1,
                 -1000 * 1e4,
                 0,
                 2 * 1e8,
-                0,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -89,12 +87,11 @@ contract TestExecuteOrder is TestMarket {
         }
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            GammaOrder memory order = GammaOrder(
                 OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
                 1,
                 1,
                 1000 * 1e4,
-                0,
                 0,
                 0,
                 address(limitOrderValidator),
@@ -125,14 +122,13 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
-        GeneralOrder memory order = GeneralOrder(
+        GammaOrder memory order = GammaOrder(
             OrderInfo(address(fillerMarket), from1, 0, 1),
             1,
             1,
             1000,
             0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
         );
@@ -152,14 +148,13 @@ contract TestExecuteOrder is TestMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            GammaOrder memory order = GammaOrder(
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp),
                 0,
                 1,
                 1000,
                 0,
                 2 * 1e6,
-                0,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -170,12 +165,11 @@ contract TestExecuteOrder is TestMarket {
         }
 
         {
-            GeneralOrder memory order = GeneralOrder(
+            GammaOrder memory order = GammaOrder(
                 OrderInfo(address(fillerMarket), from2, 0, block.timestamp),
                 1,
                 1,
                 1000,
-                0,
                 0,
                 0,
                 address(limitOrderValidator),
@@ -193,14 +187,13 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
-        GeneralOrder memory order = GeneralOrder(
+        GammaOrder memory order = GammaOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             1000,
             0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
         );
@@ -216,14 +209,13 @@ contract TestExecuteOrder is TestMarket {
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
-        GeneralOrder memory order = GeneralOrder(
+        GammaOrder memory order = GammaOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
             -1000,
             0,
             2 * 1e6,
-            0,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
         );

@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import "../Constants.sol";
-import "./GeneralOrderLib.sol";
+import "./GammaOrder.sol";
 import "../math/Math.sol";
 
 struct LimitOrderValidationData {
@@ -23,52 +23,52 @@ contract LimitOrderValidator {
 
     error TriggerNotMatched();
 
-    function validate(GeneralOrder memory generalOrder, IPredyPool.TradeResult memory tradeResult) external pure {
+    function validate(GammaOrder memory gammaOrder, IPredyPool.TradeResult memory tradeResult) external pure {
         LimitOrderValidationData memory validationData =
-            abi.decode(generalOrder.validationData, (LimitOrderValidationData));
+            abi.decode(gammaOrder.validationData, (LimitOrderValidationData));
 
         if (validationData.triggerPrice > 0) {
             uint256 twap = (tradeResult.sqrtTwap * tradeResult.sqrtTwap) >> Constants.RESOLUTION;
 
-            if (generalOrder.tradeAmount > 0 && validationData.triggerPrice < twap) {
+            if (gammaOrder.tradeAmount > 0 && validationData.triggerPrice < twap) {
                 revert TriggerNotMatched();
             }
-            if (generalOrder.tradeAmount < 0 && validationData.triggerPrice > twap) {
+            if (gammaOrder.tradeAmount < 0 && validationData.triggerPrice > twap) {
                 revert TriggerNotMatched();
             }
         }
 
         if (validationData.triggerPriceSqrt > 0) {
-            if (generalOrder.tradeAmountSqrt > 0 && validationData.triggerPriceSqrt < tradeResult.sqrtTwap) {
+            if (gammaOrder.tradeAmountSqrt > 0 && validationData.triggerPriceSqrt < tradeResult.sqrtTwap) {
                 revert TriggerNotMatched();
             }
-            if (generalOrder.tradeAmountSqrt < 0 && validationData.triggerPriceSqrt > tradeResult.sqrtTwap) {
+            if (gammaOrder.tradeAmountSqrt < 0 && validationData.triggerPriceSqrt > tradeResult.sqrtTwap) {
                 revert TriggerNotMatched();
             }
         }
 
-        if (validationData.limitPrice > 0 && generalOrder.tradeAmount != 0) {
+        if (validationData.limitPrice > 0 && gammaOrder.tradeAmount != 0) {
             uint256 tradePrice = Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff)
-                * Constants.Q96 / Math.abs(generalOrder.tradeAmount);
+                * Constants.Q96 / Math.abs(gammaOrder.tradeAmount);
 
-            if (generalOrder.tradeAmount > 0 && validationData.limitPrice < tradePrice) {
+            if (gammaOrder.tradeAmount > 0 && validationData.limitPrice < tradePrice) {
                 revert PriceGreaterThanLimit();
             }
 
-            if (generalOrder.tradeAmount < 0 && validationData.limitPrice > tradePrice) {
+            if (gammaOrder.tradeAmount < 0 && validationData.limitPrice > tradePrice) {
                 revert PriceLessThanLimit();
             }
         }
 
-        if (validationData.limitPriceSqrt > 0 && generalOrder.tradeAmountSqrt != 0) {
+        if (validationData.limitPriceSqrt > 0 && gammaOrder.tradeAmountSqrt != 0) {
             uint256 tradePriceSqrt = Math.abs(tradeResult.payoff.sqrtEntryUpdate + tradeResult.payoff.sqrtPayoff)
-                * Constants.Q96 / Math.abs(generalOrder.tradeAmountSqrt);
+                * Constants.Q96 / Math.abs(gammaOrder.tradeAmountSqrt);
 
-            if (generalOrder.tradeAmountSqrt > 0 && validationData.limitPriceSqrt < tradePriceSqrt) {
+            if (gammaOrder.tradeAmountSqrt > 0 && validationData.limitPriceSqrt < tradePriceSqrt) {
                 revert PriceGreaterThanLimit();
             }
 
-            if (generalOrder.tradeAmountSqrt < 0 && validationData.limitPriceSqrt > tradePriceSqrt) {
+            if (gammaOrder.tradeAmountSqrt < 0 && validationData.limitPriceSqrt > tradePriceSqrt) {
                 revert PriceLessThanLimit();
             }
         }

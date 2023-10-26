@@ -7,20 +7,20 @@ import "../../../src/interfaces/ISettlement.sol";
 import "../../../src/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/settlements/DirectSettlement.sol";
-import "../../../src/libraries/orders/LimitOrder.sol";
-import {GeneralOrderLib} from "../../../src/libraries/orders/GeneralOrderLib.sol";
+import "../../../src/libraries/orders/PerpLimitOrderValidator.sol";
+import {PerpOrder, PerpOrderLib} from "../../../src/libraries/orders/PerpOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import "../../mocks/MockPriceFeed.sol";
 
 contract TestPerpMarket is TestPool, SigUtils {
-    using GeneralOrderLib for GeneralOrder;
+    using PerpOrderLib for PerpOrder;
 
     UniswapSettlement settlement;
     DirectSettlement directSettlement;
     PerpMarket fillerMarket;
     IPermit2 permit2;
-    LimitOrderValidator limitOrderValidator;
+    PerpLimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     uint256 pairId;
@@ -57,7 +57,7 @@ contract TestPerpMarket is TestPool, SigUtils {
         currency0.approve(address(directSettlement), type(uint256).max);
         currency1.approve(address(directSettlement), type(uint256).max);
 
-        limitOrderValidator = new LimitOrderValidator();
+        limitOrderValidator = new PerpLimitOrderValidator();
 
         predyPool.supply(1, true, 1e18);
         predyPool.supply(1, false, 1e18);
@@ -67,11 +67,7 @@ contract TestPerpMarket is TestPool, SigUtils {
         return quoteAmount * Constants.Q96 / baseAmount;
     }
 
-    function _toPermit(GeneralOrder memory order)
-        internal
-        view
-        returns (ISignatureTransfer.PermitTransferFrom memory)
-    {
+    function _toPermit(PerpOrder memory order) internal view returns (ISignatureTransfer.PermitTransferFrom memory) {
         uint256 amount = order.marginAmount > 0 ? uint256(order.marginAmount) : 0;
 
         return ISignatureTransfer.PermitTransferFrom({
@@ -81,22 +77,22 @@ contract TestPerpMarket is TestPool, SigUtils {
         });
     }
 
-    function _createSignedOrder(GeneralOrder memory marketOrder, uint256 fromPrivateKey)
+    function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)
         internal
         view
         returns (IFillerMarket.SignedOrder memory signedOrder)
     {
-        bytes32 witness = marketOrder.hash();
+        bytes32 witness = order.hash();
 
         bytes memory sig = getPermitSignature(
             fromPrivateKey,
-            _toPermit(marketOrder),
+            _toPermit(order),
             address(fillerMarket),
-            GeneralOrderLib.PERMIT2_ORDER_TYPE,
+            PerpOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
         );
 
-        signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
+        signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
     }
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../../src/libraries/orders/LimitOrder.sol";
+import "../../../src/libraries/orders/LimitOrderValidator.sol";
 
 contract LimitOrderValidatorTest is Test {
     LimitOrderValidator limitOrderValidator;
@@ -14,14 +14,14 @@ contract LimitOrderValidatorTest is Test {
     function testValidate(int256 tradeAmount, int256 tradeAmountSqrt) public {
         LimitOrderValidationData memory limitOrderValidationData;
 
-        GeneralOrder memory generalOrder;
-        generalOrder.tradeAmount = tradeAmount;
-        generalOrder.tradeAmountSqrt = tradeAmountSqrt;
-        generalOrder.validationData = abi.encode(limitOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = tradeAmount;
+        gammaOrder.tradeAmountSqrt = tradeAmountSqrt;
+        gammaOrder.validationData = abi.encode(limitOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
-        limitOrderValidator.validate(generalOrder, tradeResult);
+        limitOrderValidator.validate(gammaOrder, tradeResult);
     }
 
     function testValidatePriceGreaterThanLimit(int256 tradeAmount) public {
@@ -31,9 +31,9 @@ contract LimitOrderValidatorTest is Test {
 
         limitOrderValidationData.limitPrice = Constants.Q96 / 2;
 
-        GeneralOrder memory generalOrder;
-        generalOrder.tradeAmount = tradeAmount;
-        generalOrder.validationData = abi.encode(limitOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = tradeAmount;
+        gammaOrder.validationData = abi.encode(limitOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
@@ -42,7 +42,7 @@ contract LimitOrderValidatorTest is Test {
         if (tradeAmount > 0) {
             vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         }
-        limitOrderValidator.validate(generalOrder, tradeResult);
+        limitOrderValidator.validate(gammaOrder, tradeResult);
     }
 
     function testValidatePriceLessThanLimit(int256 tradeAmount) public {
@@ -52,9 +52,9 @@ contract LimitOrderValidatorTest is Test {
 
         limitOrderValidationData.limitPrice = 2 * Constants.Q96;
 
-        GeneralOrder memory generalOrder;
-        generalOrder.tradeAmount = tradeAmount;
-        generalOrder.validationData = abi.encode(limitOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = tradeAmount;
+        gammaOrder.validationData = abi.encode(limitOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
@@ -63,6 +63,6 @@ contract LimitOrderValidatorTest is Test {
         if (tradeAmount < 0) {
             vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         }
-        limitOrderValidator.validate(generalOrder, tradeResult);
+        limitOrderValidator.validate(gammaOrder, tradeResult);
     }
 }

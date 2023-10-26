@@ -16,7 +16,7 @@ contract PerpMarketQuoter {
         predyPoolQuoter = _predyPoolQuoter;
     }
 
-    function quoteExecuteOrder(GeneralOrder memory order, ISettlement.SettlementData memory settlementData)
+    function quoteExecuteOrder(PerpOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (PerpMarket.PerpTradeResult memory perpTradeResult)
     {

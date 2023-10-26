@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import "../Constants.sol";
-import "./GeneralOrderLib.sol";
+import "./PerpOrder.sol";
 import "../math/Math.sol";
 
 struct DutchOrderValidationData {
@@ -25,24 +25,22 @@ contract DutchOrderValidator {
 
     error TriggerNotMatched();
 
-    function validate(GeneralOrder memory generalOrder, IPredyPool.TradeResult memory tradeResult) external view {
+    function validate(PerpOrder memory perpOrder, IPredyPool.TradeResult memory tradeResult) external view {
         DutchOrderValidationData memory validationData =
-            abi.decode(generalOrder.validationData, (DutchOrderValidationData));
-
-        require(generalOrder.tradeAmountSqrt == 0);
+            abi.decode(perpOrder.validationData, (DutchOrderValidationData));
 
         uint256 decayedPrice =
             decay(validationData.startPrice, validationData.endPrice, validationData.startTime, validationData.endTime);
 
-        if (generalOrder.tradeAmount != 0) {
+        if (perpOrder.tradeAmount != 0) {
             uint256 tradePrice = Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff)
-                * Constants.Q96 / Math.abs(generalOrder.tradeAmount);
+                * Constants.Q96 / Math.abs(perpOrder.tradeAmount);
 
-            if (generalOrder.tradeAmount > 0 && decayedPrice < tradePrice) {
+            if (perpOrder.tradeAmount > 0 && decayedPrice < tradePrice) {
                 revert PriceGreaterThanLimit();
             }
 
-            if (generalOrder.tradeAmount < 0 && decayedPrice > tradePrice) {
+            if (perpOrder.tradeAmount < 0 && decayedPrice > tradePrice) {
                 revert PriceLessThanLimit();
             }
         }

@@ -7,55 +7,51 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {ResolvedOrder} from "./ResolvedOrder.sol";
 import "../Constants.sol";
 
-struct GeneralOrder {
+struct PerpOrder {
     OrderInfo info;
     uint256 positionId;
     uint64 pairId;
     int256 tradeAmount;
-    int256 tradeAmountSqrt;
     int256 marginAmount;
-    uint256 marginRatio;
     address validatorAddress;
     bytes validationData;
 }
 
-/// @notice helpers for handling general order objects
-library GeneralOrderLib {
+/// @notice helpers for handling perp order objects
+library PerpOrderLib {
     using OrderInfoLib for OrderInfo;
 
-    bytes internal constant GENERAL_ORDER_TYPE = abi.encodePacked(
-        "GeneralOrder(",
+    bytes internal constant PERP_ORDER_TYPE = abi.encodePacked(
+        "PerpOrder(",
         "OrderInfo info,",
         "uint256 positionId,",
         "uint64 pairId,",
         "int256 tradeAmount,",
-        "int256 tradeAmountSqrt,",
         "int256 marginAmount,",
-        "uint256 marginRatio" "address validatorAddress" "bytes validationData)"
+        "address validatorAddress",
+        "bytes validationData)"
     );
 
     /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
-    bytes internal constant ORDER_TYPE = abi.encodePacked(GENERAL_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
-    bytes32 internal constant GENERAL_ORDER_TYPE_HASH = keccak256(GENERAL_ORDER_TYPE);
+    bytes internal constant ORDER_TYPE = abi.encodePacked(OrderInfoLib.ORDER_INFO_TYPE, PERP_ORDER_TYPE);
+    bytes32 internal constant PERP_ORDER_TYPE_HASH = keccak256(PERP_ORDER_TYPE);
 
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
     string internal constant PERMIT2_ORDER_TYPE =
-        string(abi.encodePacked("GeneralOrder witness)", ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
+        string(abi.encodePacked("PerpOrder witness)", ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
 
     /// @notice hash the given order
     /// @param order the order to hash
     /// @return the eip-712 order hash
-    function hash(GeneralOrder memory order) internal pure returns (bytes32) {
+    function hash(PerpOrder memory order) internal pure returns (bytes32) {
         return keccak256(
             abi.encode(
-                GENERAL_ORDER_TYPE_HASH,
+                PERP_ORDER_TYPE_HASH,
                 order.info.hash(),
                 order.positionId,
                 order.pairId,
                 order.tradeAmount,
-                order.tradeAmountSqrt,
                 order.marginAmount,
-                order.marginRatio,
                 order.validatorAddress,
                 order.validationData
             )
@@ -65,12 +61,12 @@ library GeneralOrderLib {
     function resolve(IFillerMarket.SignedOrder memory order, address token)
         internal
         pure
-        returns (GeneralOrder memory generalOrder, ResolvedOrder memory)
+        returns (PerpOrder memory perpOrder, ResolvedOrder memory)
     {
-        generalOrder = abi.decode(order.order, (GeneralOrder));
+        perpOrder = abi.decode(order.order, (PerpOrder));
 
-        uint256 amount = generalOrder.marginAmount > 0 ? uint256(generalOrder.marginAmount) : 0;
+        uint256 amount = perpOrder.marginAmount > 0 ? uint256(perpOrder.marginAmount) : 0;
 
-        return (generalOrder, ResolvedOrder(generalOrder.info, token, amount, hash(generalOrder), order.sig));
+        return (perpOrder, ResolvedOrder(perpOrder.info, token, amount, hash(perpOrder), order.sig));
     }
 }
