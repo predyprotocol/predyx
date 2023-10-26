@@ -25,14 +25,10 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
     using Math for uint256;
 
     IPermit2 _permit2;
-    address _quoteTokenAddress;
 
     mapping(uint256 vaultId => address) public userPositions;
 
-    constructor(IPredyPool _predyPool, address quoteTokenAddress, address permit2Address)
-        BaseHookCallback(_predyPool)
-    {
-        _quoteTokenAddress = quoteTokenAddress;
+    constructor(IPredyPool _predyPool, address permit2Address) BaseHookCallback(_predyPool) {
         _permit2 = IPermit2(permit2Address);
     }
 
@@ -44,7 +40,9 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
 
         if (marginAmountUpdate > 0) {
-            TransferHelper.safeTransfer(_quoteTokenAddress, address(_predyPool), uint256(marginAmountUpdate));
+            TransferHelper.safeTransfer(
+                _getQuoteTokenAddress(tradeParams.pairId), address(_predyPool), uint256(marginAmountUpdate)
+            );
         } else if (marginAmountUpdate < 0) {
             _predyPool.take(true, address(this), uint256(-marginAmountUpdate));
         }
@@ -60,8 +58,12 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        (GammaOrder memory gammaOrder, ResolvedOrder memory resolvedOrder) =
-            GammaOrderLib.resolve(order, _quoteTokenAddress);
+        GammaOrder memory gammaOrder = abi.decode(order.order, (GammaOrder));
+        ResolvedOrder memory resolvedOrder = GammaOrderLib.resolve(gammaOrder, order.sig);
+
+        require(_quoteTokenMap[gammaOrder.pairId] != address(0));
+        // TODO: check gammaOrder.entryTokenAddress and _quoteTokenMap[gammaOrder.pairId]
+        require(gammaOrder.entryTokenAddress == _quoteTokenMap[gammaOrder.pairId]);
 
         _verifyOrder(resolvedOrder);
 
@@ -90,7 +92,9 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         IOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
         if (gammaOrder.marginAmount < 0) {
-            TransferHelper.safeTransfer(_quoteTokenAddress, gammaOrder.info.trader, uint256(-gammaOrder.marginAmount));
+            TransferHelper.safeTransfer(
+                _quoteTokenMap[gammaOrder.pairId], gammaOrder.info.trader, uint256(-gammaOrder.marginAmount)
+            );
         }
 
         return tradeResult;

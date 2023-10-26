@@ -34,7 +34,7 @@ contract TestMarket is TestPool, SigUtils {
 
         settlement = new UniswapSettlement(predyPool, swapRouter);
 
-        fillerMarket = new GammaTradeMarket(predyPool, address(currency1), address(permit2));
+        fillerMarket = new GammaTradeMarket(predyPool, address(permit2));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);

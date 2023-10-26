@@ -46,7 +46,8 @@ contract TestPerpMarket is TestPool, SigUtils {
         priceFeed.setSqrtPrice(2 ** 96);
         pairId = registerPair(address(currency1), address(priceFeed));
 
-        fillerMarket = new PerpMarket(predyPool, address(currency1), address(permit2));
+        fillerMarket = new PerpMarket(predyPool, address(permit2));
+        fillerMarket.updateQuoteTokenMap(1);
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);

@@ -11,6 +11,7 @@ struct PerpOrder {
     OrderInfo info;
     uint256 positionId;
     uint64 pairId;
+    address entryTokenAddress;
     int256 tradeAmount;
     int256 marginAmount;
     address validatorAddress;
@@ -26,6 +27,7 @@ library PerpOrderLib {
         "OrderInfo info,",
         "uint256 positionId,",
         "uint64 pairId,",
+        "address entryTokenAddress,",
         "int256 tradeAmount,",
         "int256 marginAmount,",
         "address validatorAddress",
@@ -50,6 +52,7 @@ library PerpOrderLib {
                 order.info.hash(),
                 order.positionId,
                 order.pairId,
+                order.entryTokenAddress,
                 order.tradeAmount,
                 order.marginAmount,
                 order.validatorAddress,
@@ -58,15 +61,11 @@ library PerpOrderLib {
         );
     }
 
-    function resolve(IFillerMarket.SignedOrder memory order, address token)
-        internal
-        pure
-        returns (PerpOrder memory perpOrder, ResolvedOrder memory)
-    {
-        perpOrder = abi.decode(order.order, (PerpOrder));
+    function resolve(PerpOrder memory perpOrder, bytes memory sig) internal pure returns (ResolvedOrder memory) {
+        // perpOrder = abi.decode(order.order, (PerpOrder));
 
         uint256 amount = perpOrder.marginAmount > 0 ? uint256(perpOrder.marginAmount) : 0;
 
-        return (perpOrder, ResolvedOrder(perpOrder.info, token, amount, hash(perpOrder), order.sig));
+        return ResolvedOrder(perpOrder.info, perpOrder.entryTokenAddress, amount, hash(perpOrder), sig);
     }
 }

@@ -16,6 +16,7 @@ contract TestExecuteOrder is TestMarket {
         TestMarket.setUp();
 
         registerPair(address(currency1), address(0));
+        fillerMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -45,6 +46,7 @@ contract TestExecuteOrder is TestMarket {
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
+            address(currency1),
             -1000,
             900,
             2 * 1e6,
@@ -71,6 +73,7 @@ contract TestExecuteOrder is TestMarket {
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
                 0,
                 1,
+                address(currency1),
                 -1000 * 1e4,
                 0,
                 2 * 1e8,
@@ -91,6 +94,7 @@ contract TestExecuteOrder is TestMarket {
                 OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
                 1,
                 1,
+                address(currency1),
                 1000 * 1e4,
                 0,
                 0,
@@ -126,6 +130,7 @@ contract TestExecuteOrder is TestMarket {
             OrderInfo(address(fillerMarket), from1, 0, 1),
             1,
             1,
+            address(currency1),
             1000,
             0,
             2 * 1e6,
@@ -152,6 +157,7 @@ contract TestExecuteOrder is TestMarket {
                 OrderInfo(address(fillerMarket), from1, 0, block.timestamp),
                 0,
                 1,
+                address(currency1),
                 1000,
                 0,
                 2 * 1e6,
@@ -169,6 +175,7 @@ contract TestExecuteOrder is TestMarket {
                 OrderInfo(address(fillerMarket), from2, 0, block.timestamp),
                 1,
                 1,
+                address(currency1),
                 1000,
                 0,
                 0,
@@ -191,6 +198,7 @@ contract TestExecuteOrder is TestMarket {
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
+            address(currency1),
             1000,
             0,
             2 * 1e6,
@@ -213,6 +221,7 @@ contract TestExecuteOrder is TestMarket {
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
+            address(currency1),
             -1000,
             0,
             2 * 1e6,

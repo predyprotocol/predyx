@@ -32,7 +32,6 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     using Math for int256;
 
     IPermit2 _permit2;
-    address _quoteTokenAddress;
 
     struct Filler {
         uint256 vaultId;
@@ -96,10 +95,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         _;
     }
 
-    constructor(IPredyPool _predyPool, address quoteTokenAddress, address permit2Address)
-        BaseHookCallback(_predyPool)
-    {
-        _quoteTokenAddress = quoteTokenAddress;
+    constructor(IPredyPool _predyPool, address permit2Address) BaseHookCallback(_predyPool) {
         _permit2 = IPermit2(permit2Address);
 
         positionCount = 1;
@@ -128,13 +124,13 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     function depositToFillerPool(uint256 fillerPoolId, uint256 depositAmount) external onlyFiller(fillerPoolId) {
         require(depositAmount > 0);
 
-        IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
+        address quoteTokenAddress = _quoteTokenMap[fillers[fillerPoolId].pairId];
+
+        IERC20(quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
 
         fillers[fillerPoolId].marginAmount += int256(depositAmount);
-        // marginAmount increase by funding fee
-        // marginAmount decrease by liquidation
 
-        IERC20(_quoteTokenAddress).approve(address(_predyPool), depositAmount);
+        IERC20(quoteTokenAddress).approve(address(_predyPool), depositAmount);
 
         _predyPool.updateMargin(fillers[fillerPoolId].vaultId, int256(depositAmount));
     }
@@ -153,7 +149,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         validateFillerPoolSafety(fillerPoolId);
 
-        TransferHelper.safeTransfer(_quoteTokenAddress, msg.sender, withdrawAmount);
+        TransferHelper.safeTransfer(_quoteTokenMap[fillers[fillerPoolId].pairId], msg.sender, withdrawAmount);
     }
 
     /**
@@ -168,8 +164,11 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         SignedOrder memory order,
         ISettlement.SettlementData memory settlementData
     ) external returns (PerpTradeResult memory perpTradeResult) {
-        (PerpOrder memory perpOrder, ResolvedOrder memory resolvedOrder) =
-            PerpOrderLib.resolve(order, _quoteTokenAddress);
+        PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
+        ResolvedOrder memory resolvedOrder = PerpOrderLib.resolve(perpOrder, order.sig);
+
+        require(_quoteTokenMap[perpOrder.pairId] != address(0));
+        require(perpOrder.entryTokenAddress == _quoteTokenMap[perpOrder.pairId]);
 
         // validate resolved order and verify for permit2
         // transfer token from trader to the contract
@@ -177,7 +176,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         // deposit margin to the vault if required
         if (perpOrder.marginAmount > 0) {
-            IERC20(_quoteTokenAddress).approve(address(_predyPool), uint256(perpOrder.marginAmount));
+            IERC20(perpOrder.entryTokenAddress).approve(address(_predyPool), uint256(perpOrder.marginAmount));
             _predyPool.updateMargin(fillers[fillerPoolId].vaultId, perpOrder.marginAmount);
         }
 
@@ -333,7 +332,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             }
         }
 
-        handlePositionMargin(positionId);
+        handlePositionMargin(positionId, fillerPool.pairId);
     }
 
     /**
@@ -433,10 +432,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         _predyPool.updateMargin(filler.vaultId, -int256(marginAmount));
 
-        TransferHelper.safeTransfer(_quoteTokenAddress, userPosition.owner, marginAmount);
+        TransferHelper.safeTransfer(_quoteTokenMap[filler.pairId], userPosition.owner, marginAmount);
     }
 
-    function handlePositionMargin(uint256 positionId) internal {
+    function handlePositionMargin(uint256 positionId, uint256 pairId) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.positionAmount == 0) {
@@ -465,9 +464,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
                     userPosition.marginAmount = 0;
 
-                    IERC20(_quoteTokenAddress).transferFrom(msg.sender, address(this), requiredMargin);
+                    IERC20(_quoteTokenMap[pairId]).transferFrom(msg.sender, address(this), requiredMargin);
 
-                    IERC20(_quoteTokenAddress).approve(address(_predyPool), requiredMargin);
+                    IERC20(_quoteTokenMap[pairId]).approve(address(_predyPool), requiredMargin);
                     _predyPool.updateMargin(filler.vaultId, int256(requiredMargin));
                 }
             }

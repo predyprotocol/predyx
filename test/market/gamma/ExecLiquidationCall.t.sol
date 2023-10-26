@@ -14,6 +14,7 @@ contract TestExecLiquidationCall is TestMarket {
         TestMarket.setUp();
 
         registerPair(address(currency1), address(0));
+        fillerMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -41,6 +42,7 @@ contract TestExecLiquidationCall is TestMarket {
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
+            address(currency1),
             -4 * 1e8,
             0,
             1e8,

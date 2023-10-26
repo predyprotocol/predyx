@@ -11,6 +11,7 @@ struct GammaOrder {
     OrderInfo info;
     uint256 positionId;
     uint64 pairId;
+    address entryTokenAddress;
     int256 tradeAmount;
     int256 tradeAmountSqrt;
     int256 marginAmount;
@@ -27,6 +28,7 @@ library GammaOrderLib {
         "OrderInfo info,",
         "uint256 positionId,",
         "uint64 pairId,",
+        "address entryTokenAddress,",
         "int256 tradeAmount,",
         "int256 tradeAmountSqrt,",
         "int256 marginAmount,",
@@ -52,6 +54,7 @@ library GammaOrderLib {
                 order.info.hash(),
                 order.positionId,
                 order.pairId,
+                order.entryTokenAddress,
                 order.tradeAmount,
                 order.tradeAmountSqrt,
                 order.marginAmount,
@@ -61,15 +64,11 @@ library GammaOrderLib {
         );
     }
 
-    function resolve(IFillerMarket.SignedOrder memory order, address token)
-        internal
-        pure
-        returns (GammaOrder memory generalOrder, ResolvedOrder memory)
-    {
-        generalOrder = abi.decode(order.order, (GammaOrder));
+    function resolve(GammaOrder memory gammaOrder, bytes memory sig) internal pure returns (ResolvedOrder memory) {
+        // generalOrder = abi.decode(order.order, (GammaOrder));
 
-        uint256 amount = generalOrder.marginAmount > 0 ? uint256(generalOrder.marginAmount) : 0;
+        uint256 amount = gammaOrder.marginAmount > 0 ? uint256(gammaOrder.marginAmount) : 0;
 
-        return (generalOrder, ResolvedOrder(generalOrder.info, token, amount, hash(generalOrder), order.sig));
+        return ResolvedOrder(gammaOrder.info, gammaOrder.entryTokenAddress, amount, hash(gammaOrder), sig);
     }
 }

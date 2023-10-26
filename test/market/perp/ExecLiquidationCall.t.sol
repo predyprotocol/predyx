@@ -41,6 +41,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             0,
             1,
+            address(currency1),
             -1000 * 1e4,
             210000,
             address(limitOrderValidator),
