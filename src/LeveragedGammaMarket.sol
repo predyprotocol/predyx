@@ -29,7 +29,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     using Math for int256;
 
     IPermit2 _permit2;
-    address _quoteTokenAddress;
+    
     // 12%;
     uint256 public constant BORROW_FEE_RATE = 1200;
     // 0.1%
@@ -78,10 +78,9 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         _;
     }
 
-    constructor(IPredyPool _predyPool, address quoteTokenAddress, address permit2Address)
+    constructor(IPredyPool _predyPool, address permit2Address)
         BaseHookCallback(_predyPool)
     {
-        _quoteTokenAddress = quoteTokenAddress;
         _permit2 = IPermit2(permit2Address);
     }
 
