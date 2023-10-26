@@ -21,14 +21,14 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
 
     function testCannotDepositToFillerPool() public {
         vm.expectRevert();
-        fillerMarket.depositToFillerPool(fillerPoolId, 0);
+        fillerMarket.depositToInsurancePool(fillerPoolId, 0);
     }
 
     function testCannotDepositToFillerPoolIfCallerIsNotFiller() public {
         vm.startPrank(from);
 
         vm.expectRevert(PerpMarket.CallerIsNotFiller.selector);
-        fillerMarket.depositToFillerPool(fillerPoolId, 1000000);
+        fillerMarket.depositToInsurancePool(fillerPoolId, 1000000);
 
         vm.stopPrank();
     }
@@ -39,7 +39,7 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
         uint256 newFillerPoolId = fillerMarket.addFillerPool(pairId);
 
         vm.expectRevert(bytes("ERC20: insufficient allowance"));
-        fillerMarket.depositToFillerPool(newFillerPoolId, 1000000);
+        fillerMarket.depositToInsurancePool(newFillerPoolId, 1000000);
 
         vm.stopPrank();
     }
@@ -47,9 +47,9 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
     function testDepositToFillerPool(uint256 marginAmount) public {
         marginAmount = bound(marginAmount, 1, 1e18);
 
-        fillerMarket.depositToFillerPool(fillerPoolId, marginAmount);
+        fillerMarket.depositToInsurancePool(fillerPoolId, marginAmount);
 
-        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.fillers(fillerPoolId);
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(fillerPoolId);
 
         assertEq(fillerMarginAmount, int256(marginAmount));
     }

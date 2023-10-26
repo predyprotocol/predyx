@@ -21,7 +21,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
 
         fillerPoolId = fillerMarket.addFillerPool(pairId);
 
-        fillerMarket.depositToFillerPool(1, 100 * 1e6);
+        fillerMarket.depositToInsurancePool(1, 100 * 1e6);
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -71,7 +71,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         fillerMarket.execLiquidationCall(1, settlementData);
         // vm.stopPrank();
 
-        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.fillers(fillerPoolId);
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(fillerPoolId);
 
         assertLt(fillerMarginAmount, int256(100 * 1e6));
     }
@@ -93,7 +93,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
 
         // 79247578957702974831301681716
 
-        fillerMarket.depositToFillerPool(1, 1e12);
+        fillerMarket.depositToInsurancePool(1, 1e12);
 
         ISettlement.SettlementData memory settlementData = directSettlement.getSettlementParams(
             address(currency1), address(currency0), sqrtPrice * 1e4 / Constants.Q96

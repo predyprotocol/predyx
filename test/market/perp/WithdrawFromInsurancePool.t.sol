@@ -20,18 +20,18 @@ contract TestPerpMarketWithdrawFromFillerPool is TestPerpMarket {
     }
 
     function testWithdrawFromFillerPool() public {
-        fillerMarket.depositToFillerPool(fillerPoolId, 1000000);
+        fillerMarket.depositToInsurancePool(fillerPoolId, 1000000);
 
-        fillerMarket.withdrawFromFillerPool(fillerPoolId, 1000000);
+        fillerMarket.withdrawFromInsurancePool(fillerPoolId, 1000000);
     }
 
     function testCannotWithdrawFromFillerPoolIfCallerIsNotFiller() public {
-        fillerMarket.depositToFillerPool(fillerPoolId, 1000000);
+        fillerMarket.depositToInsurancePool(fillerPoolId, 1000000);
 
         vm.startPrank(from);
 
         vm.expectRevert(PerpMarket.CallerIsNotFiller.selector);
-        fillerMarket.withdrawFromFillerPool(fillerPoolId, 1000000);
+        fillerMarket.withdrawFromInsurancePool(fillerPoolId, 1000000);
 
         vm.stopPrank();
     }

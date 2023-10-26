@@ -20,7 +20,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         fillerPoolId = fillerMarket.addFillerPool(pairId);
 
-        fillerMarket.depositToFillerPool(fillerPoolId, 1e8);
+        fillerMarket.depositToInsurancePool(fillerPoolId, 1e8);
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -41,9 +41,9 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         // DataType.Vault memory vault = predyPool.getVault(1);
         // assertEq(vault.margin, 0);
 
-        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.fillers(fillerPoolId);
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(fillerPoolId);
 
-        fillerMarket.withdrawFromFillerPool(fillerPoolId, uint256(fillerMarginAmount));
+        fillerMarket.withdrawFromInsurancePool(fillerPoolId, uint256(fillerMarginAmount));
 
         uint256 balance1 = currency1.balanceOf(address(fillerMarket));
 
@@ -402,7 +402,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
         }
 
-        fillerMarket.withdrawFromFillerPool(1, 89 * 1e6);
+        fillerMarket.withdrawFromInsurancePool(1, 89 * 1e6);
 
         {
             PerpOrder memory order = PerpOrder(
