@@ -31,6 +31,8 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
 
     mapping(address => bool) public allowedUniswapPools;
 
+    event RecepientUpdated(uint256 vaultId, address recepient);
+
     modifier onlyByLocker() {
         address locker = globalData.lockData.locker;
         if (msg.sender != locker) revert LockedBy(locker);
@@ -113,14 +115,17 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback {
         return TradeLogic.trade(globalData, tradeParams, settlementData);
     }
 
+    /**
+     * @notice Updates margin recepient address for position liquidation
+     * @param vaultId The id of the vault.
+     * @param recepient if recepient is zero address, protocol never transfers margin.
+     */
     function updateRecepient(uint256 vaultId, address recepient) external {
         DataType.Vault storage vault = globalData.getVault(vaultId);
 
-        if (recepient == address(0)) {
-            revert InvalidAddress();
-        }
-
         vault.recepient = recepient;
+
+        emit RecepientUpdated(vaultId, recepient);
     }
 
     /**
