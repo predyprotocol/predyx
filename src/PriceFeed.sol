@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@solmate/src/utils/FixedPointMathLib.sol";
-import "./vendors/AggregatorV3Interface.sol";
-import "./libraries/Constants.sol";
+import {FixedPointMathLib} from "@solmate/src/utils/FixedPointMathLib.sol";
+import {AggregatorV3Interface} from "./vendors/AggregatorV3Interface.sol";
+import {Constants} from "./libraries/Constants.sol";
 
 contract PriceFeed {
-    address quotePrice;
-    address basePrice;
+    address private _quotePriceFeed;
+    address private _basePriceFeed;
 
-    constructor(address _quotePrice, address _basePrice) {
-        quotePrice = _quotePrice;
-        basePrice = _basePrice;
+    constructor(address quotePrice, address basePrice) {
+        _quotePriceFeed = quotePrice;
+        _basePriceFeed = basePrice;
     }
 
     function getSqrtPrice() external view returns (uint256 sqrtPrice) {
-        (, int256 quoteAnswer,,,) = AggregatorV3Interface(quotePrice).latestRoundData();
-        (, int256 baseAnswer,,,) = AggregatorV3Interface(basePrice).latestRoundData();
+        (, int256 quoteAnswer,,,) = AggregatorV3Interface(_quotePriceFeed).latestRoundData();
+        (, int256 baseAnswer,,,) = AggregatorV3Interface(_basePriceFeed).latestRoundData();
 
         require(quoteAnswer > 0 && baseAnswer > 0);
 

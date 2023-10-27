@@ -19,6 +19,7 @@ import "./libraries/Constants.sol";
 import "./libraries/DataType.sol";
 
 /**
+ * @title LeveragedGammaMarket
  * @notice Provides leveraged perps to retail traders
  */
 contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
@@ -28,11 +29,11 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     using Math for uint256;
     using Math for int256;
 
-    IPermit2 _permit2;
-    
-    // 12%;
+    IPermit2 internal _permit2;
+
+    // 12%: interest rates to be paid into the insurance fund
     uint256 public constant BORROW_FEE_RATE = 1200;
-    // 0.1%
+    // 0.1%: Min margin required for squart debt
     uint256 internal constant _MARGIN_RATIO_WITH_DEBT_SQUART = 1000;
     // The square root of 1%
     uint256 internal constant _RISK_RATIO = 100498756;
@@ -41,13 +42,11 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         uint256 pairId;
         address fillerAddress;
         int256 marginAmount;
-        int256 fillercumulativeFundingRates;
-        int256 fundingRateGrobalGrowth;
-        uint256 lastFundingRateCalculationTime;
     }
 
     struct UserPosition {
         uint256 id;
+        uint256 pairId;
         address filler;
         address owner;
         int256 positionAmount;
@@ -64,6 +63,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
 
     struct CallbackData {
         CallbackSource callbackSource;
+        address caller;
         int256 marginAmountUpdate;
     }
 
@@ -71,16 +71,9 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
-    mapping(address => InsurancePool) public insurancePools;
+    mapping(address filler => mapping(uint256 pairId => InsurancePool)) public insurancePools;
 
-    modifier onlyFiller() {
-        if (insurancePools[msg.sender].fillerAddress != msg.sender) revert CallerIsNotFiller();
-        _;
-    }
-
-    constructor(IPredyPool _predyPool, address permit2Address)
-        BaseHookCallback(_predyPool)
-    {
+    constructor(IPredyPool _predyPool, address permit2Address) BaseHookCallback(_predyPool) {
         _permit2 = IPermit2(permit2Address);
     }
 
@@ -89,58 +82,66 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseHookCallback) onlyPredyPool {
         UserPosition storage userPosition = userPositions[tradeParams.vaultId];
-        InsurancePool storage filler = insurancePools[userPosition.filler];
+        InsurancePool storage insurancePool = insurancePools[userPosition.filler][tradeParams.pairId];
 
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
-        _updateMargin(filler, userPosition, callbackData, tradeResult.minMargin);
+        _handleTradeResult(userPosition, tradeResult, callbackData.caller == insurancePool.fillerAddress);
+
+        _updateMargin(insurancePool, userPosition, callbackData, tradeResult.minMargin);
     }
 
     function _updateMargin(
-        InsurancePool storage filler,
+        InsurancePool storage insurancePool,
         UserPosition storage userPosition,
         CallbackData memory callbackData,
-        int256 fillerMinDeposit
+        int256 positionMinMargin
     ) internal {
-        int256 margin = _predyPool.getVault(userPosition.id).margin;
+        // constraint: userPosition.marginAmount + userPosition.assuranceMargin = vault.margin
         int256 currentAssuranceMargin = userPosition.assuranceMargin;
 
         if (callbackData.callbackSource == CallbackSource.TRADE) {
-            int256 userMargin = margin - currentAssuranceMargin;
+            require(userPosition.marginAmount + callbackData.marginAmountUpdate >= 0);
 
-            require(userMargin + callbackData.marginAmountUpdate >= 0);
-
-            userPosition.assuranceMargin = fillerMinDeposit;
-
-            int256 diff = userMargin + fillerMinDeposit - currentAssuranceMargin;
+            userPosition.assuranceMargin = positionMinMargin;
+            insurancePool.marginAmount += currentAssuranceMargin - positionMinMargin;
 
             userPosition.marginAmount += callbackData.marginAmountUpdate;
-            filler.marginAmount += diff;
 
-            diff += callbackData.marginAmountUpdate;
+            int256 diff = currentAssuranceMargin - positionMinMargin + callbackData.marginAmountUpdate;
 
             if (diff > 0) {
-                IERC20(_getQuoteTokenAddress(filler.pairId)).transfer(address(_predyPool), uint256(diff));
+                IERC20(_quoteTokenMap[insurancePool.pairId]).transfer(address(_predyPool), uint256(diff));
             } else if (diff < 0) {
                 _predyPool.take(true, address(this), uint256(-diff));
             }
         } else if (callbackData.callbackSource == CallbackSource.LIQUIDATION) {
-            _predyPool.take(true, address(this), uint256(margin));
+            _predyPool.take(true, address(this), uint256(userPosition.marginAmount + userPosition.assuranceMargin));
+
+            insurancePool.marginAmount += userPosition.assuranceMargin;
+
+            userPosition.assuranceMargin = 0;
         }
     }
 
-    function depositToInsurancePool(uint256 depositAmount) external onlyFiller {
-        IERC20(_getQuoteTokenAddress(insurancePools[msg.sender].pairId)).transferFrom(
-            msg.sender, address(this), depositAmount
-        );
+    function depositToInsurancePool(uint256 pairId, uint256 depositAmount) external {
+        require(insurancePools[msg.sender][pairId].fillerAddress == msg.sender);
 
-        insurancePools[msg.sender].marginAmount += int256(depositAmount);
+        IERC20(_quoteTokenMap[pairId]).transferFrom(msg.sender, address(this), depositAmount);
+
+        insurancePools[msg.sender][pairId].marginAmount += int256(depositAmount);
     }
 
-    function withdrawFromInsurancePool(uint256 withdrawAmount) external onlyFiller {
-        insurancePools[msg.sender].marginAmount -= int256(withdrawAmount);
+    function withdrawFromInsurancePool(uint256 pairId, uint256 withdrawAmount) external {
+        InsurancePool storage insurancePool = insurancePools[msg.sender][pairId];
 
-        IERC20(_getQuoteTokenAddress(insurancePools[msg.sender].pairId)).transfer(msg.sender, withdrawAmount);
+        require(insurancePool.fillerAddress == msg.sender);
+
+        insurancePool.marginAmount -= int256(withdrawAmount);
+
+        require(insurancePool.marginAmount >= 0);
+
+        IERC20(_quoteTokenMap[pairId]).transfer(msg.sender, withdrawAmount);
     }
 
     /**
@@ -149,7 +150,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
      * @param settlementData The route of settlement created by filler
      * @dev Fillers call this function
      */
-    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function executeOrder(address filler, SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -171,14 +172,17 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
                 gammaOrder.positionId,
                 gammaOrder.tradeAmount,
                 gammaOrder.tradeAmountSqrt,
-                abi.encode(CallbackData(CallbackSource.TRADE, gammaOrder.marginAmount))
+                abi.encode(CallbackData(CallbackSource.TRADE, msg.sender, gammaOrder.marginAmount))
             ),
             settlementData
         );
 
         if (gammaOrder.positionId == 0) {
             userPositions[tradeResult.vaultId].id = gammaOrder.positionId;
+            userPositions[tradeResult.vaultId].pairId = gammaOrder.pairId;
             userPositions[tradeResult.vaultId].owner = gammaOrder.info.trader;
+            userPositions[tradeResult.vaultId].filler = filler;
+            require(filler == insurancePools[filler][gammaOrder.pairId].fillerAddress);
 
             _predyPool.updateRecepient(tradeResult.vaultId, gammaOrder.info.trader);
         } else {
@@ -187,19 +191,20 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
             }
         }
 
+        // TODO: only filler can open position
+        // if (openAmount != 0 && userPositions[tradeResult.vaultId].filler != msg.sender) {
+        //    revert CallerIsNotFiller();
+        //}
+
         userPositions[tradeResult.vaultId].positionAmount += gammaOrder.tradeAmount;
         userPositions[tradeResult.vaultId].positionAmountSqrt += gammaOrder.tradeAmountSqrt;
-
-        require(isPositionSafe(userPositions[tradeResult.vaultId]), "SAFE");
 
         // TODO: should have white list for validatorAddress?
         IOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
-        if (gammaOrder.marginAmount < 0) {
-            IERC20(_quoteTokenMap[gammaOrder.pairId]).transfer(
-                gammaOrder.info.trader, uint256(-gammaOrder.marginAmount)
-            );
-        }
+        _sendMarginToUser(gammaOrder.positionId, gammaOrder.marginAmount < 0 ? uint256(-gammaOrder.marginAmount) : 0);
+
+        require(isPositionSafe(userPositions[tradeResult.vaultId]), "SAFE");
 
         return tradeResult;
     }
@@ -208,6 +213,11 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
 
     function withdrawMargin(uint256 marginAmount) external {}
 
+    // 0.5%
+    uint256 constant _LIQ_SLIPPAGE = 50;
+    // 3% scaled by 1e8
+    uint256 constant _MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
+
     /**
      * @notice Executes liquidation call for the position
      * @param positionId The id of position
@@ -215,26 +225,27 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
      */
     function execLiquidationCall(uint64 positionId, ISettlement.SettlementData memory settlementData) external {
         UserPosition storage userPosition = userPositions[positionId];
-        InsurancePool storage fillerPool = insurancePools[userPosition.filler];
+        InsurancePool storage insurancePool = insurancePools[userPosition.filler][userPosition.pairId];
 
         // check vault is danger
         require(!isPositionSafe(userPosition), "NOT SAFE");
 
         // TODO: close position
-        _predyPool.trade(
+        IPredyPool.TradeResult memory tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
-                fillerPool.pairId,
+                insurancePool.pairId,
                 positionId,
                 -userPosition.positionAmount,
                 -userPosition.positionAmountSqrt,
-                abi.encode(CallbackData(CallbackSource.LIQUIDATION, 0))
+                abi.encode(CallbackData(CallbackSource.LIQUIDATION, msg.sender, 0))
             ),
             settlementData
         );
 
-        // TODO: - filler margin
+        // TODO: check slippage
+        _checkPrice(tradeResult, _LIQ_SLIPPAGE);
 
-        sendMarginToUser(positionId, fillerPool.pairId);
+        _sendMarginToUser(positionId, 0);
     }
 
     function confirmLiquidation(uint256 vaultId) external {
@@ -255,7 +266,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         userPosition.positionAmount = 0;
 
         // TODO: clear userPosition
-        InsurancePool storage filler = insurancePools[userPosition.filler];
+        InsurancePool storage filler = insurancePools[userPosition.filler][userPosition.pairId];
 
         filler.marginAmount += vault.margin;
     }
@@ -265,30 +276,30 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     function initFillerPool(uint256 pairId, address fillerAddress) internal returns (uint256) {
         uint256 vaultId = _predyPool.createVault(pairId);
 
-        InsurancePool storage fillerPool = insurancePools[fillerAddress];
+        InsurancePool storage fillerPool = insurancePools[fillerAddress][pairId];
 
         fillerPool.pairId = pairId;
         fillerPool.fillerAddress = fillerAddress;
-        fillerPool.lastFundingRateCalculationTime = block.timestamp;
 
         return vaultId;
     }
 
-    function sendMarginToUser(uint64 positionId, uint256 pairId) internal {
+    function _sendMarginToUser(uint256 positionId, uint256 withdrawAmount) internal {
         UserPosition storage userPosition = userPositions[positionId];
 
-        if (userPosition.positionAmount == 0) {
-            if (userPosition.positionAmount == 0 && userPosition.marginAmount > 0) {
-                uint256 marginAmount = uint256(userPosition.marginAmount);
+        if (userPosition.positionAmount == 0 && userPosition.positionAmountSqrt == 0) {
+            uint256 marginAmount = 0;
+
+            if (userPosition.marginAmount > 0) {
+                marginAmount = uint256(userPosition.marginAmount);
 
                 userPosition.marginAmount = 0;
+            }
 
-                IERC20(_quoteTokenMap[pairId]).transfer(userPosition.owner, marginAmount);
-            } else {
-                // filler should cover negative margin
-                insurancePools[userPosition.filler].marginAmount += userPosition.marginAmount;
-
-                userPosition.marginAmount = 0;
+            IERC20(_quoteTokenMap[userPosition.pairId]).transfer(userPosition.owner, marginAmount + withdrawAmount);
+        } else {
+            if (withdrawAmount > 0) {
+                IERC20(_quoteTokenMap[userPosition.pairId]).transfer(userPosition.owner, withdrawAmount);
             }
         }
     }
@@ -307,7 +318,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
     }
 
     function _updateBorrowFee(UserPosition storage userPosition) internal {
-        InsurancePool storage filler = insurancePools[userPosition.filler];
+        InsurancePool storage filler = insurancePools[userPosition.filler][userPosition.pairId];
 
         uint256 elapsedTime = block.timestamp - userPosition.lastBorrowFeeCalculationTime;
 
@@ -336,7 +347,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         int256 minValue;
         uint256 debtValue;
 
-        uint256 indexPrice = _predyPool.getSqrtIndexPrice(insurancePools[userPosition.filler].pairId);
+        uint256 indexPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
 
         (minValue, vaultValue, debtValue, hasPosition) = PositionCalculator.calculateMinValue(
             userPosition.marginAmount,
@@ -355,14 +366,68 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
-    function _roundAndAddToProtocolFee(InsurancePool storage filler, int256 _amount, uint8 _marginRoundedDecimal)
+    function _handleTradeResult(
+        UserPosition storage userPosition,
+        IPredyPool.TradeResult memory tradeResult,
+        bool useInsuranceFund
+    ) internal {
+        tradeResult.payoff.perpPayoff = _roundAndAddToProtocolFee(userPosition, tradeResult.payoff.perpPayoff, 4);
+
+        tradeResult.payoff.sqrtPayoff = _roundAndAddToProtocolFee(userPosition, tradeResult.payoff.sqrtPayoff, 4);
+
+        tradeResult.fee = _roundAndAddToProtocolFee(userPosition, tradeResult.fee, 4);
+
+        userPosition.marginAmount += tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff + tradeResult.fee;
+
+        if (useInsuranceFund) {
+            if (userPosition.marginAmount < 0) {
+                int256 requiredMarginAmount = int256(-userPosition.marginAmount);
+                // constraint: requiredMarginAmount > 0
+
+                // TODO: check negative
+                userPosition.assuranceMargin -= requiredMarginAmount;
+            }
+        } else {
+            require(userPosition.marginAmount >= 0);
+        }
+    }
+
+    error SlippageTooLarge();
+
+    error OutOfAcceptablePriceRange();
+
+    function _checkPrice(IPredyPool.TradeResult memory tradeResult, uint256 slippageTolerance) internal pure {
+        uint256 sqrtTwap = tradeResult.sqrtTwap;
+        uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
+
+        if (tradeResult.averagePrice > 0) {
+            // long
+            if (twap * 1e4 / slippageTolerance > uint256(tradeResult.averagePrice)) {
+                revert SlippageTooLarge();
+            }
+        } else if (tradeResult.averagePrice < 0) {
+            // short
+            if (twap * slippageTolerance / 1e4 < uint256(-tradeResult.averagePrice)) {
+                revert SlippageTooLarge();
+            }
+        }
+
+        if (
+            tradeResult.sqrtPrice < sqrtTwap * 1e8 / _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
+                || sqrtTwap * _MAX_ACCEPTABLE_SQRT_PRICE_RANGE / 1e8 < tradeResult.sqrtPrice
+        ) {
+            revert OutOfAcceptablePriceRange();
+        }
+    }
+
+    function _roundAndAddToProtocolFee(UserPosition storage userPosition, int256 _amount, uint8 _marginRoundedDecimal)
         internal
         returns (int256)
     {
         int256 rounded = _roundMargin(_amount, 10 ** _marginRoundedDecimal);
 
         if (_amount > rounded) {
-            filler.marginAmount += _amount - rounded;
+            userPosition.assuranceMargin += _amount - rounded;
         }
 
         return rounded;

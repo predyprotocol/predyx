@@ -140,7 +140,10 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
      * @param fillerPoolId The id of filler pool
      * @param withdrawAmount The amount to withdraw
      */
-    function withdrawFromInsurancePool(uint256 fillerPoolId, uint256 withdrawAmount) external onlyFiller(fillerPoolId) {
+    function withdrawFromInsurancePool(uint256 fillerPoolId, uint256 withdrawAmount)
+        external
+        onlyFiller(fillerPoolId)
+    {
         require(withdrawAmount > 0);
 
         _predyPool.updateMargin(insurancePools[fillerPoolId].vaultId, -int256(withdrawAmount));
@@ -207,7 +210,11 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         // Execute the trade for the user position in the filler pool
         (perpTradeResult, tradeResult) = coverPosition(
-            insurancePools[fillerPoolId], perpOrder.positionId, perpOrder.tradeAmount, perpOrder.marginAmount, settlementData
+            insurancePools[fillerPoolId],
+            perpOrder.positionId,
+            perpOrder.tradeAmount,
+            perpOrder.marginAmount,
+            settlementData
         );
 
         validateFillerPoolSafety(fillerPoolId);
