@@ -77,7 +77,7 @@ library LiquidationLogic {
             PositionCalculator.calculateMinDeposit(pairStatus, globalData.rebalanceFeeGrowthCache, vault);
 
         // TODO: compare tradeResult.averagePrice and TWAP, which averagePrice or entryPrice is better?
-        checkPrice(sqrtTwap, tradeResult, slippageTolerance);
+        checkPrice(sqrtTwap, tradeResult, slippageTolerance, tradeParams.tradeAmountSqrt != 0);
 
         if (!hasPosition) {
             int256 remainingMargin = vault.margin;
@@ -127,22 +127,24 @@ library LiquidationLogic {
 
     function calculateSlippageTolerance(int256 minMargin, int256 vaultValue) internal pure returns (uint256) {
         if (vaultValue <= 0 || minMargin == 0) {
-            return _MAX_SLIPPAGE;
+            return _MAX_SLIPPAGE + 1e4;
         }
 
         uint256 ratio = uint256(vaultValue * 1e4 / minMargin);
 
         if (ratio > 1e4) {
-            return _MIN_SLIPPAGE;
+            return _MIN_SLIPPAGE + 1e4;
         }
 
         return (_MAX_SLIPPAGE - ratio * (_MAX_SLIPPAGE - _MIN_SLIPPAGE) / 1e4) + 1e4;
     }
 
-    function checkPrice(uint256 sqrtTwap, IPredyPool.TradeResult memory tradeResult, uint256 slippageTolerance)
-        internal
-        pure
-    {
+    function checkPrice(
+        uint256 sqrtTwap,
+        IPredyPool.TradeResult memory tradeResult,
+        uint256 slippageTolerance,
+        bool checkLPPosition
+    ) internal pure {
         uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
 
         if (tradeResult.averagePrice > 0) {
@@ -158,8 +160,11 @@ library LiquidationLogic {
         }
 
         if (
-            tradeResult.sqrtPrice < sqrtTwap * 1e8 / _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
-                || sqrtTwap * _MAX_ACCEPTABLE_SQRT_PRICE_RANGE / 1e8 < tradeResult.sqrtPrice
+            checkLPPosition
+                && (
+                    tradeResult.sqrtPrice < sqrtTwap * 1e8 / _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
+                        || sqrtTwap * _MAX_ACCEPTABLE_SQRT_PRICE_RANGE / 1e8 < tradeResult.sqrtPrice
+                )
         ) {
             revert OutOfAcceptablePriceRange();
         }

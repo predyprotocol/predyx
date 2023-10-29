@@ -6,19 +6,23 @@ import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import "../../../src/LeveragedGammaMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
+import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/libraries/orders/LimitOrderValidator.sol";
 import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
+import "../../mocks/MockPriceFeed.sol";
 
 contract TestLevMarket is TestPool, SigUtils {
     using GammaOrderLib for GammaOrder;
 
     UniswapSettlement settlement;
+    DirectSettlement directSettlement;
     LeveragedGammaMarket market;
     IPermit2 permit2;
     LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
+    MockPriceFeed priceFeed;
 
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
@@ -33,6 +37,7 @@ contract TestLevMarket is TestPool, SigUtils {
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
         settlement = new UniswapSettlement(predyPool, swapRouter);
+        directSettlement = new DirectSettlement(predyPool, address(this));
 
         market = new LeveragedGammaMarket(predyPool, address(permit2));
 
@@ -42,9 +47,14 @@ contract TestLevMarket is TestPool, SigUtils {
         currency0.approve(address(market), type(uint256).max);
         currency1.approve(address(market), type(uint256).max);
 
+        currency0.approve(address(directSettlement), type(uint256).max);
+        currency1.approve(address(directSettlement), type(uint256).max);
+
         limitOrderValidator = new LimitOrderValidator();
 
-        registerPair(address(currency1), address(0));
+        priceFeed = new MockPriceFeed();
+        priceFeed.setSqrtPrice(2 ** 96);
+        registerPair(address(currency1), address(priceFeed));
         market.updateQuoteTokenMap(1);
     }
 

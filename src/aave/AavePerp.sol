@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "./IPool.sol";
+import {IPool as IAavePool, DataTypes as AaveDataType} from "../../lib/aave-v3-core/contracts/interfaces/IPool.sol";
+import {IAToken} from "../../lib/aave-v3-core/contracts/interfaces/IAToken.sol";
 import "../interfaces/IPredyPool.sol";
 import "../interfaces/ISettlement.sol";
 import "../interfaces/IFillerMarket.sol";
 import "../libraries/orders/PerpOrder.sol";
 
 contract AavePerp is IFillerMarket {
-    IPool internal _pool;
+    IAavePool internal _pool;
 
     struct UserPosition {
         int256 positionAmount;
@@ -22,20 +23,21 @@ contract AavePerp is IFillerMarket {
 
     MarketStatus internal _marketStatus;
 
+    address baseAsset;
+    address quoteAsset;
 
-    constructor(IPool pool) {
+    constructor(IAavePool pool) {
         _pool = pool;
+        // AaveDataType.ReserveData memory baseData = _pool.getReservedData();
     }
 
-    function depositToInsurancePool() external {
+    function depositToInsurancePool() external {}
 
-    }
+    function withdrawFromInsurancePool() external {}
 
-    function withdrawFromInsurancePool() external {
-
-    }
-
-    function executeOrder(address filler, SignedOrder memory order, ISettlement.SettlementData memory settlementData) external {
+    function executeOrder(address filler, SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+        external
+    {
         PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
 
         // calculate fee
@@ -43,12 +45,12 @@ contract AavePerp is IFillerMarket {
         // swap
         int256 quoteAmount = _swap(perpOrder.tradeAmount, settlementData);
 
-        if(perpOrder.tradeAmount > 0) {
-            _pool.supply(asset, uint256(perpOrder.tradeAmount), onBehalfOf, 0);
-            _pool.borrow(asset, uint256(-quoteAmount), 2, 0, onBehalfOf);
+        if (perpOrder.tradeAmount > 0) {
+            _pool.supply(baseAsset, uint256(perpOrder.tradeAmount), address(this), 0);
+            _pool.borrow(quoteAsset, uint256(-quoteAmount), 2, 0, address(this));
         } else {
-            _pool.supply(asset, uint256(quoteAmount), onBehalfOf, 0);
-            _pool.borrow(asset, uint256(-perpOrder.tradeAmount), 2, 0, onBehalfOf);
+            _pool.supply(quoteAsset, uint256(quoteAmount), address(this), 0);
+            _pool.borrow(baseAsset, uint256(-perpOrder.tradeAmount), 2, 0, address(this));
         }
 
         // TODO: updateMargin
@@ -57,29 +59,23 @@ contract AavePerp is IFillerMarket {
         // TODO: check position is safe
     }
 
-    function execLiquidationCall() external {
+    function execLiquidationCall() external {}
 
-    }
+    function confirmLiquidation() external {}
 
-    function confirmLiquidation() external {
-        
-    }
-
-    function close() external {
-
-    }
+    function close() external {}
 
     function _calculateFee() internal {
-        _marketStatus.totalSupply
+        // _marketStatus.totalSupply
 
-        _pool.supply(asset, uint256(quoteAmount), onBehalfOf, 0);
-
+        // _pool.supply(asset, uint256(quoteAmount), onBehalfOf, 0);
     }
 
-    function _swap(
-        int256 baseAmount,
-        ISettlement.SettlementData memory settlementData
-    ) internal returns (int256 quoteAmount) {
+    function _swap(int256 baseAmount, ISettlement.SettlementData memory settlementData)
+        internal
+        returns (int256 quoteAmount)
+    {
+        /*
         if (baseAmount == 0) {
             int256 amountStable = int256(calculateStableAmount(sqrtPrice, 1e18));
 
@@ -104,5 +100,6 @@ contract AavePerp is IFillerMarket {
         }
 
         delete globalData.lockData;
+        */
     }
 }
