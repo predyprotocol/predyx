@@ -275,30 +275,54 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         _sendMarginToUser(positionId, 0);
     }
 
-    function confirmLiquidation(uint256 positionId) external {
+    function confirmLiquidation(uint256 positionId, ISettlement.SettlementData memory settlementData) external {
         UserPosition storage userPosition = userPositions[positionId];
 
         // TODO: check liquidated
-        IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(positionId);
+        // TODO: in case of partial liquidation
+        DataType.Vault memory vault = _predyPool.getVault(positionId);
 
         // vault has positions but has no cover positions
         require(
-            vaultStatus.minMargin == 0 && (userPosition.positionAmount != 0 || userPosition.positionAmountSqrt != 0)
+            vault.openPosition.perp.amount.abs() < userPosition.positionAmount.abs()
+                || vault.openPosition.sqrtPerp.amount.abs() < userPosition.positionAmountSqrt.abs()
         );
 
-        DataType.Vault memory vault = _predyPool.getVault(positionId);
+        if (vault.margin < userPosition.marginAmount + userPosition.assuranceMargin) {
+            if (vault.margin <= userPosition.assuranceMargin) {
+                userPosition.marginAmount = 0;
+                userPosition.assuranceMargin = vault.margin;
+            } else {
+                userPosition.marginAmount = vault.margin - userPosition.assuranceMargin;
+            }
+        }
+
+        if (vault.openPosition.perp.amount > 0 || vault.openPosition.sqrtPerp.amount > 0) {
+            IPredyPool.TradeResult memory tradeResult = _predyPool.trade(
+                IPredyPool.TradeParams(
+                    userPosition.pairId,
+                    positionId,
+                    -vault.openPosition.perp.amount,
+                    -vault.openPosition.sqrtPerp.amount,
+                    abi.encode(
+                        CallbackData(
+                            CallbackSource.LIQUIDATION, msg.sender, userPosition.owner, userPosition.filler, 0, false
+                        )
+                    )
+                ),
+                settlementData
+            );
+
+            _checkPrice(tradeResult, _LIQ_SLIPPAGE);
+        }
 
         _predyPool.updateMargin(positionId, -vault.margin);
 
         // TODO: clear userPosition
         userPosition.positionAmount = 0;
         userPosition.positionAmountSqrt = 0;
-        userPosition.marginAmount = 0;
-        userPosition.assuranceMargin = 0;
 
-        InsurancePool storage insurancePool = insurancePools[userPosition.filler][userPosition.pairId];
-
-        insurancePool.marginAmount += vault.margin;
+        _sendMarginToUser(positionId, 0);
     }
 
     // Private Functions
