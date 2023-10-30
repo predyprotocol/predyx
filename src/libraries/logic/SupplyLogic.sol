@@ -9,6 +9,7 @@ import "../DataType.sol";
 import "../ScaledAsset.sol";
 import "../ApplyInterestLib.sol";
 import "../../types/GlobalData.sol";
+import "forge-std/console.sol";
 
 library SupplyLogic {
     using ScaledAsset for ScaledAsset.AssetStatus;
@@ -23,12 +24,20 @@ library SupplyLogic {
     {
         // Checks pair exists
         globalData.validate(_pairId);
+
+        console.log(1);
+
         // Checks amount is not 0
         if (_amount <= 0) {
             revert IPredyPool.InvalidAmount();
         }
+
+        console.log(2);
+
         // Updates interest rate related to the pair
         ApplyInterestLib.applyInterestForToken(globalData.pairs, _pairId);
+
+        console.log(3);
 
         Perp.PairStatus storage pair = globalData.pairs[_pairId];
 
@@ -45,6 +54,8 @@ library SupplyLogic {
         mintAmount = _pool.tokenStatus.addAsset(_amount);
 
         TransferHelper.safeTransferFrom(_pool.token, msg.sender, address(this), _amount);
+
+        console.log(4);
 
         ISupplyToken(_pool.supplyTokenAddress).mint(msg.sender, mintAmount);
     }

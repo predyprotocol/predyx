@@ -24,6 +24,8 @@ contract TestLevMarket is TestPool, SigUtils {
     bytes32 DOMAIN_SEPARATOR;
     MockPriceFeed priceFeed;
 
+    uint256 pairId;
+
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
@@ -54,8 +56,8 @@ contract TestLevMarket is TestPool, SigUtils {
 
         priceFeed = new MockPriceFeed();
         priceFeed.setSqrtPrice(2 ** 96);
-        registerPair(address(currency1), address(priceFeed));
-        market.updateQuoteTokenMap(1);
+        pairId = registerPair(address(currency1), address(priceFeed));
+        market.updateQuoteTokenMap(pairId);
     }
 
     function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {

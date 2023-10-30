@@ -17,8 +17,8 @@ contract TestLevExecuteOrder is TestLevMarket {
 
         _fillerAddress = market.addFillerPool(1);
 
-        predyPool.supply(1, true, 1e10);
-        predyPool.supply(1, false, 1e10);
+        predyPool.supply(pairId, true, 1e10);
+        predyPool.supply(pairId, false, 1e10);
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
