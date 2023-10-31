@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IPredyPool.sol";
+import "../interfaces/ILendingPool.sol";
 import "./BaseSettlement.sol";
 
 contract DirectSettlement is BaseSettlement {
@@ -15,7 +15,7 @@ contract DirectSettlement is BaseSettlement {
     //TODO: filler
     address immutable _filler;
 
-    constructor(IPredyPool _predyPool, address filler) BaseSettlement(_predyPool) {
+    constructor(ILendingPool _predyPool, address filler) BaseSettlement(_predyPool) {
         _filler = filler;
     }
 

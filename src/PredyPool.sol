@@ -6,6 +6,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "./interfaces/IPredyPool.sol";
+import "./interfaces/ILendingPool.sol";
 import "./interfaces/IHooks.sol";
 import "./interfaces/ISettlement.sol";
 import "./libraries/Perp.sol";
@@ -22,7 +23,7 @@ import {GlobalDataLibrary} from "./types/GlobalData.sol";
 /**
  * @notice Holds the state for all pairs and vaults
  */
-contract PredyPool is IPredyPool, IUniswapV3MintCallback {
+contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
     using VaultLib for GlobalDataLibrary.GlobalData;

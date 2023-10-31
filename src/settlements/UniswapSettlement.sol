@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IPredyPool.sol";
+import "../interfaces/ILendingPool.sol";
 import "../libraries/math/Math.sol";
 import "./BaseSettlement.sol";
 
@@ -21,7 +21,7 @@ contract UniswapSettlement is BaseSettlement {
         int256 fee;
     }
 
-    constructor(IPredyPool _predyPool, address swapRouterAddress) BaseSettlement(_predyPool) {
+    constructor(ILendingPool _predyPool, address swapRouterAddress) BaseSettlement(_predyPool) {
         _swapRouter = ISwapRouter(swapRouterAddress);
     }
 

@@ -7,6 +7,7 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
+import "./interfaces/ILendingPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
@@ -44,7 +45,7 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
                 _getQuoteTokenAddress(tradeParams.pairId), address(_predyPool), uint256(marginAmountUpdate)
             );
         } else if (marginAmountUpdate < 0) {
-            _predyPool.take(true, address(this), uint256(-marginAmountUpdate));
+            ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
         }
     }
 

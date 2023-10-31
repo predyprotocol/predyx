@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../src/settlements/BaseSettlement.sol";
+import {IPredyPool} from "../../src/interfaces/IPredyPool.sol";
 
 contract TestSettlementCurrencyNotSettled is BaseSettlement {
     struct SettlementParams {
@@ -12,7 +13,7 @@ contract TestSettlementCurrencyNotSettled is BaseSettlement {
         int256 settleAmount;
     }
 
-    constructor(IPredyPool predyPool) BaseSettlement(predyPool) {}
+    constructor(ILendingPool predyPool) BaseSettlement(predyPool) {}
 
     function predySettlementCallback(bytes memory settlementData, int256) external override(BaseSettlement) {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
@@ -44,7 +45,7 @@ contract TestSettlementReentrant is BaseSettlement {
         ISettlement.SettlementData settlementData;
     }
 
-    constructor(IPredyPool predyPool) BaseSettlement(predyPool) {}
+    constructor(ILendingPool predyPool) BaseSettlement(predyPool) {}
 
     function predySettlementCallback(bytes memory settlementData, int256) external override(BaseSettlement) {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
@@ -53,6 +54,6 @@ contract TestSettlementReentrant is BaseSettlement {
 
         IERC20(settlemendParams.settleTokenAddress).transfer(address(_predyPool), settlemendParams.settleAmount);
 
-        _predyPool.trade(settlemendParams.tradeParams, settlemendParams.settlementData);
+        IPredyPool(address(_predyPool)).trade(settlemendParams.tradeParams, settlemendParams.settlementData);
     }
 }

@@ -49,16 +49,6 @@ contract TestMarket is TestPool, SigUtils {
         return quoteAmount * Constants.Q96 / baseAmount;
     }
 
-    function _toPermit(GammaOrder memory order) internal view returns (ISignatureTransfer.PermitTransferFrom memory) {
-        uint256 amount = order.marginAmount > 0 ? uint256(order.marginAmount) : 0;
-
-        return ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({token: address(currency1), amount: amount}),
-            nonce: order.info.nonce,
-            deadline: order.info.deadline
-        });
-    }
-
     function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view

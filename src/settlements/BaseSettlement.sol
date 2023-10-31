@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "../interfaces/IPredyPool.sol";
+import "../interfaces/ILendingPool.sol";
 import "../interfaces/ISettlement.sol";
 
 abstract contract BaseSettlement is ISettlement {
-    IPredyPool _predyPool;
+    ILendingPool _predyPool;
 
-    constructor(IPredyPool predyPool) {
+    constructor(ILendingPool predyPool) {
         _predyPool = predyPool;
     }
 

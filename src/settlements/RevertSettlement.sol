@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "../interfaces/IPredyPool.sol";
+import "../interfaces/ILendingPool.sol";
 import "./BaseSettlement.sol";
 
 contract RevertSettlement is BaseSettlement {
-    constructor(IPredyPool _predyPool) BaseSettlement(_predyPool) {}
+    constructor(ILendingPool _predyPool) BaseSettlement(_predyPool) {}
 
     function predySettlementCallback(bytes memory, int256 baseAmountDelta) external override(BaseSettlement) {
         _revertBaseAmountDelta(baseAmountDelta);

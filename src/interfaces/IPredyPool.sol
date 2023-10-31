@@ -61,8 +61,6 @@ interface IPredyPool {
 
     function updateRecepient(uint256 vaultId, address recepient) external;
 
-    function take(bool isQuoteAsset, address to, uint256 amount) external;
-
     function updateMargin(uint256 vaultId, int256 marginAmount) external;
     function createVault(uint256 pairId) external returns (uint256);
 

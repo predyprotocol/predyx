@@ -7,6 +7,7 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPredyPool.sol";
+import "./interfaces/ILendingPool.sol";
 import "./interfaces/IFillerMarket.sol";
 import "./interfaces/IOrderValidator.sol";
 import "./base/BaseHookCallback.sol";
@@ -132,10 +133,12 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
             if (diff > 0) {
                 IERC20(_quoteTokenMap[insurancePool.pairId]).transfer(address(_predyPool), uint256(diff));
             } else if (diff < 0) {
-                _predyPool.take(true, address(this), uint256(-diff));
+                ILendingPool(address(_predyPool)).take(true, address(this), uint256(-diff));
             }
         } else if (callbackData.callbackSource == CallbackSource.LIQUIDATION) {
-            _predyPool.take(true, address(this), uint256(userPosition.marginAmount + userPosition.assuranceMargin));
+            ILendingPool(address(_predyPool)).take(
+                true, address(this), uint256(userPosition.marginAmount + userPosition.assuranceMargin)
+            );
 
             insurancePool.marginAmount += userPosition.assuranceMargin;
 
