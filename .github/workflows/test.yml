@@ -40,5 +40,5 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          ARBITRUM_RPC_URL=$ARBITRUM_RPC_URL forge test -vvv
         id: test
