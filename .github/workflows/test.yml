@@ -40,5 +40,7 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          ARBITRUM_RPC_URL=$ARBITRUM_RPC_URL forge test -vvv
+          forge test -vvv
+        env:
+          ARBITRUM_RPC_URL: ${{ vars.ARBITRUM_RPC_URL }}
         id: test
