@@ -12,8 +12,9 @@ import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrde
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import "../../mocks/MockPriceFeed.sol";
+import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
-contract TestLevMarket is TestPool, SigUtils {
+contract TestLevMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
     UniswapSettlement settlement;
@@ -58,11 +59,7 @@ contract TestLevMarket is TestPool, SigUtils {
 
         market.updateQuoteTokenMap(1);
     }
-
-    function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {
-        return quoteAmount * Constants.Q96 / baseAmount;
-    }
-
+    
     function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view

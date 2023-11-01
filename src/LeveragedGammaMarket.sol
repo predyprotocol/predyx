@@ -70,9 +70,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         int256 marginAmountUpdate;
         bool createNew;
     }
-
-    error CallerIsNotFiller();
-
+    
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
     mapping(address filler => mapping(uint256 pairId => InsurancePool)) public insurancePools;

@@ -33,6 +33,8 @@ contract TestAavePerp is Test, SigUtils {
     uint256 fromPrivateKey1;
     address from1;
 
+    uint256 pairId;
+
     function setUp() public virtual {
         _arbitrumFork = vm.createFork(_arbitrumRPCURL);
         vm.selectFork(_arbitrumFork);
@@ -43,23 +45,31 @@ contract TestAavePerp is Test, SigUtils {
         _pool = IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD);
         permit2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
+        fromPrivateKey1 = 0x12341234;
+        from1 = vm.addr(fromPrivateKey1);
+
         // Gets tokens
         vm.startPrank(0x5bdf85216ec1e38D6458C870992A69e38e03F7Ef);
         _usdc.transfer(address(this), 5000 * 1e6);
+        _usdc.transfer(from1, 5000 * 1e6);
         vm.stopPrank();
 
         vm.startPrank(0x1eED63EfBA5f81D95bfe37d82C8E736b974F477b);
         _weth.transfer(address(this), 1000 * 1e18);
         vm.stopPrank();
 
-        _aavePerp = new AavePerp();
+        _aavePerp = new AavePerp(address(permit2), address(_pool));
+        pairId = _aavePerp.addPair(address(_usdc), address(_weth));
 
         settlement = new DirectSettlement(_aavePerp, address(this));
 
         limitOrderValidator = new PerpLimitOrderValidator();
 
-        fromPrivateKey1 = 0x12341234;
-        from1 = vm.addr(fromPrivateKey1);
+        vm.startPrank(from1);
+        _usdc.approve(address(permit2), type(uint256).max);
+        vm.stopPrank();
+
+        _usdc.approve(address(_aavePerp), type(uint256).max);
     }
 
     function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)

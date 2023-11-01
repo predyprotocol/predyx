@@ -28,14 +28,5 @@ contract TestAaveExecuteOrder is TestAavePerp {
             settlement.getSettlementParams(address(_usdc), address(_weth), 10000);
 
         _aavePerp.executeOrder(signedOrder, settlementData);
-        /*
-        _weth.approve(address(_pool), 1000);
-        _pool.supply(
-            address(_weth),
-            100,
-            address(this),
-            0
-        );
-        */
     }
 }

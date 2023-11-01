@@ -12,8 +12,9 @@ import {PerpOrder, PerpOrderLib} from "../../../src/libraries/orders/PerpOrder.s
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import "../../mocks/MockPriceFeed.sol";
+import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
-contract TestPerpMarket is TestPool, SigUtils {
+contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
     using PerpOrderLib for PerpOrder;
 
     UniswapSettlement settlement;
@@ -63,11 +64,7 @@ contract TestPerpMarket is TestPool, SigUtils {
         predyPool.supply(1, true, 1e18);
         predyPool.supply(1, false, 1e18);
     }
-
-    function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {
-        return quoteAmount * Constants.Q96 / baseAmount;
-    }
-
+    
     function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)
         internal
         view

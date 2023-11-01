@@ -69,7 +69,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
         vm.startPrank(from1);
-        vm.expectRevert(PerpMarket.CallerIsNotFiller.selector);
+        vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
         fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
         vm.stopPrank();
     }

@@ -65,9 +65,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 entryUpdate;
         int256 payoff;
     }
-
-    error CallerIsNotFiller();
-
+    
     error MarginIsNegative();
 
     error UserMarginIsNegative();

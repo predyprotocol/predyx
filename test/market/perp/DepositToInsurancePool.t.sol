@@ -13,7 +13,7 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
     function setUp() public override {
         TestPerpMarket.setUp();
 
-        fromPrivateKey = 0x12341234;
+        fromPrivateKey = 0x12340012;
         from = vm.addr(fromPrivateKey);
 
         fillerPoolId = fillerMarket.addFillerPool(pairId);
@@ -27,7 +27,7 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
     function testCannotDepositToFillerPoolIfCallerIsNotFiller() public {
         vm.startPrank(from);
 
-        vm.expectRevert(PerpMarket.CallerIsNotFiller.selector);
+        vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
         fillerMarket.depositToInsurancePool(fillerPoolId, 1000000);
 
         vm.stopPrank();

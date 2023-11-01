@@ -10,8 +10,9 @@ import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrde
 import "../../../src/libraries/Constants.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
+import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
-contract TestMarket is TestPool, SigUtils {
+contract TestMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
     UniswapSettlement settlement;
@@ -44,11 +45,7 @@ contract TestMarket is TestPool, SigUtils {
 
         limitOrderValidator = new LimitOrderValidator();
     }
-
-    function calculateLimitPrice(uint256 quoteAmount, uint256 baseAmount) internal pure returns (uint256) {
-        return quoteAmount * Constants.Q96 / baseAmount;
-    }
-
+    
     function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view

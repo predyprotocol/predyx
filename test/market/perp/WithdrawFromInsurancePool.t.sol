@@ -30,7 +30,7 @@ contract TestPerpMarketWithdrawFromFillerPool is TestPerpMarket {
 
         vm.startPrank(from);
 
-        vm.expectRevert(PerpMarket.CallerIsNotFiller.selector);
+        vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
         fillerMarket.withdrawFromInsurancePool(fillerPoolId, 1000000);
 
         vm.stopPrank();
