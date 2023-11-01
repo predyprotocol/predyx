@@ -43,7 +43,7 @@ contract TestExecuteOrder is TestMarket {
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -70,7 +70,7 @@ contract TestExecuteOrder is TestMarket {
     function testExecuteOrderSucceedsWithNetting() public {
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -91,7 +91,7 @@ contract TestExecuteOrder is TestMarket {
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, address(0), 1, block.timestamp + 100),
                 1,
                 1,
                 address(currency1),
@@ -127,7 +127,7 @@ contract TestExecuteOrder is TestMarket {
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, 1),
+            OrderInfo(address(fillerMarket), from1, address(0), 0, 1),
             1,
             1,
             address(currency1),
@@ -154,7 +154,7 @@ contract TestExecuteOrder is TestMarket {
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp),
+                OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp),
                 0,
                 1,
                 address(currency1),
@@ -172,7 +172,7 @@ contract TestExecuteOrder is TestMarket {
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from2, 0, block.timestamp),
+                OrderInfo(address(fillerMarket), from2, address(0), 0, block.timestamp),
                 1,
                 1,
                 address(currency1),
@@ -195,7 +195,7 @@ contract TestExecuteOrder is TestMarket {
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -218,7 +218,7 @@ contract TestExecuteOrder is TestMarket {
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp + 100),
             0,
             1,
             address(currency1),

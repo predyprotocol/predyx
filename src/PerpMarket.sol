@@ -19,7 +19,7 @@ import "./libraries/Perp.sol";
 import "./libraries/Constants.sol";
 import "./libraries/DataType.sol";
 import "./lens/PredyPoolQuoter.sol";
-// import "forge-std/console.sol";
+import "forge-std/console.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -53,7 +53,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     struct UserPosition {
         uint256 id;
-        uint256 fillerMarketId;
+        uint256 pairId;
+        address filler;
         address owner;
         int256 positionAmount;
         int256 entryValue;
@@ -65,7 +66,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 entryUpdate;
         int256 payoff;
     }
-    
+
     error MarginIsNegative();
 
     error UserMarginIsNegative();
@@ -82,14 +83,14 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
-    mapping(uint256 => InsurancePool) public insurancePools;
+    mapping(address filler => mapping(uint256 pairId => InsurancePool)) public insurancePools;
 
-    event PositionUpdated(uint256 positionId, uint256 fillerMarketId, int256 tradeAmount, PerpTradeResult tradeResult);
+    event PositionUpdated(uint256 positionId, int256 tradeAmount, PerpTradeResult tradeResult);
 
-    event FundingPayment(uint256 positionId, uint256 fillerMarketId, int256 fundingFee, int256 fillerFundingFee);
+    event FundingPayment(uint256 positionId, int256 fundingFee, int256 fillerFundingFee);
 
-    modifier onlyFiller(uint256 fillerPoolId) {
-        if (insurancePools[fillerPoolId].fillerAddress != msg.sender) revert CallerIsNotFiller();
+    modifier onlyFiller(uint256 pairId) {
+        if (insurancePools[msg.sender][pairId].fillerAddress != msg.sender) revert CallerIsNotFiller();
         _;
     }
 
@@ -116,57 +117,53 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     /**
      * @notice Deposits margin to the insurance pool.
-     * @param fillerPoolId The id of filler pool
+     * @param pairId The id of filler pool
      * @param depositAmount The amount to deposit
      */
-    function depositToInsurancePool(uint256 fillerPoolId, uint256 depositAmount) external onlyFiller(fillerPoolId) {
+    function depositToInsurancePool(uint256 pairId, uint256 depositAmount) external onlyFiller(pairId) {
         require(depositAmount > 0);
 
-        address quoteTokenAddress = _quoteTokenMap[insurancePools[fillerPoolId].pairId];
+        address quoteTokenAddress = _quoteTokenMap[pairId];
 
         IERC20(quoteTokenAddress).transferFrom(msg.sender, address(this), depositAmount);
 
-        insurancePools[fillerPoolId].marginAmount += int256(depositAmount);
+        insurancePools[msg.sender][pairId].marginAmount += int256(depositAmount);
 
         IERC20(quoteTokenAddress).approve(address(_predyPool), depositAmount);
 
-        _predyPool.updateMargin(insurancePools[fillerPoolId].vaultId, int256(depositAmount));
+        _predyPool.updateMargin(insurancePools[msg.sender][pairId].vaultId, int256(depositAmount));
     }
 
     /**
      * @notice Withdraws margin from the insurance pool.
-     * @param fillerPoolId The id of filler pool
+     * @param pairId The id of filler pool
      * @param withdrawAmount The amount to withdraw
      */
-    function withdrawFromInsurancePool(uint256 fillerPoolId, uint256 withdrawAmount)
-        external
-        onlyFiller(fillerPoolId)
-    {
+    function withdrawFromInsurancePool(uint256 pairId, uint256 withdrawAmount) external onlyFiller(pairId) {
         require(withdrawAmount > 0);
 
-        _predyPool.updateMargin(insurancePools[fillerPoolId].vaultId, -int256(withdrawAmount));
+        _predyPool.updateMargin(insurancePools[msg.sender][pairId].vaultId, -int256(withdrawAmount));
 
-        insurancePools[fillerPoolId].marginAmount -= int256(withdrawAmount);
+        insurancePools[msg.sender][pairId].marginAmount -= int256(withdrawAmount);
 
-        validateFillerPoolSafety(fillerPoolId);
+        validateFillerPoolSafety(insurancePools[msg.sender][pairId]);
 
-        TransferHelper.safeTransfer(_quoteTokenMap[insurancePools[fillerPoolId].pairId], msg.sender, withdrawAmount);
+        TransferHelper.safeTransfer(_quoteTokenMap[pairId], msg.sender, withdrawAmount);
     }
 
     /**
      * @notice Verifies signature of the order and executes trade
      * @dev Fillers can open position and anyone can close position
-     * @param fillerPoolId The id of filler pool
      * @param order The order signed by trader
      * @param settlementData The route of settlement created by filler
      */
-    function executeOrder(
-        uint256 fillerPoolId,
-        SignedOrder memory order,
-        ISettlement.SettlementData memory settlementData
-    ) external returns (PerpTradeResult memory perpTradeResult) {
+    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+        external
+        returns (PerpTradeResult memory perpTradeResult)
+    {
         PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
         ResolvedOrder memory resolvedOrder = PerpOrderLib.resolve(perpOrder, order.sig);
+        InsurancePool storage insurancePool = insurancePools[perpOrder.info.filler][perpOrder.pairId];
 
         require(_quoteTokenMap[perpOrder.pairId] != address(0));
         require(perpOrder.entryTokenAddress == _quoteTokenMap[perpOrder.pairId]);
@@ -177,8 +174,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         // deposit margin to the vault if required
         if (perpOrder.marginAmount > 0) {
+            console.log(1, perpOrder.info.filler, perpOrder.pairId);
             IERC20(perpOrder.entryTokenAddress).approve(address(_predyPool), uint256(perpOrder.marginAmount));
-            _predyPool.updateMargin(insurancePools[fillerPoolId].vaultId, perpOrder.marginAmount);
+            _predyPool.updateMargin(insurancePool.vaultId, perpOrder.marginAmount);
         }
 
         // Check if position needs to be created or updated
@@ -188,7 +186,8 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
             userPositions[perpOrder.positionId].id = perpOrder.positionId;
             userPositions[perpOrder.positionId].owner = perpOrder.info.trader;
-            userPositions[perpOrder.positionId].fillerMarketId = fillerPoolId;
+            userPositions[perpOrder.positionId].pairId = perpOrder.pairId;
+            userPositions[perpOrder.positionId].filler = perpOrder.info.filler;
 
             positionCount++;
         } else {
@@ -198,24 +197,20 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
                 revert IFillerMarket.SignerIsNotVaultOwner();
             }
 
-            require(perpOrder.pairId == insurancePools[userPosition.fillerMarketId].pairId);
+            require(perpOrder.pairId == insurancePool.pairId);
         }
 
         // Update the funding fees for the user position in the filler pool
-        updateFundingFee(insurancePools[fillerPoolId], userPositions[perpOrder.positionId]);
+        updateFundingFee(insurancePool, userPositions[perpOrder.positionId]);
 
         IPredyPool.TradeResult memory tradeResult;
 
         // Execute the trade for the user position in the filler pool
         (perpTradeResult, tradeResult) = coverPosition(
-            insurancePools[fillerPoolId],
-            perpOrder.positionId,
-            perpOrder.tradeAmount,
-            perpOrder.marginAmount,
-            settlementData
+            insurancePool, perpOrder.positionId, perpOrder.tradeAmount, perpOrder.marginAmount, settlementData
         );
 
-        validateFillerPoolSafety(fillerPoolId);
+        validateFillerPoolSafety(insurancePool);
 
         // Validate the trade
         IPerpOrderValidator(perpOrder.validatorAddress).validate(perpOrder, tradeResult);
@@ -232,7 +227,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         sendMarginToUser(perpOrder.positionId, perpOrder.marginAmount < 0 ? uint256(-perpOrder.marginAmount) : 0);
 
-        emit PositionUpdated(perpOrder.positionId, fillerPoolId, perpOrder.tradeAmount, perpTradeResult);
+        emit PositionUpdated(perpOrder.positionId, perpOrder.tradeAmount, perpTradeResult);
 
         return perpTradeResult;
     }
@@ -269,7 +264,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     function quoteUserPosition(uint256 positionId) external {
         UserPosition storage userPosition = userPositions[positionId];
 
-        updateFundingFee(insurancePools[userPosition.fillerMarketId], userPosition);
+        updateFundingFee(insurancePools[userPosition.filler][userPosition.pairId], userPosition);
 
         revertUserPosition(userPosition);
     }
@@ -302,7 +297,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
      */
     function execLiquidationCall(uint256 positionId, ISettlement.SettlementData memory settlementData) external {
         UserPosition storage userPosition = userPositions[positionId];
-        InsurancePool storage fillerPool = insurancePools[userPosition.fillerMarketId];
+        InsurancePool storage fillerPool = insurancePools[userPosition.filler][userPosition.pairId];
 
         updateFundingFee(fillerPool, userPosition);
 
@@ -342,41 +337,37 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
     /**
      * @dev Confirms the liquidation for a given filler pool.
-     * @param fillerPoolId The id of the filler pool.
+     * @param filler The address of the filler
+     * @param pairId The id of the pair
      */
-    function confirmLiquidation(uint256 fillerPoolId) external {
-        InsurancePool storage filler = insurancePools[fillerPoolId];
+    function confirmLiquidation(address filler, uint256 pairId) external {
+        InsurancePool storage insurancePool = insurancePools[filler][pairId];
 
         // TODO: check liquidated
-        IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(filler.vaultId);
+        IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(insurancePool.vaultId);
 
         require(
             vaultStatus.minMargin == 0
-                && (filler.totalPosition.totalLongAmount > 0 || filler.totalPosition.totalShortAmount > 0)
+                && (insurancePool.totalPosition.totalLongAmount > 0 || insurancePool.totalPosition.totalShortAmount > 0)
         );
 
-        uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(filler.pairId);
+        uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(pairId);
 
-        filler.liquidationPrice = sqrtPrice;
+        insurancePool.liquidationPrice = sqrtPrice;
 
-        filler.isLiquidated = true;
+        insurancePool.isLiquidated = true;
     }
 
     /**
      * @dev Closes the user's position and returns the trade result after processing.
-     * @param fillerPoolId Thss id of the filler pool.
      * @param positionId Ths id of the user position to be closed.
      * @return perpTradeResult The result of the processed trade.
      */
-    function close(uint256 fillerPoolId, uint256 positionId)
-        external
-        returns (PerpTradeResult memory perpTradeResult)
-    {
-        InsurancePool storage filler = insurancePools[fillerPoolId];
+    function close(uint256 positionId) external returns (PerpTradeResult memory perpTradeResult) {
+        UserPosition storage userPosition = userPositions[positionId];
+        InsurancePool storage filler = insurancePools[userPosition.filler][userPosition.pairId];
 
         require(filler.isLiquidated, "filler is not liquidated");
-
-        UserPosition storage userPosition = userPositions[positionId];
 
         uint256 price = filler.liquidationPrice * filler.liquidationPrice / Constants.Q96;
 
@@ -399,7 +390,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     function initFillerPool(uint256 pairId, address fillerAddress) internal returns (uint256) {
         uint256 vaultId = _predyPool.createVault(pairId);
 
-        InsurancePool storage fillerPool = insurancePools[vaultId];
+        InsurancePool storage fillerPool = insurancePools[fillerAddress][pairId];
+
+        console.log(1, fillerAddress, pairId);
 
         fillerPool.vaultId = vaultId;
         fillerPool.pairId = pairId;
@@ -433,7 +426,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     }
 
     function transferMargin(UserPosition memory userPosition, uint256 marginAmount) internal {
-        InsurancePool memory filler = insurancePools[userPosition.fillerMarketId];
+        InsurancePool memory filler = insurancePools[userPosition.filler][userPosition.pairId];
 
         _predyPool.updateMargin(filler.vaultId, -int256(marginAmount));
 
@@ -453,7 +446,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
                 transferMargin(userPosition, marginAmount);
             } else if (userPosition.marginAmount < 0) {
-                InsurancePool storage filler = insurancePools[userPosition.fillerMarketId];
+                InsurancePool storage filler = insurancePools[userPosition.filler][userPosition.pairId];
 
                 // TODO: if caller is filler then filler should cover negative margin
                 // if not user margin must be grater than 0
@@ -522,7 +515,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         filler.fillercumulativeFundingRates = filler.fundingRateGrobalGrowth;
 
         // Emitting an event for the funding payment
-        emit FundingPayment(userPosition.id, userPosition.fillerMarketId, fundingFee, fillerFundingFee);
+        emit FundingPayment(userPosition.id, fundingFee, fillerFundingFee);
     }
 
     /**
@@ -660,9 +653,7 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         }
     }
 
-    function validateFillerPoolSafety(uint256 fillerPoolId) internal view {
-        InsurancePool memory filler = insurancePools[fillerPoolId];
-
+    function validateFillerPoolSafety(InsurancePool memory filler) internal view {
         // fillerPoolId is vaultId
         IPredyPool.VaultStatus memory vaultStatus = _predyPool.getVaultStatus(filler.vaultId);
 

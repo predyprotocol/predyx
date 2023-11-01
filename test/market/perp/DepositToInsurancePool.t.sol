@@ -5,8 +5,6 @@ import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 
 contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
-    uint256 fillerPoolId;
-
     uint256 fromPrivateKey;
     address from;
 
@@ -16,19 +14,19 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
         fromPrivateKey = 0x12340012;
         from = vm.addr(fromPrivateKey);
 
-        fillerPoolId = fillerMarket.addFillerPool(pairId);
+        fillerMarket.addFillerPool(pairId);
     }
 
     function testCannotDepositToFillerPool() public {
         vm.expectRevert();
-        fillerMarket.depositToInsurancePool(fillerPoolId, 0);
+        fillerMarket.depositToInsurancePool(pairId, 0);
     }
 
     function testCannotDepositToFillerPoolIfCallerIsNotFiller() public {
         vm.startPrank(from);
 
         vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
-        fillerMarket.depositToInsurancePool(fillerPoolId, 1000000);
+        fillerMarket.depositToInsurancePool(pairId, 1000000);
 
         vm.stopPrank();
     }
@@ -36,10 +34,10 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
     function testCannotDepositToFillerPoolIfBalanceIsZero() public {
         vm.startPrank(from);
 
-        uint256 newFillerPoolId = fillerMarket.addFillerPool(pairId);
+        fillerMarket.addFillerPool(pairId);
 
         vm.expectRevert(bytes("ERC20: insufficient allowance"));
-        fillerMarket.depositToInsurancePool(newFillerPoolId, 1000000);
+        fillerMarket.depositToInsurancePool(pairId, 1000000);
 
         vm.stopPrank();
     }
@@ -47,9 +45,9 @@ contract TestPerpMarketDepositToFillerPool is TestPerpMarket {
     function testDepositToFillerPool(uint256 marginAmount) public {
         marginAmount = bound(marginAmount, 1, 1e18);
 
-        fillerMarket.depositToInsurancePool(fillerPoolId, marginAmount);
+        fillerMarket.depositToInsurancePool(pairId, marginAmount);
 
-        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(fillerPoolId);
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(address(this), pairId);
 
         assertEq(fillerMarginAmount, int256(marginAmount));
     }

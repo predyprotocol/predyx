@@ -59,7 +59,7 @@ contract TestLevMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         market.updateQuoteTokenMap(1);
     }
-    
+
     function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view

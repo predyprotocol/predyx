@@ -42,7 +42,7 @@ contract TestLevExecuteOrder is TestLevMarket {
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(market), from1, 0, block.timestamp + 100),
+            OrderInfo(address(market), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -56,9 +56,7 @@ contract TestLevExecuteOrder is TestLevMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         IPredyPool.TradeResult memory tradeResult = market.executeOrder(
-            _fillerAddress,
-            signedOrder,
-            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
         );
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 980);
@@ -84,7 +82,7 @@ contract TestLevExecuteOrder is TestLevMarket {
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(market), from1, 0, 1),
+            OrderInfo(address(market), from1, _fillerAddress, 0, 1),
             1,
             1,
             address(currency1),
@@ -101,7 +99,7 @@ contract TestLevExecuteOrder is TestLevMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert();
-        market.executeOrder(_fillerAddress, signedOrder, settlementData);
+        market.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if signature is invalid
@@ -111,7 +109,7 @@ contract TestLevExecuteOrder is TestLevMarket {
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(market), from1, 0, block.timestamp),
+                OrderInfo(address(market), from1, _fillerAddress, 0, block.timestamp),
                 0,
                 1,
                 address(currency1),
@@ -124,12 +122,12 @@ contract TestLevExecuteOrder is TestLevMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            market.executeOrder(_fillerAddress, signedOrder, settlementData);
+            market.executeOrder(signedOrder, settlementData);
         }
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(market), from2, 0, block.timestamp),
+                OrderInfo(address(market), from2, _fillerAddress, 0, block.timestamp),
                 1,
                 1,
                 address(currency1),
@@ -143,7 +141,7 @@ contract TestLevExecuteOrder is TestLevMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
 
             vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
-            market.executeOrder(_fillerAddress, signedOrder, settlementData);
+            market.executeOrder(signedOrder, settlementData);
         }
     }
 
@@ -152,7 +150,7 @@ contract TestLevExecuteOrder is TestLevMarket {
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(market), from1, 0, block.timestamp + 100),
+            OrderInfo(address(market), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -169,13 +167,13 @@ contract TestLevExecuteOrder is TestLevMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
-        market.executeOrder(_fillerAddress, signedOrder, settlementData);
+        market.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(market), from1, 0, block.timestamp + 100),
+            OrderInfo(address(market), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -192,7 +190,7 @@ contract TestLevExecuteOrder is TestLevMarket {
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
-        market.executeOrder(_fillerAddress, signedOrder, settlementData);
+        market.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if filler pool is not enough

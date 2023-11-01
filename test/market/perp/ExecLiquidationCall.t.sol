@@ -13,6 +13,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
     address from2;
 
     uint256 fillerPoolId;
+    address _fillerAddress;
 
     function setUp() public override {
         TestPerpMarket.setUp();
@@ -20,6 +21,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
         fillerPoolId = fillerMarket.addFillerPool(pairId);
+        _fillerAddress = address(this);
 
         fillerMarket.depositToInsurancePool(1, 100 * 1e6);
 
@@ -38,7 +40,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         currency1.approve(address(permit2), type(uint256).max);
 
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -51,9 +53,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         fillerMarket.executeOrder(
-            fillerPoolId,
-            signedOrder,
-            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
         );
     }
 
@@ -71,7 +71,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         fillerMarket.execLiquidationCall(1, settlementData);
         // vm.stopPrank();
 
-        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(fillerPoolId);
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(_fillerAddress, pairId);
 
         assertLt(fillerMarginAmount, int256(100 * 1e6));
     }

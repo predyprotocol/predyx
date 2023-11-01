@@ -36,7 +36,7 @@ contract AavePerp is IFillerMarket, ILendingPool {
         bool isLiquidated;
         uint256 liquidationPrice;
     }
-    
+
     struct TotalPosition {
         uint256 totalLongAmount;
         uint256 totalShortAmount;
@@ -65,12 +65,12 @@ contract AavePerp is IFillerMarket, ILendingPool {
         pairCount = 1;
     }
 
-    function addPair(address quoteToken, address baseToken) external returns(uint256 pairId) {
+    function addPair(address quoteToken, address baseToken) external returns (uint256 pairId) {
         pairId = pairCount;
 
         pairs[pairId] = Pair(quoteToken, baseToken);
         insurancePools[pairId].fillerAddress = msg.sender;
-        
+
         pairCount++;
     }
 
@@ -90,14 +90,9 @@ contract AavePerp is IFillerMarket, ILendingPool {
 
         IERC20(quoteTokenAddress).approve(address(_aavePool), depositAmount);
 
-        _aavePool.supply(
-            quoteTokenAddress,
-            depositAmount,
-            address(this),
-            0
-        );
+        _aavePool.supply(quoteTokenAddress, depositAmount, address(this), 0);
     }
-    
+
     function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (PerpTradeResult memory perpTradeResult)
@@ -113,7 +108,6 @@ contract AavePerp is IFillerMarket, ILendingPool {
      * @dev Only locker can call this function
      */
     function take(bool isQuoteAsset, address to, uint256 amount) external {}
-
 
     function _verifyOrder(ResolvedOrder memory order) internal {
         order.validate();

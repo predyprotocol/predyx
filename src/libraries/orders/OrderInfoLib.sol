@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 struct OrderInfo {
     address market;
     address trader;
+    address filler;
     uint256 nonce;
     uint256 deadline;
 }

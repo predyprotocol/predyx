@@ -70,7 +70,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
         int256 marginAmountUpdate;
         bool createNew;
     }
-    
+
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
     mapping(address filler => mapping(uint256 pairId => InsurancePool)) public insurancePools;
@@ -177,7 +177,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
      * @param settlementData The route of settlement created by filler
      * @dev Fillers call this function
      */
-    function executeOrder(address filler, SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -204,7 +204,7 @@ contract LeveragedGammaMarket is IFillerMarket, BaseHookCallback {
                         CallbackSource.TRADE,
                         msg.sender,
                         gammaOrder.info.trader,
-                        filler,
+                        gammaOrder.info.filler,
                         gammaOrder.marginAmount,
                         gammaOrder.positionId == 0
                     )

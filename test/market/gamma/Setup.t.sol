@@ -45,7 +45,7 @@ contract TestMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         limitOrderValidator = new LimitOrderValidator();
     }
-    
+
     function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
         internal
         view

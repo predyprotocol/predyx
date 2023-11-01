@@ -41,7 +41,7 @@ contract TestLevExecuteOrder is TestLevMarket {
 
     function testConfirmLiquidation() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(market), from1, 0, block.timestamp + 100),
+            OrderInfo(address(market), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -55,9 +55,7 @@ contract TestLevExecuteOrder is TestLevMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         market.executeOrder(
-            _fillerAddress,
-            signedOrder,
-            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
         );
 
         priceFeed.setSqrtPrice(12 * Constants.Q96 / 10);

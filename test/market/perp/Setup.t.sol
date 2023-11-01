@@ -64,7 +64,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
         predyPool.supply(1, true, 1e18);
         predyPool.supply(1, false, 1e18);
     }
-    
+
     function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)
         internal
         view

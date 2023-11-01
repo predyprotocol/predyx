@@ -11,16 +11,18 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     uint256 fromPrivateKey2;
     address from2;
 
-    uint256 fillerPoolId;
+    address _fillerAddress;
 
     function setUp() public override {
         TestPerpMarket.setUp();
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        fillerPoolId = fillerMarket.addFillerPool(pairId);
+        _fillerAddress = address(this);
 
-        fillerMarket.depositToInsurancePool(fillerPoolId, 1e8);
+        fillerMarket.addFillerPool(pairId);
+
+        fillerMarket.depositToInsurancePool(pairId, 1e8);
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -41,9 +43,9 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         // DataType.Vault memory vault = predyPool.getVault(1);
         // assertEq(vault.margin, 0);
 
-        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(fillerPoolId);
+        (,,, int256 fillerMarginAmount,,,,,,) = fillerMarket.insurancePools(_fillerAddress, pairId);
 
-        fillerMarket.withdrawFromInsurancePool(fillerPoolId, uint256(fillerMarginAmount));
+        fillerMarket.withdrawFromInsurancePool(pairId, uint256(fillerMarginAmount));
 
         uint256 balance1 = currency1.balanceOf(address(fillerMarket));
 
@@ -53,9 +55,9 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
     function testExecuteOrderFailedIfTraderOpens() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
-            1,
+            uint64(pairId),
             address(currency1),
             -1000,
             2 * 1e6,
@@ -70,14 +72,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         vm.startPrank(from1);
         vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
-        fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+        fillerMarket.executeOrder(signedOrder, settlementData);
         vm.stopPrank();
     }
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -90,9 +92,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         PerpMarket.PerpTradeResult memory tradeResult = fillerMarket.executeOrder(
-            fillerPoolId,
-            signedOrder,
-            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
         );
 
         assertEq(tradeResult.entryUpdate, 998);
@@ -103,7 +103,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     function testExecuteOrderSucceedsWithNetting() public {
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -116,7 +116,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
-                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
             );
@@ -124,7 +123,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 1, block.timestamp + 100),
                 1,
                 1,
                 address(currency1),
@@ -137,7 +136,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
-                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
             );
@@ -148,7 +146,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     function testExecuteOrderSucceedsForClosing() public {
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -161,7 +159,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
-                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
             );
@@ -171,7 +168,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 1, block.timestamp + 100),
                 1,
                 1,
                 address(currency1),
@@ -185,7 +182,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
             vm.startPrank(from1);
             fillerMarket.executeOrder(
-                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
             );
@@ -199,7 +195,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     function testExecuteOrderFailsIfMarginIsNegative() public {
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -212,7 +208,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
-                1,
                 signedOrder,
                 settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
             );
@@ -220,7 +215,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 1, block.timestamp + 100),
                 1,
                 1,
                 address(currency1),
@@ -237,7 +232,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
             vm.startPrank(from1);
             vm.expectRevert(PerpMarket.UserMarginIsNegative.selector);
-            fillerMarket.executeOrder(1, signedOrder, settlementData);
+            fillerMarket.executeOrder(signedOrder, settlementData);
             vm.stopPrank();
         }
     }
@@ -253,7 +248,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, 1),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, 1),
             1,
             1,
             address(currency1),
@@ -269,7 +264,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert();
-        fillerMarket.executeOrder(1, signedOrder, settlementData);
+        fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if signature is invalid
@@ -279,7 +274,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp),
                 0,
                 1,
                 address(currency1),
@@ -291,12 +286,12 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+            fillerMarket.executeOrder(signedOrder, settlementData);
         }
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from2, 0, block.timestamp),
+                OrderInfo(address(fillerMarket), from2, _fillerAddress, 0, block.timestamp),
                 1,
                 1,
                 address(currency1),
@@ -309,7 +304,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
 
             vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
-            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+            fillerMarket.executeOrder(signedOrder, settlementData);
         }
     }
 
@@ -318,7 +313,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -334,13 +329,13 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
         vm.expectRevert(PerpLimitOrderValidator.PriceGreaterThanLimit.selector);
-        fillerMarket.executeOrder(1, signedOrder, settlementData);
+        fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -356,14 +351,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
         vm.expectRevert(PerpLimitOrderValidator.PriceLessThanLimit.selector);
-        fillerMarket.executeOrder(1, signedOrder, settlementData);
+        fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if filler pool is not enough
     function testExecuteOrderFailedIfFillerPoolIsNotEnough() public {
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -379,12 +374,12 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
                 settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
             // vm.expectRevert(PerpMarket.FillerPoolIsNotSafe.selector);
-            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+            fillerMarket.executeOrder(signedOrder, settlementData);
         }
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from2, 0, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from2, _fillerAddress, 0, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -399,14 +394,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             ISettlement.SettlementData memory settlementData =
                 settlement.getSettlementParams(normalSwapRoute, 1e10, address(currency1), address(currency0), 0);
 
-            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+            fillerMarket.executeOrder(signedOrder, settlementData);
         }
 
         fillerMarket.withdrawFromInsurancePool(1, 89 * 1e6);
 
         {
             PerpOrder memory order = PerpOrder(
-                OrderInfo(address(fillerMarket), from2, 1, block.timestamp + 100),
+                OrderInfo(address(fillerMarket), from2, _fillerAddress, 1, block.timestamp + 100),
                 0,
                 1,
                 address(currency1),
@@ -422,14 +417,14 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
                 settlement.getSettlementParams(normalSwapRoute, 1e10, address(currency1), address(currency0), 0);
 
             vm.expectRevert(PerpMarket.FillerPoolIsNotSafe.selector);
-            fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+            fillerMarket.executeOrder(signedOrder, settlementData);
         }
     }
 
     // executeOrder fails if the position is danger
     function testExecuteOrderFailedIfPositionIsDanger() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(currency1),
@@ -445,7 +440,7 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
         vm.expectRevert(PerpMarket.UserPositionIsNotSafe.selector);
-        fillerMarket.executeOrder(fillerPoolId, signedOrder, settlementData);
+        fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if pairId does not exist

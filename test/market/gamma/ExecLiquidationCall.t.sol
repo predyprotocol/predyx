@@ -39,7 +39,7 @@ contract TestExecLiquidationCall is TestMarket {
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceedsIfVaultIsDanger() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp + 100),
             0,
             1,
             address(currency1),

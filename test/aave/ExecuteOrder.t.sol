@@ -6,13 +6,17 @@ import {ISettlement} from "../../src/interfaces/ISettlement.sol";
 import {PerpOrder} from "../../src/libraries/orders/PerpOrder.sol";
 
 contract TestAaveExecuteOrder is TestAavePerp {
+    address _fillerAddress;
+
     function setUp() public override {
         TestAavePerp.setUp();
+
+        _fillerAddress = msg.sender;
     }
 
     function testAaveExecuteOrderSucceeds() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(_aavePerp), from1, 0, block.timestamp + 100),
+            OrderInfo(address(_aavePerp), from1, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(_usdc),
