@@ -4,6 +4,9 @@ pragma solidity ^0.8.17;
 import "./PairLib.sol";
 import "./Perp.sol";
 import "./DataType.sol";
+import "./Constants.sol";
+import {ScaledAsset} from "./ScaledAsset.sol";
+import {Math} from "./math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 library PerpFee {

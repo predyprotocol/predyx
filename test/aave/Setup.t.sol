@@ -50,8 +50,8 @@ contract TestAavePerp is Test, SigUtils {
 
         // Gets tokens
         vm.startPrank(0x5bdf85216ec1e38D6458C870992A69e38e03F7Ef);
-        _usdc.transfer(address(this), 5000 * 1e6);
-        _usdc.transfer(from1, 5000 * 1e6);
+        _usdc.transfer(address(this), 10000 * 1e6);
+        _usdc.transfer(from1, 1000 * 1e6);
         vm.stopPrank();
 
         vm.startPrank(0x1eED63EfBA5f81D95bfe37d82C8E736b974F477b);
@@ -70,6 +70,8 @@ contract TestAavePerp is Test, SigUtils {
         vm.stopPrank();
 
         _usdc.approve(address(_aavePerp), type(uint256).max);
+        _usdc.approve(address(settlement), type(uint256).max);
+        _weth.approve(address(settlement), type(uint256).max);
     }
 
     function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)

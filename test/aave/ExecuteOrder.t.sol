@@ -11,7 +11,9 @@ contract TestAaveExecuteOrder is TestAavePerp {
     function setUp() public override {
         TestAavePerp.setUp();
 
-        _fillerAddress = msg.sender;
+        _fillerAddress = address(this);
+
+        _aavePerp.depositToInsurancePool(pairId, 1000 * 1e6);
     }
 
     function testAaveExecuteOrderSucceeds() public {
@@ -20,7 +22,7 @@ contract TestAaveExecuteOrder is TestAavePerp {
             0,
             1,
             address(_usdc),
-            -1000,
+            1000,
             2 * 1e6,
             address(limitOrderValidator),
             abi.encode(PerpLimitOrderValidationData(0, 0))
@@ -29,7 +31,7 @@ contract TestAaveExecuteOrder is TestAavePerp {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(_usdc), address(_weth), 10000);
+            settlement.getSettlementParams(address(_usdc), address(_weth), 1700 * 1e4);
 
         _aavePerp.executeOrder(signedOrder, settlementData);
     }

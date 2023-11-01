@@ -174,7 +174,6 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         // deposit margin to the vault if required
         if (perpOrder.marginAmount > 0) {
-            console.log(1, perpOrder.info.filler, perpOrder.pairId);
             IERC20(perpOrder.entryTokenAddress).approve(address(_predyPool), uint256(perpOrder.marginAmount));
             _predyPool.updateMargin(insurancePool.vaultId, perpOrder.marginAmount);
         }
