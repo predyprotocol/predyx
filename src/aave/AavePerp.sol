@@ -158,6 +158,8 @@ contract AavePerp is IFillerMarket, ILendingPool {
             revert CurrencyNotSettled();
         }
 
+        delete _lockData;
+
         _performTradePostProcessing(
             insurancePools[perpOrder.pairId], perpOrder.positionId, perpOrder.tradeAmount, totalQuoteAmount
         );

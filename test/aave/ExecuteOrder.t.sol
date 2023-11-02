@@ -35,4 +35,50 @@ contract TestAaveExecuteOrder is TestAavePerp {
 
         _aavePerp.executeOrder(signedOrder, settlementData);
     }
+
+    /*
+    function testAaveExecuteOrderSucceedsForClose() public {
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(_aavePerp), from1, _fillerAddress, 0, block.timestamp + 100),
+                0,
+                1,
+                address(_usdc),
+                1000,
+                2 * 1e6,
+                address(limitOrderValidator),
+                abi.encode(PerpLimitOrderValidationData(0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(address(_usdc), address(_weth), 1700 * 1e4);
+
+            _aavePerp.executeOrder(signedOrder, settlementData);
+        }
+
+        vm.warp(block.timestamp + 1 hours);
+
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(_aavePerp), from1, _fillerAddress, 1, block.timestamp + 100),
+                0,
+                1,
+                address(_usdc),
+                -1000,
+                0,
+                address(limitOrderValidator),
+                abi.encode(PerpLimitOrderValidationData(0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(address(_usdc), address(_weth), 1800 * 1e4);
+
+            _aavePerp.executeOrder(signedOrder, settlementData);
+        }
+    }
+    */
 }
