@@ -29,6 +29,8 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 vaultId => address) public userPositions;
 
+    event Traded(address trader, uint256 vaultId);
+
     constructor(IPredyPool _predyPool, address permit2Address) BaseHookCallback(_predyPool) {
         _permit2 = IPermit2(permit2Address);
     }
@@ -97,6 +99,8 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
                 _quoteTokenMap[gammaOrder.pairId], gammaOrder.info.trader, uint256(-gammaOrder.marginAmount)
             );
         }
+
+        emit Traded(gammaOrder.info.trader, tradeResult.vaultId);
 
         return tradeResult;
     }

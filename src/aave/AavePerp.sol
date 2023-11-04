@@ -205,9 +205,7 @@ contract AavePerp is IFillerMarket, ILendingPool {
      * @param positionId The id of position
      * @param settlementData The route of settlement created by liquidator
      */
-    function execLiquidationCall(uint256 positionId, ISettlement.SettlementData memory settlementData) external {
-
-    }
+    function execLiquidationCall(uint256 positionId, ISettlement.SettlementData memory settlementData) external {}
 
     function _executeOrder(PerpOrder memory perpOrder, ISettlement.SettlementData memory settlementData, address caller)
         internal
