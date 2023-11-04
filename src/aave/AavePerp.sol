@@ -199,6 +199,16 @@ contract AavePerp is IFillerMarket, ILendingPool {
         return true;
     }
 
+    /**
+     * @notice Executes liquidation call for the position
+     * @dev Anyone can liquidate position but only filler can cover negative margin
+     * @param positionId The id of position
+     * @param settlementData The route of settlement created by liquidator
+     */
+    function execLiquidationCall(uint256 positionId, ISettlement.SettlementData memory settlementData) external {
+
+    }
+
     function _executeOrder(PerpOrder memory perpOrder, ISettlement.SettlementData memory settlementData, address caller)
         internal
         returns (PerpTradeResult memory perpTradeResult)
