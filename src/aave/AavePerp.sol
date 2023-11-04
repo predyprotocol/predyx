@@ -4,11 +4,12 @@ pragma solidity ^0.8.17;
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPool as IAavePool} from "../../lib/aave-v3-core/contracts/interfaces/IPool.sol";
-import "../interfaces/IFillerMarket.sol";
-import "../interfaces/ISettlement.sol";
-import "../interfaces/ILendingPool.sol";
+import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
+import {ISettlement} from "../interfaces/ISettlement.sol";
+import {ILendingPool} from "../interfaces/ILendingPool.sol";
 import {Math} from "../libraries/math/Math.sol";
 import {Perp} from "../libraries/Perp.sol";
+import {ArrayLib} from "../libraries/ArrayLib.sol";
 import {Permit2Lib} from "../libraries/orders/Permit2Lib.sol";
 import {ResolvedOrderLib, ResolvedOrder} from "../libraries/orders/ResolvedOrder.sol";
 import {PerpOrderLib, PerpOrder} from "../libraries/orders/PerpOrder.sol";
@@ -18,6 +19,8 @@ contract AavePerp is IFillerMarket, ILendingPool {
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
     using Math for int256;
+    using ArrayLib for uint256;
+    using ArrayLib for address;
 
     IPermit2 _permit2;
 
@@ -73,6 +76,16 @@ contract AavePerp is IFillerMarket, ILendingPool {
         int256 cumulativeFundingRates;
     }
 
+    struct FlashLoanCallbackParams {
+        PerpOrder order;
+        ISettlement.SettlementData settlementData;
+        address caller;
+    }
+
+    struct FlashLoanParams {
+        uint256 amount;
+    }
+
     mapping(uint256 => InsurancePool) public insurancePools;
 
     mapping(uint256 => Pair) public pairs;
@@ -84,6 +97,8 @@ contract AavePerp is IFillerMarket, ILendingPool {
     uint256 public positionCount;
 
     LockData internal _lockData;
+
+    PerpTradeResult internal _tmpResult;
 
     modifier onlyFiller(uint256 fillerPoolId) {
         if (insurancePools[fillerPoolId].fillerAddress != msg.sender) revert CallerIsNotFiller();
@@ -126,15 +141,68 @@ contract AavePerp is IFillerMarket, ILendingPool {
         _aavePool.supply(quoteTokenAddress, depositAmount, address(this), 0);
     }
 
-    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
-        external
-        returns (PerpTradeResult memory perpTradeResult)
-    {
+    /**
+     * @notice Verifies signature of the order and executes trade
+     * @dev Fillers can open position and anyone can close position
+     * @param order The order signed by trader
+     * @param settlementData The route of settlement created by filler
+     * @param flashLoanParams Parameters for flashloan
+     */
+    function executeOrder(
+        SignedOrder memory order,
+        ISettlement.SettlementData memory settlementData,
+        FlashLoanParams memory flashLoanParams
+    ) external returns (PerpTradeResult memory result) {
         PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
         ResolvedOrder memory resolvedOrder = PerpOrderLib.resolve(perpOrder, order.sig);
 
         _verifyOrder(resolvedOrder);
 
+        address currency;
+
+        if (perpOrder.tradeAmount > 0) {
+            currency = pairs[perpOrder.pairId].quoteToken;
+        } else {
+            currency = pairs[perpOrder.pairId].baseToken;
+        }
+
+        _aavePool.flashLoan({
+            receiverAddress: address(this),
+            assets: currency.toArray(),
+            amounts: flashLoanParams.amount.toArray(),
+            interestRateModes: uint256(2).toArray(),
+            onBehalfOf: address(this),
+            params: abi.encode(
+                FlashLoanCallbackParams({caller: msg.sender, order: perpOrder, settlementData: settlementData})
+                ),
+            referralCode: 0
+        });
+
+        result = _tmpResult;
+
+        delete _tmpResult;
+    }
+
+    function executeOperation(
+        address[] calldata,
+        uint256[] calldata,
+        uint256[] calldata,
+        address initiator,
+        bytes calldata params
+    ) external returns (bool) {
+        require(msg.sender == address(_aavePool) && initiator == address(this));
+
+        FlashLoanCallbackParams memory callbackParams = abi.decode(params, (FlashLoanCallbackParams));
+
+        _tmpResult = _executeOrder(callbackParams.order, callbackParams.settlementData, callbackParams.caller);
+
+        return true;
+    }
+
+    function _executeOrder(PerpOrder memory perpOrder, ISettlement.SettlementData memory settlementData, address caller)
+        internal
+        returns (PerpTradeResult memory perpTradeResult)
+    {
         if (perpOrder.positionId == 0) {
             perpOrder.positionId = positionCount;
 
@@ -160,8 +228,8 @@ contract AavePerp is IFillerMarket, ILendingPool {
 
         delete _lockData;
 
-        _performTradePostProcessing(
-            insurancePools[perpOrder.pairId], perpOrder.positionId, perpOrder.tradeAmount, totalQuoteAmount
+        return _performTradePostProcessing(
+            insurancePools[perpOrder.pairId], perpOrder.positionId, perpOrder.tradeAmount, totalQuoteAmount, caller
         );
     }
 
@@ -232,7 +300,8 @@ contract AavePerp is IFillerMarket, ILendingPool {
         InsurancePool storage insurancePool,
         uint256 positionId,
         int256 tradeAmount,
-        int256 quoteAmount
+        int256 quoteAmount,
+        address caller
     ) internal returns (PerpTradeResult memory perpTradeResult) {
         UserPosition storage userPosition = userPositions[positionId];
 
@@ -241,7 +310,7 @@ contract AavePerp is IFillerMarket, ILendingPool {
 
         userPosition.entryValue += perpTradeResult.entryUpdate;
 
-        updateLongShort(insurancePool, userPosition.positionAmount, tradeAmount);
+        updateLongShort(insurancePool, userPosition.positionAmount, tradeAmount, caller);
 
         userPosition.positionAmount += tradeAmount;
         userPosition.marginAmount += perpTradeResult.payoff;
@@ -296,7 +365,12 @@ contract AavePerp is IFillerMarket, ILendingPool {
         }
     }
 
-    function updateLongShort(InsurancePool storage insurancePool, int256 positionAmount, int256 tradeAmount) internal {
+    function updateLongShort(
+        InsurancePool storage insurancePool,
+        int256 positionAmount,
+        int256 tradeAmount,
+        address caller
+    ) internal {
         int256 openAmount;
         int256 closeAmount;
 
@@ -325,7 +399,7 @@ contract AavePerp is IFillerMarket, ILendingPool {
         }
 
         // only filler can open position
-        if (openAmount != 0 && insurancePool.fillerAddress != msg.sender) {
+        if (openAmount != 0 && insurancePool.fillerAddress != caller) {
             revert CallerIsNotFiller();
         }
     }

@@ -33,7 +33,7 @@ contract TestAaveExecuteOrder is TestAavePerp {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(address(_usdc), address(_weth), 1700 * 1e4);
 
-        _aavePerp.executeOrder(signedOrder, settlementData);
+        _aavePerp.executeOrder(signedOrder, settlementData, AavePerp.FlashLoanParams(1000));
     }
 
     /*
