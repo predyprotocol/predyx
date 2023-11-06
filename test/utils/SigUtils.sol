@@ -66,4 +66,22 @@ contract SigUtils is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         sig = bytes.concat(r, s, bytes1(v));
     }
+
+    bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+
+    function _getPermitVer1Signature(
+        uint256 privateKey,
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 nonce,
+        uint256 deadline,
+        bytes32 domainSeparator
+    ) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        bytes32 msgHash = ECDSA.toTypedDataHash(
+            domainSeparator, keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline))
+        );
+
+        (v, r, s) = vm.sign(privateKey, msgHash);
+    }
 }
