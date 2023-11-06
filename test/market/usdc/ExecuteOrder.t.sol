@@ -15,14 +15,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         perpMarket.addFillerPool(pairId);
 
         perpMarket.depositToInsurancePool(pairId, 1000 * 1e6);
-
-        /*
-        vm.prank(from1);
-        currency1.approve(address(permit2), type(uint256).max);
-
-        vm.prank(from2);
-        currency1.approve(address(permit2), type(uint256).max);
-        */
     }
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)

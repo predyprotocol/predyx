@@ -77,17 +77,6 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
         perpMarket = new PerpMarket(_predyPool, address(_permit2));
         perpMarket.updateQuoteTokenMap(1);
 
-        /*
-        currency0.approve(address(permit2), type(uint256).max);
-        currency1.approve(address(permit2), type(uint256).max);
-
-        currency0.approve(address(fillerMarket), type(uint256).max);
-        currency1.approve(address(fillerMarket), type(uint256).max);
-
-        currency0.approve(address(directSettlement), type(uint256).max);
-        currency1.approve(address(directSettlement), type(uint256).max);
-        */
-
         limitOrderValidator = new PerpLimitOrderValidator();
 
         _weth.approve(address(_predyPool), type(uint256).max);
