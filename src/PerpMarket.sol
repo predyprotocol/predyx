@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@solmate/src/utils/FixedPointMathLib.sol";
-import "./interfaces/IPredyPool.sol";
-import "./interfaces/IFillerMarket.sol";
-import "./interfaces/IOrderValidator.sol";
-import "./base/BaseHookCallback.sol";
-import "./libraries/orders/Permit2Lib.sol";
-import "./libraries/orders/ResolvedOrder.sol";
-import "./libraries/orders/PerpOrder.sol";
-import "./libraries/math/Math.sol";
-import "./libraries/Perp.sol";
-import "./libraries/Constants.sol";
-import "./libraries/DataType.sol";
-import "./lens/PredyPoolQuoter.sol";
-import "forge-std/console.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {FixedPointMathLib} from "@solmate/src/utils/FixedPointMathLib.sol";
+import {IPredyPool} from "./interfaces/IPredyPool.sol";
+import {IFillerMarket} from "./interfaces/IFillerMarket.sol";
+import {IPerpOrderValidator} from "./interfaces/IOrderValidator.sol";
+import {ISettlement} from "./interfaces/ISettlement.sol";
+import {BaseHookCallback} from "./base/BaseHookCallback.sol";
+import {Permit2Lib} from "./libraries/orders/Permit2Lib.sol";
+import {ResolvedOrderLib, ResolvedOrder} from "./libraries/orders/ResolvedOrder.sol";
+import {PerpOrderLib, PerpOrder} from "./libraries/orders/PerpOrder.sol";
+import {Math} from "./libraries/math/Math.sol";
+import {Perp} from "./libraries/Perp.sol";
+import {Constants} from "./libraries/Constants.sol";
+import {DataType} from "./libraries/DataType.sol";
+import {PredyPoolQuoter} from "./lens/PredyPoolQuoter.sol";
 
 /**
  * @notice Provides perps to retail traders
@@ -391,8 +391,6 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
 
         InsurancePool storage fillerPool = insurancePools[fillerAddress][pairId];
 
-        console.log(1, fillerAddress, pairId);
-
         fillerPool.vaultId = vaultId;
         fillerPool.pairId = pairId;
         fillerPool.fillerAddress = fillerAddress;
@@ -620,8 +618,6 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
         int256 value = userPosition.marginAmount + userPosition.positionAmount * price / int256(Constants.Q96)
             + userPosition.entryValue;
         int256 min = int256(Math.abs(userPosition.positionAmount)) * price / int256(Constants.Q96 * 50);
-
-        // console.log(uint256(value), uint256(min), uint256(userPosition.entryValue));
 
         return value >= min;
     }

@@ -2,11 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../../src/PredyPool.sol";
-import "../mocks/MockERC20.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniswapV3PoolActions} from "@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolActions.sol";
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "../../src/PredyPool.sol";
+import "../../src/libraries/InterestRateModel.sol";
+import "../mocks/MockERC20.sol";
 
 contract TestPool is Test {
     PredyPool predyPool;
