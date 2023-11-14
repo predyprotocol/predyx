@@ -41,6 +41,7 @@ library Perp {
         Perp.SqrtPerpAssetStatus sqrtAssetStatus;
         address priceFeed;
         bool isMarginZero;
+        bool whitelistEnabled;
         uint8 feeRatio;
         uint256 lastUpdateTimestamp;
     }

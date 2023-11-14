@@ -37,6 +37,7 @@ contract PairStatusUtils {
             Perp.createAssetStatus(_uniswapPool, -100, 100),
             address(0),
             false,
+            false,
             0,
             block.timestamp
         );

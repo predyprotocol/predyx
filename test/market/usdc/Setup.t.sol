@@ -100,6 +100,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
                 address(_uniswapPool),
                 // set up oracle
                 priceFeed,
+                false,
                 0,
                 Perp.AssetRiskParams(RISK_RATIO, 1000, 500),
                 irmParams,

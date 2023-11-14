@@ -35,6 +35,8 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback {
 
     mapping(address => bool) public allowedUniswapPools;
 
+    mapping(address trader => mapping(uint256 pairId => bool)) public allowedTraders;
+
     event RecepientUpdated(uint256 vaultId, address recepient);
 
     modifier onlyByLocker() {
@@ -111,6 +113,10 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback {
         returns (TradeResult memory tradeResult)
     {
         globalData.validate(tradeParams.pairId);
+
+        if (globalData.pairs[tradeParams.pairId].whitelistEnabled && allowedTraders[msg.sender][tradeParams.pairId]) {
+            revert TraderNotAllowed();
+        }
 
         DataType.Vault storage vault = globalData.createOrGetVault(tradeParams.vaultId, tradeParams.pairId);
 

@@ -19,6 +19,8 @@ interface IPredyPool {
 
     error VaultIsNotDanger();
 
+    error TraderNotAllowed();
+
     struct TradeParams {
         uint256 pairId;
         uint256 vaultId;
