@@ -14,13 +14,18 @@ contract TestTrade is TestPool {
     DirectSettlement directSettlement;
     address filler;
 
+    uint256 whitelistPairId;
+
     function setUp() public override {
         TestPool.setUp();
 
-        registerPair(address(currency1), address(0));
+        registerPair(address(currency1), address(0), false);
+        whitelistPairId = registerPair(address(currency1), address(0), true);
 
         predyPool.supply(1, true, 1e8);
         predyPool.supply(1, false, 1e8);
+        predyPool.supply(whitelistPairId, true, 1e8);
+        predyPool.supply(whitelistPairId, false, 1e8);
 
         tradeMarket = new TestTradeMarket(predyPool);
         tradeMarket2 = new TestTradeMarket(predyPool);
@@ -122,6 +127,22 @@ contract TestTrade is TestPool {
 
         vm.expectRevert(VaultLib.CallerIsNotVaultOwner.selector);
         tradeMarket2.trade(IPredyPool.TradeParams(1, tradeResult.vaultId, 99 * 1e4, 0, extraData), settlementData);
+    }
+
+    function testTradeFails_IfCallerIsNotAllowed() public {
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
+            whitelistPairId, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+        );
+
+        ISettlement.SettlementData memory settlementData =
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
+
+        vm.expectRevert(IPredyPool.TraderNotAllowed.selector);
+        tradeMarket.trade(tradeParams, settlementData);
+
+        predyPool.addWhitelistAddress(whitelistPairId, address(tradeMarket));
+
+        tradeMarket.trade(tradeParams, settlementData);
     }
 
     // trade fails if pairId does not exist

@@ -114,7 +114,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback {
     {
         globalData.validate(tradeParams.pairId);
 
-        if (globalData.pairs[tradeParams.pairId].whitelistEnabled && allowedTraders[msg.sender][tradeParams.pairId]) {
+        if (globalData.pairs[tradeParams.pairId].whitelistEnabled && !allowedTraders[msg.sender][tradeParams.pairId]) {
             revert TraderNotAllowed();
         }
 
@@ -136,6 +136,18 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback {
         vault.recipient = recipient;
 
         emit RecepientUpdated(vaultId, recipient);
+    }
+
+    /**
+     * @notice Add whitelist trader
+     * @param pairId The id of pair
+     * @param trader The address of allowed trader
+     */
+    function addWhitelistAddress(uint256 pairId, address trader) external {
+        require(globalData.pairs[pairId].whitelistEnabled);
+        require(globalData.pairs[pairId].poolOwner == msg.sender);
+
+        allowedTraders[trader][pairId] = true;
     }
 
     /**

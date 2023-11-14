@@ -84,6 +84,10 @@ contract TestPool is Test {
     }
 
     function registerPair(address marginId, address priceFeed) public returns (uint256) {
+        return registerPair(marginId, priceFeed, false);
+    }
+
+    function registerPair(address marginId, address priceFeed, bool isWhitelistEnabled) internal returns (uint256) {
         InterestRateModel.IRMParams memory irmParams = InterestRateModel.IRMParams(1e16, 9 * 1e17, 5 * 1e17, 1e18);
 
         return predyPool.registerPair(
@@ -93,7 +97,7 @@ contract TestPool is Test {
                 address(uniswapPool),
                 // set up oracle
                 priceFeed,
-                false,
+                isWhitelistEnabled,
                 0,
                 Perp.AssetRiskParams(RISK_RATIO, 1000, 500),
                 irmParams,
