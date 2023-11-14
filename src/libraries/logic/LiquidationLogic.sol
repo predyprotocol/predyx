@@ -84,10 +84,10 @@ library LiquidationLogic {
 
             if (remainingMargin > 0) {
                 // Send the remaining margin to the recipient.
-                if (vault.recepient != address(0)) {
+                if (vault.recipient != address(0)) {
                     vault.margin = 0;
 
-                    TransferHelper.safeTransfer(pairStatus.quotePool.token, vault.recepient, uint256(remainingMargin));
+                    TransferHelper.safeTransfer(pairStatus.quotePool.token, vault.recipient, uint256(remainingMargin));
                 }
             } else if (remainingMargin < 0) {
                 vault.margin = 0;

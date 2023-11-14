@@ -61,7 +61,7 @@ interface IPredyPool {
         external
         returns (TradeResult memory tradeResult);
 
-    function updateRecepient(uint256 vaultId, address recepient) external;
+    function updateRecepient(uint256 vaultId, address recipient) external;
 
     function updateMargin(uint256 vaultId, int256 marginAmount) external;
     function createVault(uint256 pairId) external returns (uint256);

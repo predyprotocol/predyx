@@ -38,7 +38,7 @@ library VaultLib {
 
             vault.id = finalVaultId;
             vault.owner = msg.sender;
-            vault.recepient = msg.sender;
+            vault.recipient = msg.sender;
             vault.openPosition.pairId = pairId;
             vault.marginId = marginId;
 
