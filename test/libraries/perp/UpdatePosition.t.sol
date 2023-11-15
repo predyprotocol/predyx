@@ -20,8 +20,10 @@ contract TestPerpUpdatePosition is TestPerp {
 
     // Cannot open position if there is no enough supply
     function testCannotOpenLong() public {
-        vm.expectRevert(bytes("S0"));
         Perp.updatePosition(pairStatus, userStatus, Perp.UpdatePerpParams(1e18, -1e18), Perp.UpdateSqrtPerpParams(0, 0));
+
+        vm.expectRevert(bytes("S0"));
+        ScaledAsset.validateAvailability(pairStatus.quotePool.tokenStatus);
     }
 
     // Opens long position
@@ -31,12 +33,20 @@ contract TestPerpUpdatePosition is TestPerp {
 
         int256 quoteAmount = -baseAmount;
 
-        if (quoteAmount < -99999999 || baseAmount < -99999999) {
-            vm.expectRevert(bytes("S0"));
-        }
         Perp.updatePosition(
             pairStatus, userStatus, Perp.UpdatePerpParams(baseAmount, quoteAmount), Perp.UpdateSqrtPerpParams(0, 0)
         );
+
+        if (quoteAmount < -99999999) {
+            vm.expectRevert(bytes("S0"));
+            ScaledAsset.validateAvailability(pairStatus.quotePool.tokenStatus);
+        } else if (baseAmount < -99999999) {
+            vm.expectRevert(bytes("S0"));
+            ScaledAsset.validateAvailability(pairStatus.basePool.tokenStatus);
+        } else {
+            ScaledAsset.validateAvailability(pairStatus.quotePool.tokenStatus);
+            ScaledAsset.validateAvailability(pairStatus.basePool.tokenStatus);
+        }
 
         assertEq(userStatus.perp.amount, baseAmount);
         assertEq(userStatus.perp.entryValue, quoteAmount);

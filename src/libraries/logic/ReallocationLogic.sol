@@ -58,5 +58,8 @@ library ReallocationLogic {
 
             Perp.finalizeReallocation(pairStatus.sqrtAssetStatus);
         }
+
+        ScaledAsset.validateAvailability(pairStatus.quotePool.tokenStatus);
+        ScaledAsset.validateAvailability(pairStatus.basePool.tokenStatus);
     }
 }

@@ -112,17 +112,44 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback {
         external
         returns (TradeResult memory tradeResult)
     {
-        globalData.validate(tradeParams.pairId);
+        IPredyPool.TradeParams[] memory tradeParamsList = new IPredyPool.TradeParams[](1);
+        ISettlement.SettlementData[] memory settlementDataList = new ISettlement.SettlementData[](1);
 
-        if (globalData.pairs[tradeParams.pairId].whitelistEnabled && !allowedTraders[msg.sender][tradeParams.pairId]) {
-            revert TraderNotAllowed();
+        tradeParamsList[0] = tradeParams;
+        settlementDataList[0] = settlementData;
+
+        IPredyPool.TradeResult[] memory tradeResults = batchTrade(tradeParamsList, settlementDataList);
+
+        return tradeResults[0];
+    }
+
+    /**
+     * @notice This function allows users to open or close perpetual future positions.
+     * @param tradeParamsList trade details
+     * @param settlementDataList byte data for settlement contract.
+     * @return tradeResults The list of trade result.
+     */
+    function batchTrade(TradeParams[] memory tradeParamsList, ISettlement.SettlementData[] memory settlementDataList)
+        public
+        returns (TradeResult[] memory tradeResults)
+    {
+        for (uint256 i = 0; i < tradeParamsList.length; i++) {
+            IPredyPool.TradeParams memory tradeParams = tradeParamsList[i];
+
+            globalData.validate(tradeParams.pairId);
+
+            if (
+                globalData.pairs[tradeParams.pairId].whitelistEnabled && !allowedTraders[msg.sender][tradeParams.pairId]
+            ) {
+                revert TraderNotAllowed();
+            }
+
+            DataType.Vault storage vault = globalData.createOrGetVault(tradeParams.vaultId, tradeParams.pairId);
+
+            tradeParams.vaultId = vault.id;
         }
 
-        DataType.Vault storage vault = globalData.createOrGetVault(tradeParams.vaultId, tradeParams.pairId);
-
-        tradeParams.vaultId = vault.id;
-
-        return TradeLogic.trade(globalData, tradeParams, settlementData);
+        return TradeLogic.batchTrade(globalData, tradeParamsList, settlementDataList);
     }
 
     /**

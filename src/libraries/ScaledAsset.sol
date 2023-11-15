@@ -98,7 +98,8 @@ library ScaledAsset {
         if (closeAmount > 0) {
             tokenStatus.totalNormalBorrowed -= uint256(closeAmount);
         } else if (closeAmount < 0) {
-            require(getAvailableCollateralValue(tokenStatus) >= uint256(-closeAmount), "S0");
+            // not to check available amount
+            //require(getAvailableCollateralValue(tokenStatus) >= uint256(-closeAmount), "S0");
             tokenStatus.totalNormalDeposited -= uint256(-closeAmount);
         }
 
@@ -107,7 +108,7 @@ library ScaledAsset {
 
             userStatus.lastFeeGrowth = tokenStatus.assetGrowth;
         } else if (openAmount < 0) {
-            require(getAvailableCollateralValue(tokenStatus) >= uint256(-openAmount), "S0");
+            //require(getAvailableCollateralValue(tokenStatus) >= uint256(-openAmount), "S0");
 
             tokenStatus.totalNormalBorrowed += uint256(-openAmount);
 
@@ -117,6 +118,10 @@ library ScaledAsset {
         userStatus.positionAmount += _amount;
 
         emit ScaledAssetPositionUpdated(_pairId, _isStable, openAmount, closeAmount);
+    }
+
+    function validateAvailability(ScaledAsset.AssetStatus memory assetStatus) internal pure {
+        require(getTotalCollateralValue(assetStatus) >= getTotalDebtValue(assetStatus), "S0");
     }
 
     function computeUserFee(ScaledAsset.AssetStatus memory _assetStatus, ScaledAsset.UserStatus memory _userStatus)

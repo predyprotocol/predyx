@@ -60,8 +60,10 @@ contract ScaledAssetUpdatePositionTest is TestScaledAsset {
 
         ScaledAsset.updatePosition(assetStatus, userStatus0, -100, PAIR_ID, IS_STABLE_FLAG);
 
-        vm.expectRevert(bytes("S0"));
         ScaledAsset.updatePosition(assetStatus, userStatus1, -1e16, PAIR_ID, IS_STABLE_FLAG);
+
+        vm.expectRevert(bytes("S0"));
+        ScaledAsset.validateAvailability(assetStatus);
     }
 
     // borrow
@@ -77,8 +79,10 @@ contract ScaledAssetUpdatePositionTest is TestScaledAsset {
 
     // cannot borrow if there is no enough asset
     function testCannotBorrow() public {
-        vm.expectRevert(bytes("S0"));
         ScaledAsset.updatePosition(assetStatus, userStatus1, -1e16, PAIR_ID, IS_STABLE_FLAG);
+
+        vm.expectRevert(bytes("S0"));
+        ScaledAsset.validateAvailability(assetStatus);
     }
 
     // repay

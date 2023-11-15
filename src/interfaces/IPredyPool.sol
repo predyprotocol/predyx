@@ -57,6 +57,9 @@ interface IPredyPool {
     function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult);
+    function batchTrade(TradeParams[] memory tradeParams, ISettlement.SettlementData[] memory settlementData)
+        external
+        returns (TradeResult[] memory tradeResult);
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
         external
         returns (TradeResult memory tradeResult);

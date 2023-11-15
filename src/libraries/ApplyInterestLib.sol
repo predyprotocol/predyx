@@ -27,6 +27,10 @@ library ApplyInterestLib {
     function applyInterestForToken(mapping(uint256 => Perp.PairStatus) storage _pairs, uint256 pairId) internal {
         Perp.PairStatus storage pairStatus = _pairs[pairId];
 
+        if (pairStatus.lastUpdateTimestamp >= block.timestamp) {
+            return;
+        }
+
         Perp.updateFeeAndPremiumGrowth(pairId, pairStatus.sqrtAssetStatus);
 
         uint256 interestRateStable =

@@ -33,6 +33,13 @@ contract TestTradeMarket is BaseHookCallback {
         return _predyPool.trade(tradeParams, settlementData);
     }
 
+    function batchTrade(IPredyPool.TradeParams[] memory tradeParams, ISettlement.SettlementData[] memory settlementData)
+        external
+        returns (IPredyPool.TradeResult[] memory tradeResult)
+    {
+        return _predyPool.batchTrade(tradeParams, settlementData);
+    }
+
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)

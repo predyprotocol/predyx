@@ -9,6 +9,7 @@ import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 import {PositionCalculator} from "../PositionCalculator.sol";
+import {ScaledAsset} from "../ScaledAsset.sol";
 
 library TradeLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
@@ -22,40 +23,55 @@ library TradeLogic {
         int256 fee
     );
 
-    function trade(
+    function batchTrade(
         GlobalDataLibrary.GlobalData storage globalData,
-        IPredyPool.TradeParams memory tradeParams,
-        ISettlement.SettlementData memory settlementData
-    ) external returns (IPredyPool.TradeResult memory tradeResult) {
-        Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
+        IPredyPool.TradeParams[] memory tradeParamsList,
+        ISettlement.SettlementData[] memory settlementDataList
+    ) public returns (IPredyPool.TradeResult[] memory tradeResult) {
+        tradeResult = new IPredyPool.TradeResult[](tradeParamsList.length);
 
-        // update interest growth
-        ApplyInterestLib.applyInterestForToken(globalData.pairs, tradeParams.pairId);
+        for (uint256 i = 0; i < tradeParamsList.length; i++) {
+            IPredyPool.TradeParams memory tradeParams = tradeParamsList[i];
 
-        tradeResult = Trade.trade(globalData, tradeParams, settlementData);
+            Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
 
-        globalData.vaults[tradeParams.vaultId].margin +=
-            tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
+            // update interest growth
+            ApplyInterestLib.applyInterestForToken(globalData.pairs, tradeParams.pairId);
 
-        (tradeResult.minMargin,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
-            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
-        );
+            tradeResult[i] = Trade.trade(globalData, tradeParams, settlementDataList[i]);
 
-        callTradeAfterCallback(globalData, tradeParams, tradeResult);
+            globalData.vaults[tradeParams.vaultId].margin +=
+                tradeResult[i].fee + tradeResult[i].payoff.perpPayoff + tradeResult[i].payoff.sqrtPayoff;
 
-        // check vault is safe
-        tradeResult.minMargin = PositionCalculator.checkSafe(
-            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
-        );
+            (tradeResult[i].minMargin,,, tradeResult[i].sqrtTwap) = PositionCalculator.calculateMinDeposit(
+                pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
+            );
 
-        emit PositionUpdated(
-            tradeParams.vaultId,
-            tradeParams.pairId,
-            tradeParams.tradeAmount,
-            tradeParams.tradeAmountSqrt,
-            tradeResult.payoff,
-            tradeResult.fee
-        );
+            callTradeAfterCallback(globalData, tradeParams, tradeResult[i]);
+
+            // check vault is safe
+            tradeResult[i].minMargin = PositionCalculator.checkSafe(
+                pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
+            );
+
+            emit PositionUpdated(
+                tradeParams.vaultId,
+                tradeParams.pairId,
+                tradeParams.tradeAmount,
+                tradeParams.tradeAmountSqrt,
+                tradeResult[i].payoff,
+                tradeResult[i].fee
+            );
+        }
+
+        for (uint256 i = 0; i < tradeParamsList.length; i++) {
+            IPredyPool.TradeParams memory tradeParams = tradeParamsList[i];
+
+            Perp.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
+
+            ScaledAsset.validateAvailability(pairStatus.quotePool.tokenStatus);
+            ScaledAsset.validateAvailability(pairStatus.basePool.tokenStatus);
+        }
     }
 
     function callTradeAfterCallback(
