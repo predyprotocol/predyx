@@ -10,7 +10,6 @@ import "./Constants.sol";
 import "./PerpFee.sol";
 import "./math/Math.sol";
 import "../PriceFeed.sol";
-import "forge-std/console.sol";
 
 library PositionCalculator {
     using ScaledAsset for ScaledAsset.AssetStatus;
@@ -65,8 +64,6 @@ library PositionCalculator {
         int256 vaultValue;
 
         (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
-
-        console.log(uint256(-_vault.margin));
 
         isSafe = vaultValue >= minMargin && _vault.margin >= 0;
     }
