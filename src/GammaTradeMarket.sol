@@ -15,6 +15,7 @@ import "./libraries/orders/Permit2Lib.sol";
 import "./libraries/orders/ResolvedOrder.sol";
 import "./libraries/orders/GammaOrder.sol";
 import "./libraries/math/Math.sol";
+import {PredyPoolQuoter} from "./lens/PredyPoolQuoter.sol";
 
 /**
  * @notice Gamma trade market contract
@@ -112,6 +113,30 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
      */
     function execLiquidationCall(uint256 vaultId, bytes memory settlementData) external {
         _predyPool.execLiquidationCall(vaultId, 1e18, ISettlement.SettlementData(address(this), settlementData));
+    }
+
+    function quoteExecuteOrder(
+        GammaOrder memory gammaOrder,
+        ISettlement.SettlementData memory settlementData,
+        PredyPoolQuoter quoter
+    ) external {
+        // Execute the trade for the user position in the filler pool
+        IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
+            IPredyPool.TradeParams(
+                gammaOrder.pairId, gammaOrder.positionId, gammaOrder.tradeAmount, gammaOrder.tradeAmountSqrt, bytes("")
+            ),
+            settlementData
+        );
+
+        revertTradeResult(tradeResult);
+    }
+
+    function revertTradeResult(IPredyPool.TradeResult memory tradeResult) internal pure {
+        bytes memory data = abi.encode(tradeResult);
+
+        assembly {
+            revert(add(32, data), mload(data))
+        }
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {

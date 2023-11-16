@@ -11,10 +11,6 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
         TestPerpMarket.setUp();
 
         _fillerAddress = address(this);
-
-        perpMarket.addFillerPool(pairId);
-
-        perpMarket.depositToInsurancePool(pairId, 1000 * 1e6);
     }
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
@@ -35,23 +31,24 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             _usdc.permit(_from, address(_permit2), type(uint256).max, deadline, v, r, s);
         }
 
-        PerpOrder memory order = PerpOrder(
+        GammaOrder memory order = GammaOrder(
             OrderInfo(address(perpMarket), _from, _fillerAddress, 0, block.timestamp + 100),
             0,
             1,
             address(_usdc),
             -1000,
+            0,
             2 * 1e6,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, 0))
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, _fromPrivateKey);
 
-        PerpMarket.PerpTradeResult memory tradeResult =
+        IPredyPool.TradeResult memory tradeResult =
             perpMarket.executeOrder(signedOrder, settlement.getSettlementParams(address(_usdc), address(_weth), 1600));
 
-        assertEq(tradeResult.entryUpdate, 160);
-        assertEq(tradeResult.payoff, 0);
+        assertEq(tradeResult.payoff.perpEntryUpdate, 160);
+        assertEq(tradeResult.payoff.perpPayoff, 0);
     }
 }

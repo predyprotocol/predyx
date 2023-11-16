@@ -6,11 +6,11 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
-import "../../../src/PerpMarket.sol";
+import "../../../src/GammaTradeMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/settlements/DirectSettlement.sol";
-import "../../../src/libraries/orders/PerpLimitOrderValidator.sol";
-import {PerpOrder, PerpOrderLib} from "../../../src/libraries/orders/PerpOrder.sol";
+import "../../../src/libraries/orders/LimitOrderValidator.sol";
+import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import "../../mocks/MockPriceFeed.sol";
@@ -24,7 +24,7 @@ interface USDC {
 }
 
 contract TestPerpMarket is SigUtils, OrderValidatorUtils {
-    using PerpOrderLib for PerpOrder;
+    using GammaOrderLib for GammaOrder;
 
     uint256 internal _arbitrumFork;
     string internal _arbitrumRPCURL = vm.envString("ARBITRUM_RPC_URL");
@@ -38,9 +38,9 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
     ERC20 internal _weth = ERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
 
     DirectSettlement settlement;
-    PerpMarket perpMarket;
+    GammaTradeMarket perpMarket;
     PredyPool _predyPool;
-    PerpLimitOrderValidator limitOrderValidator;
+    LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     uint256 pairId;
@@ -74,10 +74,10 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
 
         pairId = registerPair(address(_usdc), address(0));
 
-        perpMarket = new PerpMarket(_predyPool, address(_permit2));
+        perpMarket = new GammaTradeMarket(_predyPool, address(_permit2));
         perpMarket.updateQuoteTokenMap(1);
 
-        limitOrderValidator = new PerpLimitOrderValidator();
+        limitOrderValidator = new LimitOrderValidator();
 
         _weth.approve(address(_predyPool), type(uint256).max);
         _usdc.approve(address(_predyPool), type(uint256).max);
@@ -109,7 +109,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
         );
     }
 
-    function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)
+    function _createSignedOrder(GammaOrder memory order, uint256 fromPrivateKey)
         internal
         view
         returns (IFillerMarket.SignedOrder memory signedOrder)
@@ -120,7 +120,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
             fromPrivateKey,
             _toPermit(order),
             address(perpMarket),
-            PerpOrderLib.PERMIT2_ORDER_TYPE,
+            GammaOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
         );

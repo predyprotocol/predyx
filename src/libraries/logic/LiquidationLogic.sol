@@ -14,6 +14,7 @@ import {Math} from "../math/Math.sol";
 import {DataType} from "../DataType.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 import {PositionCalculator} from "../PositionCalculator.sol";
+import {ScaledAsset} from "../ScaledAsset.sol";
 
 library LiquidationLogic {
     using Math for int256;
@@ -66,6 +67,9 @@ library LiquidationLogic {
         );
 
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
+
+        ScaledAsset.validateAvailability(pairStatus.quotePool.tokenStatus);
+        ScaledAsset.validateAvailability(pairStatus.basePool.tokenStatus);
 
         vault.margin += tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
 
