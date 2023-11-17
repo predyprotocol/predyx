@@ -6,7 +6,6 @@ import {ResolvedOrder} from "../../libraries/orders/ResolvedOrder.sol";
 
 struct PredictOrder {
     OrderInfo info;
-    uint256 positionId;
     uint64 pairId;
     uint64 duration;
     address entryTokenAddress;
@@ -24,7 +23,6 @@ library PredictOrderLib {
     bytes internal constant PREDICT_ORDER_TYPE = abi.encodePacked(
         "PredictOrder(",
         "OrderInfo info,",
-        "uint256 positionId,",
         "uint64 pairId,",
         "uint64 duration,",
         "address entryTokenAddress,",
@@ -51,7 +49,6 @@ library PredictOrderLib {
             abi.encode(
                 PREDICT_ORDER_TYPE_HASH,
                 order.info.hash(),
-                order.positionId,
                 order.pairId,
                 order.duration,
                 order.entryTokenAddress,

@@ -20,6 +20,8 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
 /**
  * @notice Predict market contract
+ * A trader can open position with any duration.
+ * Anyone can close the position after expiration timestamp.
  */
 contract PredictMarket is IFillerMarket, BaseHookCallback {
     using ResolvedOrderLib for ResolvedOrder;
@@ -53,7 +55,8 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
-    event Traded(address trader, uint256 vaultId);
+    event Opened(address trader, uint256 vaultId, uint256 expiration, uint256 duration);
+    event Closed(uint256 vaultId, uint256 closeValue);
 
     constructor(IPredyPool _predyPool, address permit2Address) BaseHookCallback(_predyPool) {
         _permit2 = IPermit2(permit2Address);
@@ -73,21 +76,23 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
         } else if (callbackData.callbackSource == CallbackSource.CLOSE) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-            ILendingPool(address(_predyPool)).take(true, address(this), uint256(vault.margin));
+            uint256 closeValue = uint256(vault.margin);
+
+            ILendingPool(address(_predyPool)).take(true, address(this), closeValue);
 
             TransferHelper.safeTransfer(
-                _getQuoteTokenAddress(tradeParams.pairId),
-                userPositions[tradeParams.vaultId].owner,
-                uint256(vault.margin)
+                _getQuoteTokenAddress(tradeParams.pairId), userPositions[tradeParams.vaultId].owner, closeValue
             );
+
+            emit Closed(tradeParams.vaultId, closeValue);
         }
     }
 
     /**
-     * @notice Verifies signature of the order and executes trade
+     * @notice Verifies signature of the order and open new predict position
      * @param order The order signed by trader
      * @param settlementData The route of settlement created by filler
-     * @dev Fillers call this function
+     * @return tradeResult The result of trade
      */
     function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
@@ -104,7 +109,7 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
                 predictOrder.pairId,
-                predictOrder.positionId,
+                0,
                 predictOrder.tradeAmount,
                 predictOrder.tradeAmountSqrt,
                 abi.encode(CallbackData(CallbackSource.OPEN, predictOrder.marginAmount))
@@ -112,24 +117,30 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
             settlementData
         );
 
-        if (predictOrder.positionId == 0) {
-            userPositions[tradeResult.vaultId].owner = predictOrder.info.trader;
-            userPositions[tradeResult.vaultId].expiration = block.timestamp + predictOrder.duration;
+        userPositions[tradeResult.vaultId].owner = predictOrder.info.trader;
+        userPositions[tradeResult.vaultId].expiration = block.timestamp + predictOrder.duration;
 
-            _predyPool.updateRecepient(tradeResult.vaultId, predictOrder.info.trader);
-        } else {
-            if (predictOrder.info.trader != userPositions[tradeResult.vaultId].owner) {
-                revert IFillerMarket.SignerIsNotVaultOwner();
-            }
-        }
+        _predyPool.updateRecepient(tradeResult.vaultId, predictOrder.info.trader);
 
         IPredictOrderValidator(predictOrder.validatorAddress).validate(predictOrder, tradeResult);
 
-        emit Traded(predictOrder.info.trader, tradeResult.vaultId);
+        emit Opened(
+            predictOrder.info.trader,
+            tradeResult.vaultId,
+            predictOrder.duration,
+            userPositions[tradeResult.vaultId].expiration
+        );
 
         return tradeResult;
     }
 
+    /**
+     * @notice Closes a predict position
+     * @param positionId The id of position
+     * @param settlementData The route of settlement created by filler
+     * @return tradeResult The result of trade
+     * @dev Anyone can call this function
+     */
     function close(uint256 positionId, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -183,11 +194,7 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
         // Execute the trade for the user position in the filler pool
         IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
             IPredyPool.TradeParams(
-                predictOrder.pairId,
-                predictOrder.positionId,
-                predictOrder.tradeAmount,
-                predictOrder.tradeAmountSqrt,
-                bytes("")
+                predictOrder.pairId, 0, predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, bytes("")
             ),
             settlementData
         );
