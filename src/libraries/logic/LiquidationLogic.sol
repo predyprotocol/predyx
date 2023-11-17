@@ -21,6 +21,7 @@ library LiquidationLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
 
     error SlippageTooLarge();
+    error SlippageTooLarge2(uint256 twap, uint256 s, int256 p);
 
     error OutOfAcceptablePriceRange();
 
@@ -152,12 +153,12 @@ library LiquidationLogic {
         uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
 
         if (tradeResult.averagePrice > 0) {
-            // long
+            // short
             if (twap * 1e4 / slippageTolerance > uint256(tradeResult.averagePrice)) {
                 revert SlippageTooLarge();
             }
         } else if (tradeResult.averagePrice < 0) {
-            // short
+            // long
             if (twap * slippageTolerance / 1e4 < uint256(-tradeResult.averagePrice)) {
                 revert SlippageTooLarge();
             }

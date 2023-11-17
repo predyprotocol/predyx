@@ -110,7 +110,7 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 10 minutes);
 
-        predyPool.execLiquidationCall(2, 1e18, _getSettlementData(10000));
+        predyPool.execLiquidationCall(2, 1e18, _getSettlementData(9000));
 
         checkMarginEqZero(2);
     }
@@ -125,10 +125,14 @@ contract TestExecLiquidationCall is TestPool {
 
         _movePrice(true, 8 * 1e16);
 
-        vm.warp(block.timestamp + 30 minutes);
+        vm.warp(block.timestamp + 1 minutes);
+
+        _movePrice(true, 2 * 1e16);
+
+        vm.warp(block.timestamp + 29 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(address(this));
-        predyPool.execLiquidationCall(1, 1e18, _getSettlementData(12100));
+        predyPool.execLiquidationCall(1, 1e18, _getSettlementData(12300));
         uint256 afterMargin = currency1.balanceOf(address(this));
 
         assertGt(beforeMargin - afterMargin, 0);

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.17;
 
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
-import "../Constants.sol";
+import "../../libraries/Constants.sol";
 import "./GammaOrder.sol";
-import "../math/Math.sol";
+import "../../libraries/math/Math.sol";
 
 struct LimitOrderValidationData {
     uint256 triggerPrice;

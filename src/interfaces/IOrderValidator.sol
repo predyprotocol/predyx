@@ -2,13 +2,13 @@
 pragma solidity >=0.7.0;
 
 import "./IPredyPool.sol";
-import {GammaOrder, GammaOrderLib} from "../libraries/orders/GammaOrder.sol";
-import {PerpOrder} from "../libraries/orders/PerpOrder.sol";
+import {GammaOrder, GammaOrderLib} from "../markets/gamma/GammaOrder.sol";
+import {PredictOrder} from "../markets/predict/PredictOrder.sol";
 
 interface IOrderValidator {
     function validate(GammaOrder memory gammaOrder, IPredyPool.TradeResult memory tradeResult) external pure;
 }
 
-interface IPerpOrderValidator {
-    function validate(PerpOrder memory perpOrder, IPredyPool.TradeResult memory tradeResult) external pure;
+interface IPredictOrderValidator {
+    function validate(PredictOrder memory predictOrder, IPredyPool.TradeResult memory tradeResult) external pure;
 }

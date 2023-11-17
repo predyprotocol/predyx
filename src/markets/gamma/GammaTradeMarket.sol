@@ -6,16 +6,16 @@ import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/Transfer
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IPredyPool.sol";
-import "./interfaces/ILendingPool.sol";
-import "./interfaces/IFillerMarket.sol";
-import "./interfaces/IOrderValidator.sol";
-import "./base/BaseHookCallback.sol";
-import "./libraries/orders/Permit2Lib.sol";
-import "./libraries/orders/ResolvedOrder.sol";
-import "./libraries/orders/GammaOrder.sol";
-import "./libraries/math/Math.sol";
-import {PredyPoolQuoter} from "./lens/PredyPoolQuoter.sol";
+import "../../interfaces/IPredyPool.sol";
+import "../../interfaces/ILendingPool.sol";
+import "../../interfaces/IFillerMarket.sol";
+import "../../interfaces/IOrderValidator.sol";
+import "../../base/BaseHookCallback.sol";
+import "../../libraries/orders/Permit2Lib.sol";
+import "../../libraries/orders/ResolvedOrder.sol";
+import "./GammaOrder.sol";
+import "../../libraries/math/Math.sol";
+import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
 /**
  * @notice Gamma trade market contract
@@ -36,19 +36,34 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         _permit2 = IPermit2(permit2Address);
     }
 
-    function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
-        external
-        override(BaseHookCallback)
-        onlyPredyPool
-    {
-        int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
+    function predyTradeAfterCallback(
+        IPredyPool.TradeParams memory tradeParams,
+        IPredyPool.TradeResult memory tradeResult
+    ) external override(BaseHookCallback) onlyPredyPool {
+        if (tradeResult.minMargin == 0) {
+            DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-        if (marginAmountUpdate > 0) {
+            ILendingPool(address(_predyPool)).take(true, address(this), uint256(vault.margin));
+
             TransferHelper.safeTransfer(
-                _getQuoteTokenAddress(tradeParams.pairId), address(_predyPool), uint256(marginAmountUpdate)
+                _getQuoteTokenAddress(tradeParams.pairId), userPositions[tradeParams.vaultId], uint256(vault.margin)
             );
-        } else if (marginAmountUpdate < 0) {
-            ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
+        } else {
+            int256 marginAmountUpdate = abi.decode(tradeParams.extraData, (int256));
+
+            if (marginAmountUpdate > 0) {
+                TransferHelper.safeTransfer(
+                    _getQuoteTokenAddress(tradeParams.pairId), address(_predyPool), uint256(marginAmountUpdate)
+                );
+            } else if (marginAmountUpdate < 0) {
+                ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
+
+                TransferHelper.safeTransfer(
+                    _getQuoteTokenAddress(tradeParams.pairId),
+                    userPositions[tradeParams.vaultId],
+                    uint256(-marginAmountUpdate)
+                );
+            }
         }
     }
 
@@ -92,14 +107,8 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
             }
         }
 
-        // TODO: should have whote list for validatorAddress?
+        // TODO: should have whole list for validatorAddress?
         IOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
-
-        if (gammaOrder.marginAmount < 0) {
-            TransferHelper.safeTransfer(
-                _quoteTokenMap[gammaOrder.pairId], gammaOrder.info.trader, uint256(-gammaOrder.marginAmount)
-            );
-        }
 
         emit Traded(gammaOrder.info.trader, tradeResult.vaultId);
 

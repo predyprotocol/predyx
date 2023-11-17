@@ -6,11 +6,11 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
-import "../../../src/GammaTradeMarket.sol";
+import "../../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/settlements/DirectSettlement.sol";
-import "../../../src/libraries/orders/LimitOrderValidator.sol";
-import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrder.sol";
+import "../../../src/markets/gamma/LimitOrderValidator.sol";
+import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import "../../mocks/MockPriceFeed.sol";

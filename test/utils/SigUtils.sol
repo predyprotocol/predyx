@@ -4,8 +4,8 @@ pragma solidity ^0.8.17;
 import {Test} from "forge-std/Test.sol";
 import {ISignatureTransfer} from "@uniswap/permit2/src/interfaces/ISignatureTransfer.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {GammaOrder} from "../../src/libraries/orders/GammaOrder.sol";
-import {PerpOrder} from "../../src/libraries/orders/PerpOrder.sol";
+import {GammaOrder} from "../../src/markets/gamma/GammaOrder.sol";
+import {PredictOrder} from "../../src/markets/predict/PredictOrder.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 
 contract SigUtils is Test {
@@ -18,8 +18,12 @@ contract SigUtils is Test {
         return _toPermit(order.entryTokenAddress, order.marginAmount, order.info);
     }
 
-    function _toPermit(PerpOrder memory order) internal pure returns (ISignatureTransfer.PermitTransferFrom memory) {
-        return _toPermit(order.entryTokenAddress, order.marginAmount, order.info);
+    function _toPermit(PredictOrder memory order)
+        internal
+        pure
+        returns (ISignatureTransfer.PermitTransferFrom memory)
+    {
+        return _toPermit(order.entryTokenAddress, int256(order.marginAmount), order.info);
     }
 
     function _toPermit(address tokenAddress, int256 marginAmount, OrderInfo memory orderInfo)

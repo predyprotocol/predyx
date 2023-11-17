@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
-import "../../../src/GammaTradeMarket.sol";
+import "../../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
-import "../../../src/libraries/orders/LimitOrderValidator.sol";
-import {GammaOrder, GammaOrderLib} from "../../../src/libraries/orders/GammaOrder.sol";
+import "../../../src/markets/gamma/LimitOrderValidator.sol";
+import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
-import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 

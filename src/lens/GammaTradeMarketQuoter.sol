@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "../GammaTradeMarket.sol";
+import {GammaTradeMarket} from "../markets/gamma/GammaTradeMarket.sol";
+import {GammaOrder} from "../markets/gamma/GammaOrder.sol";
 import "./PredyPoolQuoter.sol";
-import {GammaOrder} from "../libraries/orders/GammaOrder.sol";
 
 /**
  * @notice Quoter contract for GammaTradeMarket
  */
-contract PerpMarketQuoter {
+contract GammaTradeMarketQuoter {
     GammaTradeMarket public gammaTradeMarket;
     PredyPoolQuoter public predyPoolQuoter;
 

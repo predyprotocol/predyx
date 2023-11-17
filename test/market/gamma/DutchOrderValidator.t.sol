@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../../src/libraries/orders/DutchOrderValidator.sol";
+import "../../../src/markets/gamma/DutchOrderValidator.sol";
 
 contract DutchOrderValidatorTest is Test {
     DutchOrderValidator dutchOrderValidator;
@@ -19,14 +19,14 @@ contract DutchOrderValidatorTest is Test {
         dutchOrderValidationData.startTime = 100;
         dutchOrderValidationData.endTime = 99;
 
-        PerpOrder memory perpOrder;
-        perpOrder.tradeAmount = 1e6;
-        perpOrder.validationData = abi.encode(dutchOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = 1e6;
+        gammaOrder.validationData = abi.encode(dutchOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
         vm.expectRevert(DutchOrderValidator.EndTimeBeforeStartTime.selector);
-        dutchOrderValidator.validate(perpOrder, tradeResult);
+        dutchOrderValidator.validate(gammaOrder, tradeResult);
     }
 
     function testValidateEndTimeAfterStartTime() public {
@@ -37,13 +37,13 @@ contract DutchOrderValidatorTest is Test {
         dutchOrderValidationData.startTime = 100;
         dutchOrderValidationData.endTime = 101;
 
-        PerpOrder memory perpOrder;
-        perpOrder.tradeAmount = 1e6;
-        perpOrder.validationData = abi.encode(dutchOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = 1e6;
+        gammaOrder.validationData = abi.encode(dutchOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
-        dutchOrderValidator.validate(perpOrder, tradeResult);
+        dutchOrderValidator.validate(gammaOrder, tradeResult);
     }
 
     function testValidatePriceGreaterThanLimit(int256 tradeAmount) public {
@@ -56,9 +56,9 @@ contract DutchOrderValidatorTest is Test {
         dutchOrderValidationData.startTime = block.timestamp;
         dutchOrderValidationData.endTime = block.timestamp + 100;
 
-        PerpOrder memory perpOrder;
-        perpOrder.tradeAmount = tradeAmount;
-        perpOrder.validationData = abi.encode(dutchOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = tradeAmount;
+        gammaOrder.validationData = abi.encode(dutchOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
@@ -67,7 +67,7 @@ contract DutchOrderValidatorTest is Test {
         if (tradeAmount > 0) {
             vm.expectRevert(DutchOrderValidator.PriceGreaterThanLimit.selector);
         }
-        dutchOrderValidator.validate(perpOrder, tradeResult);
+        dutchOrderValidator.validate(gammaOrder, tradeResult);
     }
 
     function testValidatePriceLessThanLimit(int256 tradeAmount) public {
@@ -80,9 +80,9 @@ contract DutchOrderValidatorTest is Test {
         dutchOrderValidationData.startTime = block.timestamp;
         dutchOrderValidationData.endTime = block.timestamp + 100;
 
-        PerpOrder memory perpOrder;
-        perpOrder.tradeAmount = tradeAmount;
-        perpOrder.validationData = abi.encode(dutchOrderValidationData);
+        GammaOrder memory gammaOrder;
+        gammaOrder.tradeAmount = tradeAmount;
+        gammaOrder.validationData = abi.encode(dutchOrderValidationData);
 
         IPredyPool.TradeResult memory tradeResult;
 
@@ -91,6 +91,6 @@ contract DutchOrderValidatorTest is Test {
         if (tradeAmount < 0) {
             vm.expectRevert(DutchOrderValidator.PriceLessThanLimit.selector);
         }
-        dutchOrderValidator.validate(perpOrder, tradeResult);
+        dutchOrderValidator.validate(gammaOrder, tradeResult);
     }
 }
