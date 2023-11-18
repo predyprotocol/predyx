@@ -25,7 +25,7 @@ contract DutchOrderValidatorTest is Test {
 
         IPredyPool.TradeResult memory tradeResult;
 
-        vm.expectRevert(DutchOrderValidator.EndTimeBeforeStartTime.selector);
+        vm.expectRevert(DecayLib.EndTimeBeforeStartTime.selector);
         dutchOrderValidator.validate(gammaOrder, tradeResult);
     }
 

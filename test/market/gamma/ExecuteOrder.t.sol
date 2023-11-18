@@ -5,7 +5,7 @@ import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import "forge-std/console2.sol";
 
-contract TestExecuteOrder is TestMarket {
+contract TestGammaExecuteOrder is TestMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;

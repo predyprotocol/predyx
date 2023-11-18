@@ -5,6 +5,7 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import "../../libraries/Constants.sol";
 import "./GammaOrder.sol";
 import "../../libraries/math/Math.sol";
+import "../../libraries/orders/DecayLib.sol";
 
 struct DutchOrderValidationData {
     uint256 startPrice;
@@ -17,8 +18,6 @@ struct DutchOrderValidationData {
  * @notice The DutchOrderValidator contract is responsible for validating the dutch auction orders
  */
 contract DutchOrderValidator {
-    error EndTimeBeforeStartTime();
-
     error PriceGreaterThanLimit();
 
     error PriceLessThanLimit();
@@ -31,8 +30,9 @@ contract DutchOrderValidator {
         DutchOrderValidationData memory validationData =
             abi.decode(gammaOrder.validationData, (DutchOrderValidationData));
 
-        uint256 decayedPrice =
-            decay(validationData.startPrice, validationData.endPrice, validationData.startTime, validationData.endTime);
+        uint256 decayedPrice = DecayLib.decay(
+            validationData.startPrice, validationData.endPrice, validationData.startTime, validationData.endTime
+        );
 
         if (gammaOrder.tradeAmount != 0) {
             uint256 tradePrice = Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff)
@@ -44,29 +44,6 @@ contract DutchOrderValidator {
 
             if (gammaOrder.tradeAmount < 0 && decayedPrice > tradePrice) {
                 revert PriceLessThanLimit();
-            }
-        }
-    }
-
-    function decay(uint256 startPrice, uint256 endPrice, uint256 decayStartTime, uint256 decayEndTime)
-        internal
-        view
-        returns (uint256 decayedPrice)
-    {
-        if (decayEndTime < decayStartTime) {
-            revert EndTimeBeforeStartTime();
-        } else if (decayEndTime <= block.timestamp) {
-            decayedPrice = endPrice;
-        } else if (decayStartTime >= block.timestamp) {
-            decayedPrice = startPrice;
-        } else {
-            uint256 elapsed = block.timestamp - decayStartTime;
-            uint256 duration = decayEndTime - decayStartTime;
-
-            if (endPrice < startPrice) {
-                decayedPrice = startPrice - (startPrice - endPrice) * elapsed / duration;
-            } else {
-                decayedPrice = startPrice + (endPrice - startPrice) * elapsed / duration;
             }
         }
     }
