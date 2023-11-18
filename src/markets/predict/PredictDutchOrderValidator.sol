@@ -22,9 +22,13 @@ contract PredictDutchOrderValidator {
 
     error PriceLessThanLimit();
 
-    error TriggerNotMatched();
+    error InvalidAveragePrice();
 
     function validate(PredictOrder memory predictOrder, IPredyPool.TradeResult memory tradeResult) external view {
+        if (tradeResult.averagePrice == 0) {
+            revert InvalidAveragePrice();
+        }
+
         PredictDutchOrderValidationData memory validationData =
             abi.decode(predictOrder.validationData, (PredictDutchOrderValidationData));
 

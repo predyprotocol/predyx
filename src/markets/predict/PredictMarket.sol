@@ -29,6 +29,8 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
 
+    error CloseBeforeExpiration();
+
     IPermit2 _permit2;
 
     // 2%
@@ -147,7 +149,11 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
     {
         UserPosition storage userPosition = userPositions[positionId];
 
-        require(0 < userPosition.expiration && userPosition.expiration <= block.timestamp);
+        require(0 < userPosition.expiration);
+
+        if (userPosition.expiration > block.timestamp) {
+            revert CloseBeforeExpiration();
+        }
 
         DataType.Vault memory vault = _predyPool.getVault(positionId);
 

@@ -4,12 +4,10 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 
-contract TestPredictExecuteOrder is TestPredictMarket {
+contract TestPredictClose is TestPredictMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;
-    uint256 fromPrivateKey2;
-    address from2;
 
     function setUp() public override {
         TestPredictMarket.setUp();
@@ -24,21 +22,12 @@ contract TestPredictExecuteOrder is TestPredictMarket {
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
-        fromPrivateKey2 = 0x1235678;
-        from2 = vm.addr(fromPrivateKey2);
 
         currency1.mint(from1, type(uint128).max);
-        currency1.mint(from2, type(uint128).max);
 
         vm.prank(from1);
         currency1.approve(address(permit2), type(uint256).max);
 
-        vm.prank(from2);
-        currency1.approve(address(permit2), type(uint256).max);
-    }
-
-    // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
-    function testExecuteOrderSucceedsForOpenPredictPosition() public {
         PredictOrder memory order = PredictOrder(
             OrderInfo(address(fillerMarket), from1, address(0), 0, block.timestamp + 100),
             1,
@@ -57,13 +46,37 @@ contract TestPredictExecuteOrder is TestPredictMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
+        fillerMarket.executeOrder(
             signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 10000)
         );
+    }
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
-        assertEq(tradeResult.payoff.sqrtEntryUpdate, -1800);
-        assertEq(tradeResult.payoff.perpPayoff, 0);
-        assertEq(tradeResult.payoff.sqrtPayoff, 0);
+    function testCloseFails() public {
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+
+        vm.expectRevert(PredictMarket.CloseBeforeExpiration.selector);
+        fillerMarket.close(1, settlementData);
+    }
+
+    function testCloseSucceeds() public {
+        vm.warp(block.timestamp + 10 minutes);
+
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+
+        fillerMarket.close(1, settlementData);
+    }
+
+    function testCloseFailsAfterClosed() public {
+        vm.warp(block.timestamp + 10 minutes);
+
+        ISettlement.SettlementData memory settlementData =
+            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+
+        fillerMarket.close(1, settlementData);
+
+        vm.expectRevert();
+        fillerMarket.close(1, settlementData);
     }
 }
