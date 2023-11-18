@@ -57,14 +57,9 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
         _from = vm.addr(_fromPrivateKey);
 
         // Gets tokens
-        vm.startPrank(0x5bdf85216ec1e38D6458C870992A69e38e03F7Ef);
-        _usdc.transfer(address(this), 10000 * 1e6);
-        _usdc.transfer(_from, 1000 * 1e6);
-        vm.stopPrank();
-
-        vm.startPrank(0x1eED63EfBA5f81D95bfe37d82C8E736b974F477b);
-        _weth.transfer(address(this), 1000 * 1e18);
-        vm.stopPrank();
+        deal(address(_usdc), address(this), 10000 * 1e6);
+        deal(address(_usdc), _from, 10000 * 1e6);
+        deal(address(_weth), address(this), 1000 * 1e18);
 
         _predyPool = new PredyPool(address(_uniswapFactory));
 
