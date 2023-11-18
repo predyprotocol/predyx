@@ -65,7 +65,12 @@ contract TestPredictClose is TestPredictMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(address(currency1), address(currency0), 10000);
 
+        uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.close(1, settlementData);
+        uint256 afterBalance = currency1.balanceOf(from1);
+
+        // owner gets close value
+        assertGt(afterBalance, beforeBalance);
     }
 
     function testCloseFailsAfterClosed() public {
