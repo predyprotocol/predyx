@@ -1,0 +1,46 @@
+name: test
+
+on: ['push', 'pull_request']
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 18.x
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run npm install
+        run: |
+          npm install -g npm@latest
+          npm install --legacy-peer-deps --frozen-lockfile
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv
+        env:
+          ARBITRUM_RPC_URL: ${{ vars.ARBITRUM_RPC_URL }}
+        id: test
