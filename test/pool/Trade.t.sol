@@ -206,7 +206,7 @@ contract TestTrade is TestPool {
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         if (borrowAmount > 10000) {
-            vm.expectRevert(Perp.NoCFMMLiquidity.selector);
+            vm.expectRevert(Perp.NoCFMMLiquidityError.selector);
         } else if (borrowAmount > 9800) {
             // 98% of liquidity is available
             vm.expectRevert(Perp.SqrtAssetCanNotCoverBorrow.selector);
@@ -236,7 +236,7 @@ contract TestTrade is TestPool {
             ISettlement.SettlementData memory settlementData =
                 directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
-            vm.expectRevert(bytes("P2"));
+            vm.expectRevert(Perp.OutOfRangeError.selector);
             tradeMarket.trade(tradeParams, settlementData);
         }
     }

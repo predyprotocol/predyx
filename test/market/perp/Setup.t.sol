@@ -35,7 +35,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         settlement = new UniswapSettlement(predyPool, swapRouter);
 
-        fillerMarket = new PerpMarket(predyPool, address(permit2));
+        fillerMarket = new PerpMarket(predyPool, address(permit2), address(this));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
