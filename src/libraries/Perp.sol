@@ -153,11 +153,13 @@ library Perp {
         );
     }
 
+    /// @notice Settle the interest on rebalance positions up to this block and update the rebalance fee growth value
     function updateRebalanceFeeGrowth(
         DataType.PairStatus memory _pairStatus,
         SqrtPerpAssetStatus storage _sqrtAssetStatus
     ) internal {
-        // settle fee for rebalance position
+        // settle the interest on rebalance position
+        // fee growths are scaled by 1e18
         if (_sqrtAssetStatus.lastRebalanceTotalSquartAmount > 0) {
             _sqrtAssetStatus.rebalanceFeeGrowthUnderlying += _pairStatus.basePool.tokenStatus.settleUserFee(
                 _sqrtAssetStatus.rebalancePositionUnderlying

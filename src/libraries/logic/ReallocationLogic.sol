@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.17;
 
+import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {DataType} from "../DataType.sol";
@@ -11,6 +13,7 @@ import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 
 library ReallocationLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
+    using SafeTransferLib for ERC20;
 
     function reallocate(
         GlobalDataLibrary.GlobalData storage globalData,
@@ -25,6 +28,7 @@ library ReallocationLogic {
 
         DataType.PairStatus storage pairStatus = globalData.pairs[pairId];
 
+        // Clear rebalance fees up to this block and update fee growth variables
         Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
         {
@@ -41,15 +45,21 @@ library ReallocationLogic {
                     settlementData.encodedData, deltaPositionBase
                 );
 
-                if (globalData.settle(true) + deltaPositionQuote < 0) {
+                int256 exceedsQuote = globalData.settle(true) + deltaPositionQuote;
+
+                if (exceedsQuote < 0) {
                     revert IPredyPool.CurrencyNotSettled();
                 }
 
-                if (globalData.settle(false) + deltaPositionBase < 0) {
+                if (globalData.settle(false) + deltaPositionBase != 0) {
                     revert IPredyPool.CurrencyNotSettled();
                 }
 
                 delete globalData.lockData;
+
+                if (exceedsQuote > 0) {
+                    ERC20(pairStatus.quotePool.token).safeTransfer(msg.sender, uint256(exceedsQuote));
+                }
             }
         }
 
