@@ -43,9 +43,10 @@ library TradeLogic {
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
         );
 
+        // The caller deposits or withdraws margin from the callback that is called below.
         callTradeAfterCallback(globalData, tradeParams, tradeResult);
 
-        // check vault is safe
+        // check vault safety
         tradeResult.minMargin = PositionCalculator.checkSafe(
             pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
         );
@@ -70,7 +71,7 @@ library TradeLogic {
         IHooks(msg.sender).predyTradeAfterCallback(tradeParams, tradeResult);
 
         if (globalData.settle(false) != 0) {
-            revert IPredyPool.CurrencyNotSettled();
+            revert IPredyPool.BaseTokenNotSettled();
         }
 
         int256 marginAmountUpdate = GlobalDataLibrary.settle(globalData, true);

@@ -48,11 +48,11 @@ library ReallocationLogic {
                 int256 exceedsQuote = globalData.settle(true) + deltaPositionQuote;
 
                 if (exceedsQuote < 0) {
-                    revert IPredyPool.CurrencyNotSettled();
+                    revert IPredyPool.QuoteTokenNotSettled();
                 }
 
                 if (globalData.settle(false) + deltaPositionBase != 0) {
-                    revert IPredyPool.CurrencyNotSettled();
+                    revert IPredyPool.BaseTokenNotSettled();
                 }
 
                 delete globalData.lockData;

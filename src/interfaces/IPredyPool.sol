@@ -5,22 +5,31 @@ import {ISettlement} from "./ISettlement.sol";
 import {DataType} from "../libraries/DataType.sol";
 
 interface IPredyPool {
+    /// @notice Thrown when the caller is not operator
     error CallerIsNotOperator();
 
+    /// @notice Thrown when the caller is not pool creator
     error CallerIsNotPoolCreator();
 
+    /// @notice Thrown when the caller is not the current locker
     error LockedBy(address locker);
 
-    error CurrencyNotSettled();
+    /// @notice Thrown when a base token is not netted out after a lock
+    error BaseTokenNotSettled();
 
+    /// @notice Thrown when a quote token is not netted out after a lock
+    error QuoteTokenNotSettled();
+
+    /// @notice Thrown when a amount is 0
     error InvalidAmount();
 
+    /// @notice Thrown when a pair id does not exist
     error InvalidPairId();
 
-    error InvalidAddress();
-
+    /// @notice Thrown when a vault isn't danger
     error VaultIsNotDanger();
 
+    /// @notice Thrown when a trader address is not allowed
     error TraderNotAllowed();
 
     // VaultLib

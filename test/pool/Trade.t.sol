@@ -101,8 +101,10 @@ contract TestTrade is TestPool {
             )
         );
 
-        if (baseTokenAmount != -100 || quoteTokenAmount <= 0) {
-            vm.expectRevert(IPredyPool.CurrencyNotSettled.selector);
+        if (baseTokenAmount != -100) {
+            vm.expectRevert(IPredyPool.BaseTokenNotSettled.selector);
+        } else if (quoteTokenAmount <= 0) {
+            vm.expectRevert(IPredyPool.QuoteTokenNotSettled.selector);
         }
         tradeMarket.trade(
             tradeParams, ISettlement.SettlementData(address(testSettlementCurrencyNotSettled), settlementData)

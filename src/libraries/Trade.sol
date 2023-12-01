@@ -95,12 +95,12 @@ library Trade {
         int256 totalQuoteAmount = globalData.settle(true);
 
         if (globalData.settle(false) != -totalBaseAmount) {
-            revert IPredyPool.CurrencyNotSettled();
+            revert IPredyPool.BaseTokenNotSettled();
         }
 
         // TODO: in case of totalBaseAmount == 0,
         if (totalQuoteAmount * totalBaseAmount <= 0) {
-            revert IPredyPool.CurrencyNotSettled();
+            revert IPredyPool.QuoteTokenNotSettled();
         }
 
         delete globalData.lockData;

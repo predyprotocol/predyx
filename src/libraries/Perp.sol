@@ -24,8 +24,13 @@ library Perp {
     using SafeCastLib for uint256;
     using Math for int256;
 
+    /// @notice Thrown when the supply of 2*squart can not cover borrow
     error SqrtAssetCanNotCoverBorrow();
+
+    /// @notice Thrown when the available liquidity is not enough to withdraw
     error NoCFMMLiquidityError();
+
+    /// @notice Thrown when the LP position is out of range
     error OutOfRangeError();
 
     struct AssetPoolStatus {
@@ -83,8 +88,8 @@ library Perp {
         uint256 borrowPremium1Growth;
         uint256 fee0Growth;
         uint256 fee1Growth;
-        ScaledAsset.UserStatus rebalancePositionUnderlying;
-        ScaledAsset.UserStatus rebalancePositionStable;
+        ScaledAsset.UserStatus rebalancePositionBase;
+        ScaledAsset.UserStatus rebalancePositionQuote;
         int256 rebalanceFeeGrowthUnderlying;
         int256 rebalanceFeeGrowthStable;
     }
@@ -159,11 +164,11 @@ library Perp {
         // fee growths are scaled by 1e18
         if (_sqrtAssetStatus.lastRebalanceTotalSquartAmount > 0) {
             _sqrtAssetStatus.rebalanceFeeGrowthUnderlying += _pairStatus.basePool.tokenStatus.settleUserFee(
-                _sqrtAssetStatus.rebalancePositionUnderlying
+                _sqrtAssetStatus.rebalancePositionBase
             ) * 1e18 / int256(_sqrtAssetStatus.lastRebalanceTotalSquartAmount);
 
             _sqrtAssetStatus.rebalanceFeeGrowthStable += _pairStatus.quotePool.tokenStatus.settleUserFee(
-                _sqrtAssetStatus.rebalancePositionStable
+                _sqrtAssetStatus.rebalancePositionQuote
             ) * 1e18 / int256(_sqrtAssetStatus.lastRebalanceTotalSquartAmount);
         }
     }
@@ -348,10 +353,10 @@ library Perp {
         // already settled fee
 
         _pairStatus.basePool.tokenStatus.updatePosition(
-            _pairStatus.sqrtAssetStatus.rebalancePositionUnderlying, -deltaPositionUnderlying, _pairStatus.id, false
+            _pairStatus.sqrtAssetStatus.rebalancePositionBase, -deltaPositionUnderlying, _pairStatus.id, false
         );
         _pairStatus.quotePool.tokenStatus.updatePosition(
-            _pairStatus.sqrtAssetStatus.rebalancePositionStable, -deltaPositionStable, _pairStatus.id, true
+            _pairStatus.sqrtAssetStatus.rebalancePositionQuote, -deltaPositionStable, _pairStatus.id, true
         );
 
         _pairStatus.basePool.tokenStatus.updatePosition(
@@ -625,10 +630,8 @@ library Perp {
             _userStatus.rebalanceLastTickLower = _assetStatus.tickLower;
             _userStatus.rebalanceLastTickUpper = _assetStatus.tickUpper;
 
-            return (
-                _assetStatus.rebalancePositionUnderlying.positionAmount,
-                _assetStatus.rebalancePositionStable.positionAmount
-            );
+            return
+                (_assetStatus.rebalancePositionBase.positionAmount, _assetStatus.rebalancePositionQuote.positionAmount);
         }
 
         int256 deltaPosition0 = LPMath.calculateAmount0ForLiquidityWithTicks(
@@ -788,17 +791,17 @@ library Perp {
 
         if (_pairStatus.isMarginZero) {
             _pairStatus.quotePool.tokenStatus.updatePosition(
-                sqrtAsset.rebalancePositionStable, _updateAmount0, _pairStatus.id, true
+                sqrtAsset.rebalancePositionQuote, _updateAmount0, _pairStatus.id, true
             );
             _pairStatus.basePool.tokenStatus.updatePosition(
-                sqrtAsset.rebalancePositionUnderlying, _updateAmount1, _pairStatus.id, false
+                sqrtAsset.rebalancePositionBase, _updateAmount1, _pairStatus.id, false
             );
         } else {
             _pairStatus.basePool.tokenStatus.updatePosition(
-                sqrtAsset.rebalancePositionUnderlying, _updateAmount0, _pairStatus.id, false
+                sqrtAsset.rebalancePositionBase, _updateAmount0, _pairStatus.id, false
             );
             _pairStatus.quotePool.tokenStatus.updatePosition(
-                sqrtAsset.rebalancePositionStable, _updateAmount1, _pairStatus.id, true
+                sqrtAsset.rebalancePositionQuote, _updateAmount1, _pairStatus.id, true
             );
         }
     }

@@ -85,7 +85,7 @@ contract TestReallocate is TestPool {
             ISettlement.SettlementData memory settlementData =
                 settlement.getSettlementParams(address(currency1), address(currency0), 10000);
 
-            vm.expectRevert(IPredyPool.CurrencyNotSettled.selector);
+            vm.expectRevert(IPredyPool.QuoteTokenNotSettled.selector);
             predyPool.reallocate(1, settlementData);
         }
     }

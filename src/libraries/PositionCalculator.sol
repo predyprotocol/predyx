@@ -11,6 +11,8 @@ import "./PerpFee.sol";
 import "./math/Math.sol";
 import "../PriceFeed.sol";
 
+/// @title PositionCalculator library
+/// @notice Provides functions for calculating portfolio value and margin requirements
 library PositionCalculator {
     using ScaledAsset for ScaledAsset.AssetStatus;
     using SafeCast for uint256;

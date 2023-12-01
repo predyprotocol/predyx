@@ -25,9 +25,7 @@ import {MarginLogic} from "./libraries/logic/MarginLogic.sol";
 import {ReaderLogic} from "./libraries/logic/ReaderLogic.sol";
 import {LockDataLibrary, GlobalDataLibrary} from "./types/GlobalData.sol";
 
-/**
- * @notice Holds the state for all pairs and vaults
- */
+/// @notice Holds the state for all pairs and vaults
 contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initializable {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
@@ -76,12 +74,13 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
         operator = msg.sender;
     }
 
-    /**
-     * @dev Callback for Uniswap V3 pool.
-     */
+    /// @dev Callback for Uniswap V3 pool.
     function uniswapV3MintCallback(uint256 amount0, uint256 amount1, bytes calldata) external override {
+        // Only the uniswap pool has access to this function.
         require(allowedUniswapPools[msg.sender]);
+
         IUniswapV3Pool uniswapPool = IUniswapV3Pool(msg.sender);
+
         if (amount0 > 0) {
             ERC20(uniswapPool.token0()).safeTransfer(msg.sender, amount0);
         }
@@ -93,18 +92,19 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
     /**
      * @notice Sets new operator
      * @dev Only operator can call this function.
-     * @param _newOperator The address of new operator
+     * @param newOperator The address of new operator
      */
-    function setOperator(address _newOperator) external onlyOperator {
-        require(_newOperator != address(0));
-        operator = _newOperator;
+    function setOperator(address newOperator) external onlyOperator {
+        require(newOperator != address(0));
+        operator = newOperator;
 
-        emit OperatorUpdated(_newOperator);
+        emit OperatorUpdated(newOperator);
     }
 
     /**
      * @notice Adds a new trading pair.
      * @param addPairParam AddPairParams struct containing pair information.
+     * @return pairId The id of the pair.
      */
     function registerPair(AddPairLogic.AddPairParams memory addPairParam) external returns (uint256) {
         return AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
@@ -151,7 +151,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
     /**
      * @notice Updates pool owner
      * @dev The function can be called by pool owner.
-     * @param pairId The id of pair to update params.
+     * @param pairId The id of pair to update owner.
      * @param poolOwner The address of pool owner
      */
     function updatePoolOwner(uint256 pairId, address poolOwner) external onlyPoolOwner(pairId) {
@@ -223,7 +223,10 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
     }
 
     /**
-     * @notice Reallocated the range of concentrated liquidity provider position
+     * @notice Reallocates the range of concentrated liquidity provider position
+     * @param pairId The id of pair to reallocate the range.
+     * @param settlementData byte data for settlement contract.
+     * @return relocationOccurred Whether relocation occurred.
      */
     function reallocate(uint256 pairId, ISettlement.SettlementData memory settlementData)
         external
@@ -293,7 +296,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
 
     /**
      * @notice Takes tokens
-     * @dev Only locker can call this function
+     * @dev Only the current locker can call this function
      */
     function take(bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
         globalData.take(isQuoteAsset, to, amount);
@@ -301,12 +304,16 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
 
     /**
      * @notice Deposits margin to the vault or withdraws margin from the vault
-     * @dev Only locker can call this function
+     * @dev Only vault owner can call this function
      */
     function updateMargin(uint256 vaultId, int256 marginAmount) external onlyVaultOwner(vaultId) {
         MarginLogic.updateMargin(globalData, vaultId, marginAmount);
     }
 
+    /**
+     * @notice Creates a new vault
+     * @param pairId The id of pair to create vault
+     */
     function createVault(uint256 pairId) external returns (uint256) {
         globalData.validate(pairId);
 

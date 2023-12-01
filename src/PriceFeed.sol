@@ -17,6 +17,8 @@ contract PriceFeedFactory {
     }
 }
 
+/// @title PriceFeed
+/// @notice The contract provides the square root price of the base token in terms of the quote token
 contract PriceFeed {
     address private immutable _quotePriceFeed;
     address private immutable _basePriceFeed;
