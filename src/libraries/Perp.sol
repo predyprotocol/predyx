@@ -18,18 +18,15 @@ import "./math/LPMath.sol";
 import "./math/Math.sol";
 import "./Reallocation.sol";
 
-/*
- * Error Codes
- * P1: There is no enough SQRT liquidity.
- * P2: Out of range
- */
+/// @title Perp library to calculate perp positions
 library Perp {
     using ScaledAsset for ScaledAsset.AssetStatus;
     using SafeCastLib for uint256;
     using Math for int256;
 
     error SqrtAssetCanNotCoverBorrow();
-    error NoCFMMLiquidity();
+    error NoCFMMLiquidityError();
+    error OutOfRangeError();
 
     struct AssetPoolStatus {
         address token;
@@ -426,7 +423,9 @@ library Perp {
             return (0, 0);
         }
 
-        require(Reallocation.isInRange(_sqrtAssetStatus), "P2");
+        if (!Reallocation.isInRange(_sqrtAssetStatus)) {
+            revert OutOfRangeError();
+        }
 
         int256 requiredAmount0;
         int256 requiredAmount1;
@@ -714,7 +713,7 @@ library Perp {
         returns (int256 receivedAmount0, int256 receivedAmount1)
     {
         if (_assetStatus.totalAmount - _assetStatus.borrowedAmount < _liquidityAmount) {
-            revert NoCFMMLiquidity();
+            revert NoCFMMLiquidityError();
         }
 
         (uint256 amount0, uint256 amount1) = IUniswapV3Pool(_assetStatus.uniswapPool).burn(

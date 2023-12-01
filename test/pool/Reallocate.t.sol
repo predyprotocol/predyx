@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import {TestPool} from "./Setup.t.sol";
 import {TestTradeMarket} from "../mocks/TestTradeMarket.sol";
 import {DirectSettlement} from "../../src/settlements/DirectSettlement.sol";
+import {ISettlement} from "../../src/interfaces/ISettlement.sol";
+import {IPredyPool} from "../../src/interfaces/IPredyPool.sol";
 
 contract TestReallocate is TestPool {
     DirectSettlement private settlement;
