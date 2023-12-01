@@ -70,7 +70,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
 
         pairId = registerPair(address(_usdc), address(0));
 
-        perpMarket = new PerpMarket(_predyPool, address(_permit2));
+        perpMarket = new PerpMarket(_predyPool, address(_permit2), address(this));
         perpMarket.updateQuoteTokenMap(1);
 
         limitOrderValidator = new PerpLimitOrderValidator();

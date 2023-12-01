@@ -25,6 +25,8 @@ contract SpotMarket is IFillerMarket, ILendingPool {
 
     error RequiredQuoteAmountExceedsMax();
 
+    error BaseCurrencyNotSettled();
+
     struct LockData {
         address locker;
         address quoteToken;
@@ -137,7 +139,9 @@ contract SpotMarket is IFillerMarket, ILendingPool {
         uint256 afterQuoteReserve = IERC20(spotOrder.quoteToken).balanceOf(address(this));
         uint256 afterBaseReserve = IERC20(spotOrder.baseToken).balanceOf(address(this));
 
-        require(totalBaseAmount + int256(baseReserve) == int256(afterBaseReserve));
+        if (totalBaseAmount + int256(baseReserve) != int256(afterBaseReserve)) {
+            revert BaseCurrencyNotSettled();
+        }
 
         return int256(afterQuoteReserve) - int256(quoteReserve);
     }

@@ -8,7 +8,7 @@ import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseHookCallback.sol";
+import "../../base/BaseMarket.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/logic/LiquidationLogic.sol";
@@ -19,7 +19,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 /**
  * @notice Perp market contract
  */
-contract PerpMarket is IFillerMarket, BaseHookCallback {
+contract PerpMarket is IFillerMarket, BaseMarket {
     using ResolvedOrderLib for ResolvedOrder;
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
@@ -47,7 +47,9 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
     event ClosedByTPSLOrder(address trader, uint256 pairId, uint256 vaultId);
     event TPSLOrderCancelled(address trader, uint256 pairId, address canceler);
 
-    constructor(IPredyPool predyPool, address permit2Address) BaseHookCallback(predyPool) {
+    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
+        BaseMarket(predyPool, whitelistFiller)
+    {
         _permit2 = IPermit2(permit2Address);
     }
 
@@ -121,6 +123,13 @@ contract PerpMarket is IFillerMarket, BaseHookCallback {
             ),
             settlementData
         );
+
+        if (tradeResult.minMargin > 0) {
+            // only whitelisted filler can open position
+            if (msg.sender != _whitelistFiller) {
+                revert CallerIsNotFiller();
+            }
+        }
 
         if (userPosition.vaultId == 0) {
             userPosition.vaultId = tradeResult.vaultId;

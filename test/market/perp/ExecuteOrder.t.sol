@@ -42,30 +42,69 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
-        PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
-            1,
-            address(currency1),
-            -1000,
-            2 * 1e6,
-            address(0),
-            0,
-            0,
-            0,
-            address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, 0))
-        );
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000,
+                2 * 1e6,
+                address(0),
+                0,
+                0,
+                0,
+                address(limitOrderValidator),
+                abi.encode(PerpLimitOrderValidationData(0, 0))
+            );
 
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
-        );
+            ISettlement.SettlementData memory settlementData =
+                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 998);
-        assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
-        assertEq(tradeResult.payoff.perpPayoff, 0);
-        assertEq(tradeResult.payoff.sqrtPayoff, 0);
+            vm.startPrank(from1);
+            vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
+            fillerMarket.executeOrder(signedOrder, settlementData);
+            vm.stopPrank();
+
+            IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(signedOrder, settlementData);
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, 998);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
+
+        // Close position by trader
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                1000,
+                0,
+                address(0),
+                0,
+                0,
+                0,
+                address(limitOrderValidator),
+                abi.encode(PerpLimitOrderValidationData(0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            vm.startPrank(from1);
+            IPredyPool.TradeResult memory tradeResult2 = fillerMarket.executeOrder(
+                signedOrder,
+                settlement.getSettlementParams(normalSwapRoute, 2000, address(currency1), address(currency0), 0)
+            );
+            vm.stopPrank();
+
+            assertEq(tradeResult2.payoff.perpEntryUpdate, -998);
+            assertEq(tradeResult2.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult2.payoff.perpPayoff, -6);
+            assertEq(tradeResult2.payoff.sqrtPayoff, 0);
+        }
     }
 
     // netting
@@ -116,11 +155,6 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             );
         }
     }
-
-    // executeOrder succeeds for close
-    // executeOrder succeeds with market order
-    // executeOrder succeeds with limit order
-    // executeOrder succeeds with stop order
 
     // executeOrder succeeds with 0 amount
     function testExecuteOrderSucceedsWithZeroAmount() public {

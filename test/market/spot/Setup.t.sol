@@ -5,7 +5,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import "../../../src/markets/spot/SpotMarket.sol";
-import "../../../src/settlements/DirectSettlement.sol";
+import {DebugSettlement} from "../../mocks/DebugSettlement.sol";
 import {
     SpotDutchOrderValidationData,
     SpotDutchOrderValidator
@@ -18,7 +18,7 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
     using SpotOrderLib for SpotOrder;
 
-    DirectSettlement settlement;
+    DebugSettlement settlement;
     SpotMarket fillerMarket;
     IPermit2 permit2;
     SpotDutchOrderValidator dutchOrderValidator;
@@ -33,7 +33,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         fillerMarket = new SpotMarket(address(permit2));
 
-        settlement = new DirectSettlement(fillerMarket, address(this));
+        settlement = new DebugSettlement(fillerMarket, address(this));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);

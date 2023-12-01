@@ -8,7 +8,7 @@ import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseHookCallback.sol";
+import "../../base/BaseMarket.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/logic/LiquidationLogic.sol";
@@ -19,7 +19,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 /**
  * @notice Gamma trade market contract
  */
-contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
+contract GammaTradeMarket is IFillerMarket, BaseMarket {
     using ResolvedOrderLib for ResolvedOrder;
     using GammaOrderLib for GammaOrder;
     using Permit2Lib for ResolvedOrder;
@@ -55,7 +55,9 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
     event Traded(address trader, uint256 vaultId);
     event Hedged(address owner, uint256 pairId, uint256 vaultId, uint256 sqrtPrice, int256 delta);
 
-    constructor(IPredyPool predyPool, address permit2Address) BaseHookCallback(predyPool) {
+    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
+        BaseMarket(predyPool, whitelistFiller)
+    {
         _permit2 = IPermit2(permit2Address);
     }
 
@@ -119,6 +121,13 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
             settlementData
         );
 
+        if (tradeResult.minMargin > 0) {
+            // only whitelisted filler can open position
+            if (msg.sender != _whitelistFiller) {
+                revert CallerIsNotFiller();
+            }
+        }
+
         if (userPosition.vaultId == 0) {
             userPosition.owner = gammaOrder.info.trader;
             userPosition.vaultId = tradeResult.vaultId;
@@ -131,7 +140,6 @@ contract GammaTradeMarket is IFillerMarket, BaseHookCallback {
         require(gammaOrder.maxSlippageTolerance <= Bps.ONE);
         userPosition.maxSlippageTolerance = gammaOrder.maxSlippageTolerance + Bps.ONE;
 
-        // TODO: should have whole list for validatorAddress?
         IGammaOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
         emit Traded(gammaOrder.info.trader, tradeResult.vaultId);

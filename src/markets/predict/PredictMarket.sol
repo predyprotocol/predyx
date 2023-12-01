@@ -10,7 +10,7 @@ import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseHookCallback.sol";
+import "../../base/BaseMarket.sol";
 import "../../libraries/logic/LiquidationLogic.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
@@ -24,7 +24,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
  * A trader can open position with any duration.
  * Anyone can close the position after expiration timestamp.
  */
-contract PredictMarket is IFillerMarket, BaseHookCallback {
+contract PredictMarket is IFillerMarket, BaseMarket {
     using ResolvedOrderLib for ResolvedOrder;
     using PredictOrderLib for PredictOrder;
     using Permit2Lib for ResolvedOrder;
@@ -33,14 +33,14 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
 
     error CloseBeforeExpiration();
 
-    IPermit2 immutable _permit2;
+    IPermit2 private immutable _permit2;
 
     // 2%
-    uint256 constant _MAX_SLIPPAGE = 1020000;
+    uint256 private constant _MAX_SLIPPAGE = 1020000;
     // 0.1%
-    uint256 constant _MIN_SLIPPAGE = 1001000;
+    uint256 private constant _MIN_SLIPPAGE = 1001000;
     // 20 minutes
-    uint256 constant _AUCTION_DURATION = 20 minutes;
+    uint256 private constant _AUCTION_DURATION = 20 minutes;
 
     struct UserPosition {
         address owner;
@@ -62,7 +62,9 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
     event Opened(address trader, uint256 vaultId, uint256 expiration, uint256 duration);
     event Closed(uint256 vaultId, uint256 closeValue);
 
-    constructor(IPredyPool predyPool, address permit2Address) BaseHookCallback(predyPool) {
+    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
+        BaseMarket(predyPool, whitelistFiller)
+    {
         _permit2 = IPermit2(permit2Address);
     }
 
@@ -107,6 +109,11 @@ contract PredictMarket is IFillerMarket, BaseHookCallback {
 
         require(_quoteTokenMap[predictOrder.pairId] != address(0));
         require(predictOrder.entryTokenAddress == _quoteTokenMap[predictOrder.pairId]);
+
+        // only whitelisted filler can open position
+        if (msg.sender != _whitelistFiller) {
+            revert CallerIsNotFiller();
+        }
 
         _verifyOrder(resolvedOrder);
 
