@@ -26,7 +26,6 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     using Math for uint256;
 
     struct UserPosition {
-        address owner;
         uint256 vaultId;
         address canceler;
         uint256 takeProfitPrice;
@@ -43,7 +42,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
-    event Traded(address trader, uint256 pairId, uint256 vaultId);
+    event Traded(address trader, uint256 pairId, uint256 vaultId, uint256 takeProfitPrice, uint256 stopLossPrice);
     event ClosedByTPSLOrder(address trader, uint256 pairId, uint256 vaultId);
     event TPSLOrderCancelled(address trader, uint256 pairId, address canceler);
 
@@ -103,12 +102,13 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         UserPosition storage userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
 
         if (userPosition.vaultId == 0) {
-            userPosition.owner = perpOrder.info.trader;
-            userPosition.canceler = perpOrder.canceler;
-            userPosition.takeProfitPrice = perpOrder.takeProfitPrice;
-            userPosition.stopLossPrice = perpOrder.stopLossPrice;
-            require(perpOrder.slippageTolerance <= Bps.ONE);
-            userPosition.slippageTolerance = perpOrder.slippageTolerance + Bps.ONE;
+            _saveUserPosition(
+                userPosition,
+                perpOrder.canceler,
+                perpOrder.takeProfitPrice,
+                perpOrder.stopLossPrice,
+                perpOrder.slippageTolerance
+            );
         }
 
         tradeResult = _predyPool.trade(
@@ -135,12 +135,17 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             _predyPool.updateRecepient(tradeResult.vaultId, perpOrder.info.trader);
         }
 
-        // TODO: should have whole list for validatorAddress?
         if (perpOrder.validatorAddress != address(0)) {
             IOrderValidator(perpOrder.validatorAddress).validate(perpOrder, tradeResult);
         }
 
-        emit Traded(perpOrder.info.trader, perpOrder.pairId, tradeResult.vaultId);
+        emit Traded(
+            perpOrder.info.trader,
+            perpOrder.pairId,
+            tradeResult.vaultId,
+            perpOrder.takeProfitPrice,
+            perpOrder.stopLossPrice
+        );
 
         return tradeResult;
     }
@@ -148,7 +153,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     function cancelOrder(address owner, uint256 pairId) external {
         UserPosition storage userPosition = userPositions[owner][pairId];
 
-        require(userPosition.owner == msg.sender || userPosition.canceler == msg.sender);
+        require(owner == msg.sender || userPosition.canceler == msg.sender);
 
         userPosition.takeProfitPrice = 0;
         userPosition.stopLossPrice = 0;
@@ -170,7 +175,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     {
         UserPosition storage userPosition = userPositions[owner][pairId];
 
-        require(userPosition.vaultId > 0 && userPosition.owner == owner);
+        require(userPosition.vaultId > 0);
 
         DataType.Vault memory vault = _predyPool.getVault(userPosition.vaultId);
 
@@ -194,6 +199,21 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         );
 
         emit ClosedByTPSLOrder(owner, pairId, userPosition.vaultId);
+    }
+
+    function _saveUserPosition(
+        UserPosition storage userPosition,
+        address canceler,
+        uint256 takeProfitPrice,
+        uint256 stopLossPrice,
+        uint64 slippageTolerance
+    ) internal {
+        require(slippageTolerance <= Bps.ONE);
+
+        userPosition.canceler = canceler;
+        userPosition.takeProfitPrice = takeProfitPrice;
+        userPosition.stopLossPrice = stopLossPrice;
+        userPosition.slippageTolerance = slippageTolerance + Bps.ONE;
     }
 
     function _validateTPSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)

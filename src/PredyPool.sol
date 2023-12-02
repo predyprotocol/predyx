@@ -5,6 +5,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPredyPool} from "./interfaces/IPredyPool.sol";
 import {ILendingPool} from "./interfaces/ILendingPool.sol";
@@ -26,7 +27,7 @@ import {ReaderLogic} from "./libraries/logic/ReaderLogic.sol";
 import {LockDataLibrary, GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /// @notice Holds the state for all pairs and vaults
-contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initializable {
+contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initializable, ReentrancyGuard {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
     using VaultLib for GlobalDataLibrary.GlobalData;
@@ -207,6 +208,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      */
     function supply(uint256 pairId, bool isQuoteAsset, uint256 supplyAmount)
         external
+        nonReentrant
         returns (uint256 finalSuppliedAmount)
     {
         return SupplyLogic.supply(globalData, pairId, supplyAmount, isQuoteAsset);
@@ -217,6 +219,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      */
     function withdraw(uint256 pairId, bool isQuoteAsset, uint256 withdrawAmount)
         external
+        nonReentrant
         returns (uint256 finalBurnAmount, uint256 finalWithdrawAmount)
     {
         return SupplyLogic.withdraw(globalData, pairId, withdrawAmount, isQuoteAsset);
@@ -230,6 +233,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      */
     function reallocate(uint256 pairId, ISettlement.SettlementData memory settlementData)
         external
+        nonReentrant
         returns (bool relocationOccurred)
     {
         return ReallocationLogic.reallocate(globalData, pairId, settlementData);
@@ -289,6 +293,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      */
     function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
         external
+        nonReentrant
         returns (TradeResult memory tradeResult)
     {
         return LiquidationLogic.liquidate(vaultId, closeRatio, globalData, settlementData);

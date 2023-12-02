@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
+import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
@@ -19,7 +20,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 /**
  * @notice Gamma trade market contract
  */
-contract GammaTradeMarket is IFillerMarket, BaseMarket {
+contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     using ResolvedOrderLib for ResolvedOrder;
     using GammaOrderLib for GammaOrder;
     using Permit2Lib for ResolvedOrder;
@@ -30,7 +31,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
     error HedgeTriggerNotMatched();
 
     struct UserPosition {
-        address owner;
         uint256 vaultId;
         uint256 lastHedgedTime;
         uint256 hedgeInterval;
@@ -98,6 +98,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
      */
     function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
+        nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         GammaOrder memory gammaOrder = abi.decode(order.order, (GammaOrder));
@@ -108,10 +109,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
         _verifyOrder(resolvedOrder);
 
         UserPosition storage userPosition = userPositions[gammaOrder.info.trader][gammaOrder.pairId];
-
-        if (userPosition.vaultId == 0) {
-            userPosition.owner = gammaOrder.info.trader;
-        }
 
         _saveUserPosition(
             userPosition, gammaOrder.hedgeInterval, gammaOrder.sqrtPriceTrigger, gammaOrder.maxSlippageTolerance
@@ -158,11 +155,12 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
      */
     function execDeltaHedge(address owner, uint256 pairId, ISettlement.SettlementData memory settlementData)
         external
+        nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         UserPosition storage userPosition = userPositions[owner][pairId];
 
-        require(userPosition.vaultId > 0 && userPosition.owner == owner);
+        require(userPosition.vaultId > 0);
 
         DataType.Vault memory vault = _predyPool.getVault(userPosition.vaultId);
 

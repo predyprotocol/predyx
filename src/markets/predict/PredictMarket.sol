@@ -37,12 +37,12 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
     IPermit2 private immutable _permit2;
 
-    // 2%
-    uint256 private constant _MAX_SLIPPAGE = 1020000;
-    // 0.1%
-    uint256 private constant _MIN_SLIPPAGE = 1001000;
-    // 20 minutes
+    // The duration of dutch auction is 20 minutes
     uint256 private constant _AUCTION_DURATION = 20 minutes;
+
+    // The auction starts with min slippage(0.1%) and ends with max slippage(2%)
+    uint256 private constant _MIN_SLIPPAGE = 1001000;
+    uint256 private constant _MAX_SLIPPAGE = 1020000;
 
     struct UserPosition {
         address owner;
