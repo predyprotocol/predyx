@@ -114,7 +114,6 @@ library Perp {
         uint256 spread
     );
     event SqrtPositionUpdated(uint256 pairId, int256 open, int256 close);
-    event Rebalanced(uint256 pairId, int24 tickLower, int24 tickUpper);
 
     function createAssetStatus(address uniswapPool, int24 tickLower, int24 tickUpper)
         internal
@@ -205,6 +204,7 @@ library Perp {
     ) internal returns (bool, int256 deltaPositionBase, int256 deltaPositionQuote) {
         (uint160 currentSqrtPrice, int24 currentTick,,,,,) = IUniswapV3Pool(_sqrtAssetStatus.uniswapPool).slot0();
 
+        // If the current tick does not reach the threshold, then do nothing
         if (
             _sqrtAssetStatus.tickLower + _assetStatusUnderlying.riskParams.rebalanceThreshold < currentTick
                 && currentTick < _sqrtAssetStatus.tickUpper - _assetStatusUnderlying.riskParams.rebalanceThreshold
@@ -214,6 +214,7 @@ library Perp {
             return (false, 0, 0);
         }
 
+        // If the total liquidity is 0, then do nothing
         uint128 totalLiquidityAmount = getAvailableLiquidityAmount(
             address(this), _sqrtAssetStatus.uniswapPool, _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper
         );
@@ -227,6 +228,7 @@ library Perp {
             return (false, 0, 0);
         }
 
+        // if the current tick does reach the threshold, then rebalance
         int24 tick;
         bool isOutOfRange;
 
@@ -247,12 +249,11 @@ library Perp {
 
         saveLastFeeGrowth(_sqrtAssetStatus);
 
+        // if the current tick is out of range, then swap
         if (isOutOfRange) {
             (deltaPositionBase, deltaPositionQuote) =
                 swapForOutOfRange(_assetStatusUnderlying, currentSqrtPrice, tick, totalLiquidityAmount);
         }
-
-        emit Rebalanced(_assetStatusUnderlying.id, _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper);
 
         return (true, deltaPositionBase, deltaPositionQuote);
     }

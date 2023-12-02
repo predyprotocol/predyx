@@ -22,8 +22,6 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        // fillerMarket.depositToFillerPool(100 * 1e6);
-
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
         fromPrivateKey2 = 0x1235678;
@@ -48,9 +46,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             -1000,
             900,
             2 * 1e6,
+            12 hours,
             0,
-            0,
-            0,
+            1000,
             address(limitOrderValidator),
             abi.encode(GammaLimitOrderValidationData(0, 0, 0, 0))
         );
@@ -77,9 +75,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 -1000 * 1e4,
                 0,
                 2 * 1e8,
+                12 hours,
                 0,
-                0,
-                0,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(GammaLimitOrderValidationData(0, 0, 0, 0))
             );
@@ -100,9 +98,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 1000 * 1e4,
                 0,
                 0,
+                12 hours,
                 0,
-                0,
-                0,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -117,9 +115,6 @@ contract TestGammaExecuteOrder is TestGammaMarket {
     }
 
     // executeOrder succeeds for close
-    // executeOrder succeeds with market order
-    // executeOrder succeeds with limit order
-    // executeOrder succeeds with stop order
 
     // executeOrder succeeds with 0 amount
 
@@ -138,9 +133,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             1000,
             0,
             2 * 1e6,
+            12 hours,
             0,
-            0,
-            0,
+            1000,
             address(limitOrderValidator),
             abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
         );
@@ -167,9 +162,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 1000,
                 0,
                 2 * 1e6,
+                12 hours,
                 0,
-                0,
-                0,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -187,9 +182,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 1000,
                 0,
                 0,
+                12 hours,
                 0,
-                0,
-                0,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -212,9 +207,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             1000,
             0,
             2 * 1e6,
+            12 hours,
             0,
-            0,
-            0,
+            1000,
             address(limitOrderValidator),
             abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
         );
@@ -237,9 +232,9 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             -1000,
             0,
             2 * 1e6,
+            12 hours,
             0,
-            0,
-            0,
+            1000,
             address(limitOrderValidator),
             abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
         );

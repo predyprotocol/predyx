@@ -45,9 +45,9 @@ contract TestExecLiquidationCall is TestGammaMarket {
             -4 * 1e8,
             0,
             1e8,
+            12 hours,
             0,
-            0,
-            0,
+            1000,
             address(limitOrderValidator),
             abi.encode(GammaLimitOrderValidationData(0, 0, 0, 0))
         );

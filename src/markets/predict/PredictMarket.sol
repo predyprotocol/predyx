@@ -31,6 +31,8 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     using Math for uint256;
     using Bps for uint256;
 
+    error NullOwner();
+    error DurationTooLong();
     error CloseBeforeExpiration();
 
     IPermit2 private immutable _permit2;
@@ -107,8 +109,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         PredictOrder memory predictOrder = abi.decode(order.order, (PredictOrder));
         ResolvedOrder memory resolvedOrder = PredictOrderLib.resolve(predictOrder, order.sig);
 
-        require(_quoteTokenMap[predictOrder.pairId] != address(0));
-        require(predictOrder.entryTokenAddress == _quoteTokenMap[predictOrder.pairId]);
+        validateQuoteTokenAddress(predictOrder.pairId, predictOrder.entryTokenAddress);
 
         // only whitelisted filler can open position
         if (msg.sender != _whitelistFiller) {
@@ -128,8 +129,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
             settlementData
         );
 
-        userPositions[tradeResult.vaultId].owner = predictOrder.info.trader;
-        userPositions[tradeResult.vaultId].expiration = block.timestamp + predictOrder.duration;
+        saveUserPosition(tradeResult.vaultId, predictOrder.info.trader, block.timestamp + predictOrder.duration);
 
         _predyPool.updateRecepient(tradeResult.vaultId, predictOrder.info.trader);
 
@@ -187,6 +187,17 @@ contract PredictMarket is IFillerMarket, BaseMarket {
             _calculateSlippageTolerance(expiration, block.timestamp),
             vault.openPosition.sqrtPerp.amount != 0
         );
+    }
+
+    function saveUserPosition(uint256 vaultId, address owner, uint256 expiration) internal {
+        require(owner != address(0) && vaultId > 0);
+
+        if (expiration > block.timestamp + 30 days) {
+            revert DurationTooLong();
+        }
+
+        userPositions[vaultId].owner = owner;
+        userPositions[vaultId].expiration = expiration;
     }
 
     function _calculateSlippageTolerance(uint256 startTime, uint256 currentTime) internal pure returns (uint256) {

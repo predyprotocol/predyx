@@ -15,6 +15,15 @@ library ReallocationLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using SafeTransferLib for ERC20;
 
+    event Rebalanced(
+        uint256 pairId,
+        bool relocationOccurred,
+        int24 tickLower,
+        int24 tickUpper,
+        int256 deltaPositionBase,
+        int256 deltaPositionQuote
+    );
+
     function reallocate(
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
@@ -61,6 +70,15 @@ library ReallocationLogic {
                     ERC20(pairStatus.quotePool.token).safeTransfer(msg.sender, uint256(exceedsQuote));
                 }
             }
+
+            emit Rebalanced(
+                pairId,
+                relocationOccurred,
+                pairStatus.sqrtAssetStatus.tickLower,
+                pairStatus.sqrtAssetStatus.tickUpper,
+                deltaPositionBase,
+                deltaPositionQuote
+            );
         }
 
         if (relocationOccurred) {

@@ -96,9 +96,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
         ResolvedOrder memory resolvedOrder = PerpOrderLib.resolve(perpOrder, order.sig);
 
-        require(_quoteTokenMap[perpOrder.pairId] != address(0));
-        // TODO: check perpOrder.entryTokenAddress and _quoteTokenMap[perpOrder.pairId]
-        require(perpOrder.entryTokenAddress == _quoteTokenMap[perpOrder.pairId]);
+        validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
 
         _verifyOrder(resolvedOrder);
 

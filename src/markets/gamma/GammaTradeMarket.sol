@@ -26,6 +26,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
     using Math for uint256;
     using SafeTransferLib for ERC20;
 
+    error TooSmallHedgeInterval();
     error HedgeTriggerNotMatched();
 
     struct UserPosition {
@@ -45,14 +46,14 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
 
     // 0.1%
     uint256 private constant _MIN_SLIPPAGE = 1001000;
-    // 20 minutes
+    // The duration of dutch auction is 20 minutes
     uint256 private constant _AUCTION_DURATION = 20 minutes;
 
     IPermit2 private immutable _permit2;
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
-    event Traded(address trader, uint256 vaultId);
+    event Traded(address trader, uint256 vaultId, uint256 hedgeInterval, uint256 sqrtPriceTrigger);
     event Hedged(address owner, uint256 pairId, uint256 vaultId, uint256 sqrtPrice, int256 delta);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
@@ -102,13 +103,19 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
         GammaOrder memory gammaOrder = abi.decode(order.order, (GammaOrder));
         ResolvedOrder memory resolvedOrder = GammaOrderLib.resolve(gammaOrder, order.sig);
 
-        require(_quoteTokenMap[gammaOrder.pairId] != address(0));
-        // TODO: check gammaOrder.entryTokenAddress and _quoteTokenMap[gammaOrder.pairId]
-        require(gammaOrder.entryTokenAddress == _quoteTokenMap[gammaOrder.pairId]);
+        validateQuoteTokenAddress(gammaOrder.pairId, gammaOrder.entryTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
         UserPosition storage userPosition = userPositions[gammaOrder.info.trader][gammaOrder.pairId];
+
+        if (userPosition.vaultId == 0) {
+            userPosition.owner = gammaOrder.info.trader;
+        }
+
+        _saveUserPosition(
+            userPosition, gammaOrder.hedgeInterval, gammaOrder.sqrtPriceTrigger, gammaOrder.maxSlippageTolerance
+        );
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
@@ -129,20 +136,14 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
         }
 
         if (userPosition.vaultId == 0) {
-            userPosition.owner = gammaOrder.info.trader;
             userPosition.vaultId = tradeResult.vaultId;
 
             _predyPool.updateRecepient(tradeResult.vaultId, gammaOrder.info.trader);
         }
 
-        userPosition.hedgeInterval = gammaOrder.hedgeInterval;
-        userPosition.sqrtPriceTrigger = gammaOrder.sqrtPriceTrigger;
-        require(gammaOrder.maxSlippageTolerance <= Bps.ONE);
-        userPosition.maxSlippageTolerance = gammaOrder.maxSlippageTolerance + Bps.ONE;
-
         IGammaOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
-        emit Traded(gammaOrder.info.trader, tradeResult.vaultId);
+        emit Traded(gammaOrder.info.trader, tradeResult.vaultId, gammaOrder.hedgeInterval, gammaOrder.sqrtPriceTrigger);
 
         return tradeResult;
     }
@@ -197,6 +198,23 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
         emit Hedged(owner, pairId, userPosition.vaultId, sqrtPrice, delta);
     }
 
+    function _saveUserPosition(
+        UserPosition storage userPosition,
+        uint256 hedgeInterval,
+        uint256 sqrtPriceTrigger,
+        uint64 maxSlippageTolerance
+    ) internal {
+        if (2 hours > hedgeInterval) {
+            revert TooSmallHedgeInterval();
+        }
+
+        require(maxSlippageTolerance <= Bps.ONE && maxSlippageTolerance + Bps.ONE >= _MIN_SLIPPAGE);
+
+        userPosition.hedgeInterval = hedgeInterval;
+        userPosition.sqrtPriceTrigger = sqrtPriceTrigger;
+        userPosition.maxSlippageTolerance = maxSlippageTolerance + Bps.ONE;
+    }
+
     function _calculateDelta(uint256 _sqrtPrice, int256 _sqrtAmount, int256 perpAmount)
         internal
         pure
@@ -212,6 +230,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket {
     {
         if (userPosition.lastHedgedTime + userPosition.hedgeInterval <= block.timestamp) {
             return true;
+        }
+
+        // if sqrtPriceTrigger is 0, it means that the user doesn't want to use this feature
+        if (userPosition.sqrtPriceTrigger == 0) {
+            return false;
         }
 
         uint256 upperThreshold = userPosition.lastHedgedSqrtPrice * userPosition.sqrtPriceTrigger / 1e4;

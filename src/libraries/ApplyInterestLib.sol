@@ -8,6 +8,7 @@ import "./DataType.sol";
 library ApplyInterestLib {
     using ScaledAsset for ScaledAsset.AssetStatus;
 
+    /// @notice Emitted when interest growth is updated
     event InterestGrowthUpdated(
         uint256 pairId,
         ScaledAsset.AssetStatus stableStatus,
@@ -16,9 +17,11 @@ library ApplyInterestLib {
         uint256 interestRateUnderlying
     );
 
+    /// @notice Each time the user touches the contract, the interest rate is applied
     function applyInterestForToken(mapping(uint256 => DataType.PairStatus) storage pairs, uint256 pairId) internal {
         DataType.PairStatus storage pairStatus = pairs[pairId];
 
+        // avoid applying interest rate multiple times in the same block
         if (pairStatus.lastUpdateTimestamp >= block.timestamp) {
             return;
         }
@@ -47,9 +50,9 @@ library ApplyInterestLib {
             return 0;
         }
 
-        // Gets utilization ratio
         uint256 utilizationRatio = poolStatus.tokenStatus.getUtilizationRatio();
 
+        // Skip calculating interest if utilization ratio is 0
         if (utilizationRatio == 0) {
             return 0;
         }
@@ -58,7 +61,6 @@ library ApplyInterestLib {
         interestRate = InterestRateModel.calculateInterestRate(poolStatus.irmParams, utilizationRatio)
             * (block.timestamp - lastUpdateTimestamp) / 365 days;
 
-        // Update scaler
         uint256 totalProtocolFee = poolStatus.tokenStatus.updateScaler(interestRate, fee);
 
         poolStatus.accumulatedProtocolRevenue += totalProtocolFee / 2;
