@@ -53,8 +53,24 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
-    event Traded(address trader, uint256 vaultId, uint256 hedgeInterval, uint256 sqrtPriceTrigger);
-    event Hedged(address owner, uint256 pairId, uint256 vaultId, uint256 sqrtPrice, int256 delta);
+    event Traded(
+        address trader,
+        uint256 vaultId,
+        uint256 hedgeInterval,
+        uint256 sqrtPriceTrigger,
+        IPredyPool.Payoff payoff,
+        int256 fee,
+        int256 marginAmount
+    );
+    event Hedged(
+        address owner,
+        uint256 pairId,
+        uint256 vaultId,
+        uint256 sqrtPrice,
+        int256 delta,
+        IPredyPool.Payoff payoff,
+        int256 fee
+    );
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
         BaseMarket(predyPool, whitelistFiller)
@@ -140,7 +156,15 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         IGammaOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
-        emit Traded(gammaOrder.info.trader, tradeResult.vaultId, gammaOrder.hedgeInterval, gammaOrder.sqrtPriceTrigger);
+        emit Traded(
+            gammaOrder.info.trader,
+            tradeResult.vaultId,
+            gammaOrder.hedgeInterval,
+            gammaOrder.sqrtPriceTrigger,
+            tradeResult.payoff,
+            tradeResult.fee,
+            gammaOrder.marginAmount
+        );
 
         return tradeResult;
     }
@@ -193,7 +217,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         userPosition.lastHedgedSqrtPrice = sqrtPrice;
         userPosition.lastHedgedTime = block.timestamp;
 
-        emit Hedged(owner, pairId, userPosition.vaultId, sqrtPrice, delta);
+        emit Hedged(owner, pairId, userPosition.vaultId, sqrtPrice, delta, tradeResult.payoff, tradeResult.fee);
     }
 
     function _saveUserPosition(

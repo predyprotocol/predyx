@@ -42,8 +42,17 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
-    event Traded(address trader, uint256 pairId, uint256 vaultId, uint256 takeProfitPrice, uint256 stopLossPrice);
-    event ClosedByTPSLOrder(address trader, uint256 pairId, uint256 vaultId);
+    event Traded(
+        address trader,
+        uint256 pairId,
+        uint256 vaultId,
+        uint256 takeProfitPrice,
+        uint256 stopLossPrice,
+        IPredyPool.Payoff payoff,
+        int256 fee,
+        int256 marginAmount
+    );
+    event ClosedByTPSLOrder(address trader, uint256 vaultId, IPredyPool.Payoff payoff, int256 fee);
     event TPSLOrderCancelled(address trader, uint256 pairId, address canceler);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
@@ -144,7 +153,10 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             perpOrder.pairId,
             tradeResult.vaultId,
             perpOrder.takeProfitPrice,
-            perpOrder.stopLossPrice
+            perpOrder.stopLossPrice,
+            tradeResult.payoff,
+            tradeResult.fee,
+            perpOrder.marginAmount
         );
 
         return tradeResult;
@@ -198,7 +210,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             sqrtPrice, tradeResult, userPosition.slippageTolerance, vault.openPosition.sqrtPerp.amount != 0
         );
 
-        emit ClosedByTPSLOrder(owner, pairId, userPosition.vaultId);
+        emit ClosedByTPSLOrder(owner, userPosition.vaultId, tradeResult.payoff, tradeResult.fee);
     }
 
     function _saveUserPosition(

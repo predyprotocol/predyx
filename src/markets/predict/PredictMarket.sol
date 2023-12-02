@@ -61,8 +61,16 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
-    event Opened(address trader, uint256 vaultId, uint256 expiration, uint256 duration);
-    event Closed(uint256 vaultId, uint256 closeValue);
+    event Opened(
+        address trader,
+        uint256 vaultId,
+        uint256 pairId,
+        uint256 openValue,
+        IPredyPool.Payoff payoff,
+        uint256 expiration,
+        uint256 duration
+    );
+    event Closed(uint256 vaultId, uint256 closeValue, IPredyPool.Payoff payoff, int256 fee);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
         BaseMarket(predyPool, whitelistFiller)
@@ -70,11 +78,10 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         _permit2 = IPermit2(permit2Address);
     }
 
-    function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
-        external
-        override(BaseHookCallback)
-        onlyPredyPool
-    {
+    function predyTradeAfterCallback(
+        IPredyPool.TradeParams memory tradeParams,
+        IPredyPool.TradeResult memory tradeResult
+    ) external override(BaseHookCallback) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
         if (callbackData.callbackSource == CallbackSource.OPEN) {
@@ -92,7 +99,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                 _getQuoteTokenAddress(tradeParams.pairId), userPositions[tradeParams.vaultId].owner, closeValue
             );
 
-            emit Closed(tradeParams.vaultId, closeValue);
+            emit Closed(tradeParams.vaultId, closeValue, tradeResult.payoff, tradeResult.fee);
         }
     }
 
@@ -138,6 +145,9 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         emit Opened(
             predictOrder.info.trader,
             tradeResult.vaultId,
+            predictOrder.pairId,
+            predictOrder.marginAmount,
+            tradeResult.payoff,
             predictOrder.duration,
             userPositions[tradeResult.vaultId].expiration
         );
