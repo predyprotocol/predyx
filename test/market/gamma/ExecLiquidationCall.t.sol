@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 
 contract TestExecLiquidationCall is TestGammaMarket {
     bytes normalSwapRoute;
@@ -49,7 +50,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
             0,
             1000,
             address(limitOrderValidator),
-            abi.encode(GammaLimitOrderValidationData(0, 0, 0, 0))
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);

@@ -14,7 +14,6 @@ import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/logic/LiquidationLogic.sol";
 import "./GammaOrder.sol";
-import "../../libraries/math/Math.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
 /**
@@ -24,7 +23,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     using ResolvedOrderLib for ResolvedOrder;
     using GammaOrderLib for GammaOrder;
     using Permit2Lib for ResolvedOrder;
-    using Math for uint256;
     using SafeTransferLib for ERC20;
 
     error TooSmallHedgeInterval();
@@ -55,6 +53,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
     event GammaPositionTraded(
         address trader,
+        uint256 pairId,
         uint256 vaultId,
         uint256 hedgeInterval,
         uint256 sqrtPriceTrigger,
@@ -63,7 +62,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         int256 marginAmount
     );
     event GammaPositionHedged(
-        address owner,
+        address trader,
         uint256 pairId,
         uint256 vaultId,
         uint256 sqrtPrice,
@@ -83,26 +82,23 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseHookCallback) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
+        ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
         if (tradeResult.minMargin == 0) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
             ILendingPool(address(_predyPool)).take(true, address(this), uint256(vault.margin));
 
-            ERC20(_getQuoteTokenAddress(tradeParams.pairId)).safeTransfer(callbackData.trader, uint256(vault.margin));
+            quoteToken.safeTransfer(callbackData.trader, uint256(vault.margin));
         } else {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
             if (marginAmountUpdate > 0) {
-                ERC20(_getQuoteTokenAddress(tradeParams.pairId)).safeTransfer(
-                    address(_predyPool), uint256(marginAmountUpdate)
-                );
+                quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
             } else if (marginAmountUpdate < 0) {
                 ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
 
-                ERC20(_getQuoteTokenAddress(tradeParams.pairId)).safeTransfer(
-                    callbackData.trader, uint256(-marginAmountUpdate)
-                );
+                quoteToken.safeTransfer(callbackData.trader, uint256(-marginAmountUpdate));
             }
         }
     }
@@ -154,10 +150,13 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             _predyPool.updateRecepient(tradeResult.vaultId, gammaOrder.info.trader);
         }
 
-        IGammaOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
+        IOrderValidator(gammaOrder.validatorAddress).validate(
+            gammaOrder.tradeAmount, gammaOrder.tradeAmountSqrt, gammaOrder.validationData, tradeResult
+        );
 
         emit GammaPositionTraded(
             gammaOrder.info.trader,
+            gammaOrder.pairId,
             tradeResult.vaultId,
             gammaOrder.hedgeInterval,
             gammaOrder.sqrtPriceTrigger,

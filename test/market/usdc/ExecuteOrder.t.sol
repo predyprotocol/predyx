@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 
 contract TestPerpMarketExecuteOrder is TestPerpMarket {
     address _fillerAddress;
@@ -37,12 +38,11 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
             address(_usdc),
             -1000,
             2 * 1e6,
-            address(0),
             0,
             0,
             0,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, 0))
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, _fromPrivateKey);

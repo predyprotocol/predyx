@@ -140,7 +140,9 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
         _predyPool.updateRecepient(tradeResult.vaultId, predictOrder.info.trader);
 
-        IPredictOrderValidator(predictOrder.validatorAddress).validate(predictOrder, tradeResult);
+        IOrderValidator(predictOrder.validatorAddress).validate(
+            predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, predictOrder.validationData, tradeResult
+        );
 
         emit PredictPositionOpened(
             predictOrder.info.trader,
@@ -162,7 +164,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function close(uint256 positionId, ISettlement.SettlementData memory settlementData)
+    function closeAfterExpiration(uint256 positionId, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {

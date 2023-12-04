@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 
 contract TestGammaExecuteOrder is TestGammaMarket {
     bytes normalSwapRoute;
@@ -50,7 +51,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             0,
             1000,
             address(limitOrderValidator),
-            abi.encode(GammaLimitOrderValidationData(0, 0, 0, 0))
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -79,7 +80,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 0,
                 1000,
                 address(limitOrderValidator),
-                abi.encode(GammaLimitOrderValidationData(0, 0, 0, 0))
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -102,7 +103,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 0,
                 1000,
                 address(limitOrderValidator),
-                abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -137,7 +138,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             0,
             1000,
             address(limitOrderValidator),
-            abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -166,7 +167,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 0,
                 1000,
                 address(limitOrderValidator),
-                abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -186,7 +187,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 0,
                 1000,
                 address(limitOrderValidator),
-                abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
@@ -211,7 +212,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             0,
             1000,
             address(limitOrderValidator),
-            abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
+            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -219,7 +220,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(GammaLimitOrderValidator.PriceGreaterThanLimit.selector);
+        vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -236,7 +237,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             0,
             1000,
             address(limitOrderValidator),
-            abi.encode(GammaLimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
+            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -244,7 +245,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(GammaLimitOrderValidator.PriceLessThanLimit.selector);
+        vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 

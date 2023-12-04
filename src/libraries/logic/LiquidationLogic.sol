@@ -23,6 +23,8 @@ library LiquidationLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using SafeTransferLib for ERC20;
 
+    error InvalidAveragePrice();
+
     error SlippageTooLarge();
 
     error OutOfAcceptablePriceRange();
@@ -169,6 +171,10 @@ library LiquidationLogic {
         bool hasSquart
     ) internal pure {
         uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
+
+        if (tradeResult.averagePrice == 0) {
+            revert InvalidAveragePrice();
+        }
 
         if (tradeResult.averagePrice > 0) {
             // short

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import "forge-std/console2.sol";
 
 contract TestPerpExecuteOrder is TestPerpMarket {
@@ -49,12 +50,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 -1000,
                 2 * 1e6,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, 0))
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -83,12 +83,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 1000,
                 0,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, 0))
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -116,12 +115,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 -1000 * 1e4,
                 2 * 1e8,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, 0))
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -139,12 +137,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 1000 * 1e4,
                 0,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -165,12 +162,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 -1000,
                 2 * 1e6,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, 0))
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -188,12 +184,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 0,
                 3 * 1e6,
-                address(0),
                 0,
                 0,
                 0,
-                address(0),
-                ""
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -223,12 +218,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             address(currency1),
             1000,
             2 * 1e6,
-            address(0),
             0,
             0,
             0,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
+            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -252,12 +246,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 1000,
                 2 * 1e6,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -272,12 +265,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 address(currency1),
                 1000,
                 0,
-                address(0),
                 0,
                 0,
                 0,
                 address(limitOrderValidator),
-                abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1200, 1000)))
+                abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -298,12 +290,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             address(currency1),
             1000,
             2 * 1e6,
-            address(0),
             0,
             0,
             0,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(999, 1000)))
+            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -311,7 +302,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(PerpLimitOrderValidator.PriceGreaterThanLimit.selector);
+        vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -323,12 +314,11 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             address(currency1),
             -1000,
             2 * 1e6,
-            address(0),
             0,
             0,
             0,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, calculateLimitPrice(1001, 1000)))
+            abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -336,7 +326,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
 
-        vm.expectRevert(PerpLimitOrderValidator.PriceLessThanLimit.selector);
+        vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 

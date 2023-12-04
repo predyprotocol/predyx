@@ -12,7 +12,6 @@ struct PerpOrder {
     address entryTokenAddress;
     int256 tradeAmount;
     int256 marginAmount;
-    address canceler;
     uint256 takeProfitPrice;
     uint256 stopLossPrice;
     uint64 slippageTolerance;
@@ -31,7 +30,6 @@ library PerpOrderLib {
         "address entryTokenAddress,",
         "int256 tradeAmount,",
         "int256 marginAmount,",
-        "address canceler,",
         "uint256 takeProfitPrice,",
         "uint256 stopLossPrice,",
         "uint64 slippageTolerance,",
@@ -59,7 +57,6 @@ library PerpOrderLib {
                 order.entryTokenAddress,
                 order.tradeAmount,
                 order.marginAmount,
-                order.canceler,
                 order.takeProfitPrice,
                 order.stopLossPrice,
                 order.slippageTolerance,

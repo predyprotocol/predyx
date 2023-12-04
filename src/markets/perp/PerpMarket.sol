@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
@@ -11,30 +12,29 @@ import "../../interfaces/IOrderValidator.sol";
 import "../../base/BaseMarket.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
-import "../../libraries/logic/LiquidationLogic.sol";
+import {LiquidationLogic} from "../../libraries/logic/LiquidationLogic.sol";
+import {Bps} from "../../libraries/math/Bps.sol";
 import "./PerpOrder.sol";
-import "../../libraries/math/Math.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
 /**
  * @notice Perp market contract
  */
-contract PerpMarket is IFillerMarket, BaseMarket {
+contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     using ResolvedOrderLib for ResolvedOrder;
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
-    using Math for uint256;
+    using SafeTransferLib for ERC20;
 
     struct UserPosition {
         uint256 vaultId;
-        address canceler;
         uint256 takeProfitPrice;
         uint256 stopLossPrice;
         uint64 slippageTolerance;
     }
 
     enum CallbackSource {
-        OPEN,
+        TRADE,
         CLOSE
     }
 
@@ -57,11 +57,10 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         int256 fee,
         int256 marginAmount
     );
-    event OpenTPSLOrder(uint256 vaultId, uint256 takeProfitPrice, uint256 stopLossPrice);
-    event ClosedByTPSLOrder(
-        address trader, uint256 vaultId, int256 tradeAmount, IPredyPool.Payoff payoff, int256 fee, uint256 closeValue
+    event PerpClosedByTPSLOrder(
+        address trader, uint256 pairId, int256 tradeAmount, IPredyPool.Payoff payoff, int256 fee, uint256 closeValue
     );
-    event TPSLOrderCancelled(address trader, uint256 pairId, address canceler);
+    event PerpTPSLOrderUpdated(address trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
         BaseMarket(predyPool, whitelistFiller)
@@ -74,6 +73,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseHookCallback) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
+        ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
         if (tradeResult.minMargin == 0 || callbackData.callbackSource == CallbackSource.CLOSE) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
@@ -82,26 +82,22 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
             ILendingPool(address(_predyPool)).take(true, address(this), closeValue);
 
-            TransferHelper.safeTransfer(_getQuoteTokenAddress(tradeParams.pairId), callbackData.trader, closeValue);
+            quoteToken.safeTransfer(callbackData.trader, closeValue);
 
             if (callbackData.callbackSource == CallbackSource.CLOSE) {
-                emit ClosedByTPSLOrder(
-                    owner, tradeParams.vaultId, tradeParams.tradeAmount, tradeResult.payoff, tradeResult.fee, closeValue
+                emit PerpClosedByTPSLOrder(
+                    owner, tradeParams.pairId, tradeParams.tradeAmount, tradeResult.payoff, tradeResult.fee, closeValue
                 );
             }
         } else {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
             if (marginAmountUpdate > 0) {
-                TransferHelper.safeTransfer(
-                    _getQuoteTokenAddress(tradeParams.pairId), address(_predyPool), uint256(marginAmountUpdate)
-                );
+                quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
             } else if (marginAmountUpdate < 0) {
                 ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
 
-                TransferHelper.safeTransfer(
-                    _getQuoteTokenAddress(tradeParams.pairId), callbackData.trader, uint256(-marginAmountUpdate)
-                );
+                quoteToken.safeTransfer(callbackData.trader, uint256(-marginAmountUpdate));
             }
         }
     }
@@ -113,6 +109,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
      */
     function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
         external
+        nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
@@ -126,7 +123,8 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
         _saveUserPosition(
             userPosition,
-            perpOrder.canceler,
+            perpOrder.info.trader,
+            perpOrder.pairId,
             perpOrder.takeProfitPrice,
             perpOrder.stopLossPrice,
             perpOrder.slippageTolerance
@@ -138,7 +136,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
                 userPosition.vaultId,
                 perpOrder.tradeAmount,
                 0,
-                abi.encode(CallbackData(CallbackSource.OPEN, perpOrder.info.trader, perpOrder.marginAmount))
+                abi.encode(CallbackData(CallbackSource.TRADE, perpOrder.info.trader, perpOrder.marginAmount))
             ),
             settlementData
         );
@@ -156,9 +154,9 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             _predyPool.updateRecepient(tradeResult.vaultId, perpOrder.info.trader);
         }
 
-        if (perpOrder.validatorAddress != address(0)) {
-            IOrderValidator(perpOrder.validatorAddress).validate(perpOrder, tradeResult);
-        }
+        IOrderValidator(perpOrder.validatorAddress).validate(
+            perpOrder.tradeAmount, 0, perpOrder.validationData, tradeResult
+        );
 
         emit PerpTraded(
             perpOrder.info.trader,
@@ -170,20 +168,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             perpOrder.marginAmount
         );
 
-        emit OpenTPSLOrder(tradeResult.vaultId, perpOrder.takeProfitPrice, perpOrder.stopLossPrice);
-
         return tradeResult;
-    }
-
-    function cancelOrder(address owner, uint256 pairId) external {
-        UserPosition storage userPosition = userPositions[owner][pairId];
-
-        require(owner == msg.sender || userPosition.canceler == msg.sender);
-
-        userPosition.takeProfitPrice = 0;
-        userPosition.stopLossPrice = 0;
-
-        emit TPSLOrderCancelled(owner, pairId, msg.sender);
     }
 
     /**
@@ -196,6 +181,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
      */
     function close(address owner, uint256 pairId, ISettlement.SettlementData memory settlementData)
         external
+        nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         UserPosition storage userPosition = userPositions[owner][pairId];
@@ -226,17 +212,19 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
     function _saveUserPosition(
         UserPosition storage userPosition,
-        address canceler,
+        address trader,
+        uint256 pairId,
         uint256 takeProfitPrice,
         uint256 stopLossPrice,
         uint64 slippageTolerance
     ) internal {
         require(slippageTolerance <= Bps.ONE);
 
-        userPosition.canceler = canceler;
         userPosition.takeProfitPrice = takeProfitPrice;
         userPosition.stopLossPrice = stopLossPrice;
         userPosition.slippageTolerance = slippageTolerance + Bps.ONE;
+
+        emit PerpTPSLOrderUpdated(trader, pairId, takeProfitPrice, stopLossPrice);
     }
 
     function _validateTPSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)

@@ -7,7 +7,7 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PredictMarket} from "../../../src/markets/predict/PredictMarket.sol";
 import "../../../src/settlements/DirectSettlement.sol";
-import "../../../src/markets/predict/PredictDutchOrderValidator.sol";
+import "../../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {PredictOrder, PredictOrderLib} from "../../../src/markets/predict/PredictOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -19,7 +19,7 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
     DirectSettlement settlement;
     PredictMarket fillerMarket;
     IPermit2 permit2;
-    PredictDutchOrderValidator dutchOrderValidator;
+    GeneralDutchOrderValidator dutchOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public virtual override(TestPool) {
@@ -42,7 +42,7 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
         currency0.approve(address(settlement), type(uint256).max);
         currency1.approve(address(settlement), type(uint256).max);
 
-        dutchOrderValidator = new PredictDutchOrderValidator();
+        dutchOrderValidator = new GeneralDutchOrderValidator();
     }
 
     function _createSignedOrder(PredictOrder memory marketOrder, uint256 fromPrivateKey)

@@ -3,11 +3,10 @@ pragma solidity ^0.8.17;
 
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import "../../libraries/Constants.sol";
-import "./GammaOrder.sol";
 import "../../libraries/math/Math.sol";
 import "../../libraries/orders/DecayLib.sol";
 
-struct GammaDutchOrderValidationData {
+struct DutchOrderValidationData {
     uint256 startPrice;
     uint256 endPrice;
     uint256 startTime;
@@ -17,32 +16,36 @@ struct GammaDutchOrderValidationData {
 /**
  * @notice The DutchOrderValidator contract is responsible for validating the dutch auction orders
  */
-contract GammaDutchOrderValidator {
+contract DutchOrderValidator {
     error PriceGreaterThanLimit();
 
     error PriceLessThanLimit();
 
     error TriggerNotMatched();
 
-    function validate(GammaOrder memory gammaOrder, IPredyPool.TradeResult memory tradeResult) external view {
-        require(gammaOrder.tradeAmountSqrt == 0);
+    function validate(
+        int256 tradeAmount,
+        int256 tradeAmountSqrt,
+        bytes memory validationData,
+        IPredyPool.TradeResult memory tradeResult
+    ) external view {
+        require(tradeAmountSqrt == 0);
 
-        GammaDutchOrderValidationData memory validationData =
-            abi.decode(gammaOrder.validationData, (GammaDutchOrderValidationData));
+        DutchOrderValidationData memory validationParams = abi.decode(validationData, (DutchOrderValidationData));
 
         uint256 decayedPrice = DecayLib.decay(
-            validationData.startPrice, validationData.endPrice, validationData.startTime, validationData.endTime
+            validationParams.startPrice, validationParams.endPrice, validationParams.startTime, validationParams.endTime
         );
 
-        if (gammaOrder.tradeAmount != 0) {
+        if (tradeAmount != 0) {
             uint256 tradePrice = Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff)
-                * Constants.Q96 / Math.abs(gammaOrder.tradeAmount);
+                * Constants.Q96 / Math.abs(tradeAmount);
 
-            if (gammaOrder.tradeAmount > 0 && decayedPrice < tradePrice) {
+            if (tradeAmount > 0 && decayedPrice < tradePrice) {
                 revert PriceGreaterThanLimit();
             }
 
-            if (gammaOrder.tradeAmount < 0 && decayedPrice > tradePrice) {
+            if (tradeAmount < 0 && decayedPrice > tradePrice) {
                 revert PriceLessThanLimit();
             }
         }

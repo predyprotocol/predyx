@@ -6,10 +6,11 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
+import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PerpMarket} from "../../../src/markets/perp/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/settlements/DirectSettlement.sol";
-import "../../../src/markets/perp/PerpLimitOrderValidator.sol";
+import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {PerpOrder, PerpOrderLib} from "../../../src/markets/perp/PerpOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -40,7 +41,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
     DirectSettlement settlement;
     PerpMarket perpMarket;
     PredyPool _predyPool;
-    PerpLimitOrderValidator limitOrderValidator;
+    LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     uint256 pairId;
@@ -73,7 +74,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
         perpMarket = new PerpMarket(_predyPool, address(_permit2), address(this));
         perpMarket.updateQuoteTokenMap(1);
 
-        limitOrderValidator = new PerpLimitOrderValidator();
+        limitOrderValidator = new LimitOrderValidator();
 
         _weth.approve(address(_predyPool), type(uint256).max);
         _usdc.approve(address(_predyPool), type(uint256).max);

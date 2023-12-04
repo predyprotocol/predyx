@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
 
 contract TestPredictExecuteOrder is TestPredictMarket {
     bytes normalSwapRoute;
@@ -49,9 +51,7 @@ contract TestPredictExecuteOrder is TestPredictMarket {
             2 * 1e6,
             address(dutchOrderValidator),
             abi.encode(
-                PredictDutchOrderValidationData(
-                    Constants.Q96 / 2, Constants.Q96 / 2, block.timestamp, block.timestamp + 60
-                )
+                GeneralDutchOrderValidationData(Constants.Q96, Bps.ONE, Bps.ONE, block.timestamp, block.timestamp + 60)
             )
         );
 

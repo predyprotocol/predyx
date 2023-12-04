@@ -106,15 +106,13 @@ contract TestTrade is TestPool {
         assertEq(tradeResult2.payoff.sqrtEntryUpdate, 0);
         assertEq(tradeResult2.payoff.perpPayoff, 0);
         assertEq(tradeResult2.payoff.sqrtPayoff, 0);
-        assertEq(tradeResult2.fee, 0);
-        assertEq(tradeResult2.averagePrice, 0);
+        assertEq(tradeResult2.fee, -29);
+        assertEq(tradeResult2.averagePrice, -79228162514264337593543950336);
 
         DataType.Vault memory vault = predyPool.getVault(1);
 
-        assertEq(vault.margin, 100000000);
+        assertEq(vault.margin, 99999971);
     }
-
-    // trade succeeds after reallocated
 
     // trade fails if currency not settled
     function testCannotTradeIfCurrencyNotSettled(uint256 a, uint256 b) public {

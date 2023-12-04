@@ -3,8 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
 
-contract TestPredictClose is TestPredictMarket {
+contract TestPredictCloseAfterExpiration is TestPredictMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;
@@ -38,9 +40,7 @@ contract TestPredictClose is TestPredictMarket {
             2 * 1e6,
             address(dutchOrderValidator),
             abi.encode(
-                PredictDutchOrderValidationData(
-                    Constants.Q96 / 2, Constants.Q96 / 2, block.timestamp, block.timestamp + 60
-                )
+                GeneralDutchOrderValidationData(Constants.Q96, Bps.ONE, Bps.ONE, block.timestamp, block.timestamp + 60)
             )
         );
 
@@ -56,7 +56,7 @@ contract TestPredictClose is TestPredictMarket {
             settlement.getSettlementParams(address(currency1), address(currency0), 10000);
 
         vm.expectRevert(PredictMarket.CloseBeforeExpiration.selector);
-        fillerMarket.close(1, settlementData);
+        fillerMarket.closeAfterExpiration(1, settlementData);
     }
 
     function testCloseSucceeds() public {
@@ -66,7 +66,7 @@ contract TestPredictClose is TestPredictMarket {
             settlement.getSettlementParams(address(currency1), address(currency0), 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
-        fillerMarket.close(1, settlementData);
+        fillerMarket.closeAfterExpiration(1, settlementData);
         uint256 afterBalance = currency1.balanceOf(from1);
 
         // owner gets close value
@@ -79,9 +79,9 @@ contract TestPredictClose is TestPredictMarket {
         ISettlement.SettlementData memory settlementData =
             settlement.getSettlementParams(address(currency1), address(currency0), 10000);
 
-        fillerMarket.close(1, settlementData);
+        fillerMarket.closeAfterExpiration(1, settlementData);
 
         vm.expectRevert();
-        fillerMarket.close(1, settlementData);
+        fillerMarket.closeAfterExpiration(1, settlementData);
     }
 }

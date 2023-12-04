@@ -5,6 +5,7 @@ import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
 import {DirectSettlement} from "../../../src/settlements/DirectSettlement.sol";
+import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 
 contract TestGammaClose is TestPerpMarket {
     bytes normalSwapRoute;
@@ -52,12 +53,11 @@ contract TestGammaClose is TestPerpMarket {
             address(currency1),
             1000,
             2 * 1e6,
-            address(0),
             101 * Constants.Q96 / 100,
             100 * Constants.Q96 / 101,
             5000,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, 0))
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder1 = _createSignedOrder(order1, fromPrivateKey1);
@@ -68,12 +68,11 @@ contract TestGammaClose is TestPerpMarket {
             address(currency1),
             1000,
             2 * 1e6,
-            address(0),
             0,
             0,
             5000,
             address(limitOrderValidator),
-            abi.encode(PerpLimitOrderValidationData(0, 0))
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder2 = _createSignedOrder(order2, fromPrivateKey2);
