@@ -53,7 +53,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
-    event Traded(
+    event GammaPositionTraded(
         address trader,
         uint256 vaultId,
         uint256 hedgeInterval,
@@ -62,7 +62,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         int256 fee,
         int256 marginAmount
     );
-    event Hedged(
+    event GammaPositionHedged(
         address owner,
         uint256 pairId,
         uint256 vaultId,
@@ -156,7 +156,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         IGammaOrderValidator(gammaOrder.validatorAddress).validate(gammaOrder, tradeResult);
 
-        emit Traded(
+        emit GammaPositionTraded(
             gammaOrder.info.trader,
             tradeResult.vaultId,
             gammaOrder.hedgeInterval,
@@ -196,6 +196,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             revert HedgeTriggerNotMatched();
         }
 
+        uint256 hedgeAuctionStartTime = userPosition.lastHedgedTime + userPosition.hedgeInterval;
+
+        userPosition.lastHedgedSqrtPrice = sqrtPrice;
+        userPosition.lastHedgedTime = block.timestamp;
+
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
                 vault.openPosition.pairId, userPosition.vaultId, -delta, 0, abi.encode(CallbackData(owner, 0))
@@ -206,18 +211,13 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         LiquidationLogic.checkPrice(
             sqrtPrice,
             tradeResult,
-            _calculateSlippageTolerance(
-                userPosition.lastHedgedTime + userPosition.hedgeInterval,
-                block.timestamp,
-                userPosition.maxSlippageTolerance
-            ),
+            _calculateSlippageTolerance(hedgeAuctionStartTime, block.timestamp, userPosition.maxSlippageTolerance),
             vault.openPosition.sqrtPerp.amount != 0
         );
 
-        userPosition.lastHedgedSqrtPrice = sqrtPrice;
-        userPosition.lastHedgedTime = block.timestamp;
-
-        emit Hedged(owner, pairId, userPosition.vaultId, sqrtPrice, delta, tradeResult.payoff, tradeResult.fee);
+        emit GammaPositionHedged(
+            owner, pairId, userPosition.vaultId, sqrtPrice, delta, tradeResult.payoff, tradeResult.fee
+        );
     }
 
     function _saveUserPosition(

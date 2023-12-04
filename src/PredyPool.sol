@@ -22,7 +22,6 @@ import {LiquidationLogic} from "./libraries/logic/LiquidationLogic.sol";
 import {ReallocationLogic} from "./libraries/logic/ReallocationLogic.sol";
 import {SupplyLogic} from "./libraries/logic/SupplyLogic.sol";
 import {TradeLogic} from "./libraries/logic/TradeLogic.sol";
-import {MarginLogic} from "./libraries/logic/MarginLogic.sol";
 import {ReaderLogic} from "./libraries/logic/ReaderLogic.sol";
 import {LockDataLibrary, GlobalDataLibrary} from "./types/GlobalData.sol";
 
@@ -305,14 +304,6 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      */
     function take(bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
         globalData.take(isQuoteAsset, to, amount);
-    }
-
-    /**
-     * @notice Deposits margin to the vault or withdraws margin from the vault
-     * @dev Only vault owner can call this function
-     */
-    function updateMargin(uint256 vaultId, int256 marginAmount) external onlyVaultOwner(vaultId) {
-        MarginLogic.updateMargin(globalData, vaultId, marginAmount);
     }
 
     /**

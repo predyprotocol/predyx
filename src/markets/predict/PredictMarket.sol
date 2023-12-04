@@ -61,7 +61,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
-    event Opened(
+    event PredictPositionOpened(
         address trader,
         uint256 vaultId,
         uint256 pairId,
@@ -70,7 +70,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         uint256 expiration,
         uint256 duration
     );
-    event Closed(uint256 vaultId, uint256 closeValue, IPredyPool.Payoff payoff, int256 fee);
+    event PredictPositionClosed(uint256 vaultId, uint256 closeValue, IPredyPool.Payoff payoff, int256 fee);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
         BaseMarket(predyPool, whitelistFiller)
@@ -99,7 +99,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                 _getQuoteTokenAddress(tradeParams.pairId), userPositions[tradeParams.vaultId].owner, closeValue
             );
 
-            emit Closed(tradeParams.vaultId, closeValue, tradeResult.payoff, tradeResult.fee);
+            emit PredictPositionClosed(tradeParams.vaultId, closeValue, tradeResult.payoff, tradeResult.fee);
         }
     }
 
@@ -142,7 +142,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
         IPredictOrderValidator(predictOrder.validatorAddress).validate(predictOrder, tradeResult);
 
-        emit Opened(
+        emit PredictPositionOpened(
             predictOrder.info.trader,
             tradeResult.vaultId,
             predictOrder.pairId,

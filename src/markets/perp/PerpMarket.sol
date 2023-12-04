@@ -33,7 +33,13 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         uint64 slippageTolerance;
     }
 
+    enum CallbackSource {
+        OPEN,
+        CLOSE
+    }
+
     struct CallbackData {
+        CallbackSource callbackSource;
         address trader;
         int256 marginAmountUpdate;
     }
@@ -42,17 +48,19 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
-    event Traded(
+    event PerpTraded(
         address trader,
         uint256 pairId,
         uint256 vaultId,
-        uint256 takeProfitPrice,
-        uint256 stopLossPrice,
+        int256 tradeAmount,
         IPredyPool.Payoff payoff,
         int256 fee,
         int256 marginAmount
     );
-    event ClosedByTPSLOrder(address trader, uint256 vaultId, IPredyPool.Payoff payoff, int256 fee);
+    event OpenTPSLOrder(uint256 vaultId, uint256 takeProfitPrice, uint256 stopLossPrice);
+    event ClosedByTPSLOrder(
+        address trader, uint256 vaultId, int256 tradeAmount, IPredyPool.Payoff payoff, int256 fee, uint256 closeValue
+    );
     event TPSLOrderCancelled(address trader, uint256 pairId, address canceler);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
@@ -67,14 +75,20 @@ contract PerpMarket is IFillerMarket, BaseMarket {
     ) external override(BaseHookCallback) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
-        if (tradeResult.minMargin == 0) {
+        if (tradeResult.minMargin == 0 || callbackData.callbackSource == CallbackSource.CLOSE) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-            ILendingPool(address(_predyPool)).take(true, address(this), uint256(vault.margin));
+            uint256 closeValue = uint256(vault.margin);
 
-            TransferHelper.safeTransfer(
-                _getQuoteTokenAddress(tradeParams.pairId), callbackData.trader, uint256(vault.margin)
-            );
+            ILendingPool(address(_predyPool)).take(true, address(this), closeValue);
+
+            TransferHelper.safeTransfer(_getQuoteTokenAddress(tradeParams.pairId), callbackData.trader, closeValue);
+
+            if (callbackData.callbackSource == CallbackSource.CLOSE) {
+                emit ClosedByTPSLOrder(
+                    owner, tradeParams.vaultId, tradeParams.tradeAmount, tradeResult.payoff, tradeResult.fee, closeValue
+                );
+            }
         } else {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
@@ -110,15 +124,13 @@ contract PerpMarket is IFillerMarket, BaseMarket {
 
         UserPosition storage userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
 
-        if (userPosition.vaultId == 0) {
-            _saveUserPosition(
-                userPosition,
-                perpOrder.canceler,
-                perpOrder.takeProfitPrice,
-                perpOrder.stopLossPrice,
-                perpOrder.slippageTolerance
-            );
-        }
+        _saveUserPosition(
+            userPosition,
+            perpOrder.canceler,
+            perpOrder.takeProfitPrice,
+            perpOrder.stopLossPrice,
+            perpOrder.slippageTolerance
+        );
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
@@ -126,7 +138,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
                 userPosition.vaultId,
                 perpOrder.tradeAmount,
                 0,
-                abi.encode(CallbackData(perpOrder.info.trader, perpOrder.marginAmount))
+                abi.encode(CallbackData(CallbackSource.OPEN, perpOrder.info.trader, perpOrder.marginAmount))
             ),
             settlementData
         );
@@ -148,16 +160,17 @@ contract PerpMarket is IFillerMarket, BaseMarket {
             IOrderValidator(perpOrder.validatorAddress).validate(perpOrder, tradeResult);
         }
 
-        emit Traded(
+        emit PerpTraded(
             perpOrder.info.trader,
             perpOrder.pairId,
             tradeResult.vaultId,
-            perpOrder.takeProfitPrice,
-            perpOrder.stopLossPrice,
+            perpOrder.tradeAmount,
             tradeResult.payoff,
             tradeResult.fee,
             perpOrder.marginAmount
         );
+
+        emit OpenTPSLOrder(tradeResult.vaultId, perpOrder.takeProfitPrice, perpOrder.stopLossPrice);
 
         return tradeResult;
     }
@@ -201,7 +214,7 @@ contract PerpMarket is IFillerMarket, BaseMarket {
                 userPosition.vaultId,
                 -vault.openPosition.perp.amount,
                 -vault.openPosition.sqrtPerp.amount,
-                abi.encode(CallbackData(owner, 0))
+                abi.encode(CallbackData(CallbackSource.CLOSE, owner, 0))
             ),
             settlementData
         );
@@ -209,8 +222,6 @@ contract PerpMarket is IFillerMarket, BaseMarket {
         LiquidationLogic.checkPrice(
             sqrtPrice, tradeResult, userPosition.slippageTolerance, vault.openPosition.sqrtPerp.amount != 0
         );
-
-        emit ClosedByTPSLOrder(owner, userPosition.vaultId, tradeResult.payoff, tradeResult.fee);
     }
 
     function _saveUserPosition(

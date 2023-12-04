@@ -81,7 +81,6 @@ interface IPredyPool {
 
     function updateRecepient(uint256 vaultId, address recipient) external;
 
-    function updateMargin(uint256 vaultId, int256 marginAmount) external;
     function createVault(uint256 pairId) external returns (uint256);
 
     function getSqrtPrice(uint256 pairId) external view returns (uint160);

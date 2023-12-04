@@ -84,7 +84,36 @@ contract TestTrade is TestPool {
         assertEq(tradeResult.payoff.sqrtPayoff, 0);
     }
 
-    // trade succeeds for update
+    // trade succeeds with zero amount
+    function testTradeSucceedsWithZeroAmount() public {
+        IPredyPool.TradeResult memory tradeResult1 = tradeMarket.trade(
+            IPredyPool.TradeParams(
+                1, 0, -1e7, 9 * 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+            ),
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+        );
+
+        vm.warp(block.timestamp + 10 hours);
+
+        IPredyPool.TradeResult memory tradeResult2 = tradeMarket.trade(
+            IPredyPool.TradeParams(
+                1, tradeResult1.vaultId, 0, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))
+            ),
+            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+        );
+
+        assertEq(tradeResult2.payoff.perpEntryUpdate, 0);
+        assertEq(tradeResult2.payoff.sqrtEntryUpdate, 0);
+        assertEq(tradeResult2.payoff.perpPayoff, 0);
+        assertEq(tradeResult2.payoff.sqrtPayoff, 0);
+        assertEq(tradeResult2.fee, 0);
+        assertEq(tradeResult2.averagePrice, 0);
+
+        DataType.Vault memory vault = predyPool.getVault(1);
+
+        assertEq(vault.margin, 100000000);
+    }
+
     // trade succeeds after reallocated
 
     // trade fails if currency not settled

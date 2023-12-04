@@ -33,6 +33,13 @@ library Trade {
         DataType.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
+        // if trade amounts are 0, return
+        if (tradeParams.tradeAmount == 0 && tradeParams.tradeAmountSqrt == 0) {
+            tradeResult.vaultId = tradeParams.vaultId;
+
+            return tradeResult;
+        }
+
         // update rebalance fee growth
         Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
@@ -98,7 +105,7 @@ library Trade {
             revert IPredyPool.BaseTokenNotSettled();
         }
 
-        // TODO: in case of totalBaseAmount == 0,
+        // totalQuoteAmount must be non-zero
         if (totalQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.QuoteTokenNotSettled();
         }
