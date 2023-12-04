@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import "../mocks/TestTradeMarket.sol";
 import "../../src/settlements/DirectSettlement.sol";
+import {SlippageLib} from "../../src/libraries/SlippageLib.sol";
 
 contract TestExecLiquidationCall is TestPool {
     TestTradeMarket _tradeMarket;
@@ -91,7 +92,7 @@ contract TestExecLiquidationCall is TestPool {
         {
             ISettlement.SettlementData memory settlementData = _getSettlementData(20000);
 
-            vm.expectRevert(LiquidationLogic.SlippageTooLarge.selector);
+            vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
             _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
         }
     }

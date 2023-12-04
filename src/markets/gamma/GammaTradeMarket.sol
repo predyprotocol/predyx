@@ -13,6 +13,8 @@ import "../../base/BaseMarket.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/logic/LiquidationLogic.sol";
+import {SlippageLib} from "../../libraries/SlippageLib.sol";
+import {Bps} from "../../libraries/math/Bps.sol";
 import "./GammaOrder.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
@@ -207,11 +209,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             settlementData
         );
 
-        LiquidationLogic.checkPrice(
+        SlippageLib.checkPrice(
             sqrtPrice,
             tradeResult,
             _calculateSlippageTolerance(hedgeAuctionStartTime, block.timestamp, userPosition.maxSlippageTolerance),
-            vault.openPosition.sqrtPerp.amount != 0
+            0
         );
 
         emit GammaPositionHedged(

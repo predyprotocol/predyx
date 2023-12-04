@@ -40,7 +40,9 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
             2 * 1e6,
             address(dutchOrderValidator),
             abi.encode(
-                GeneralDutchOrderValidationData(Constants.Q96, Bps.ONE, Bps.ONE, block.timestamp, block.timestamp + 60)
+                GeneralDutchOrderValidationData(
+                    Constants.Q96, Bps.ONE, Bps.ONE, 101488915, block.timestamp, block.timestamp + 60
+                )
             )
         );
 

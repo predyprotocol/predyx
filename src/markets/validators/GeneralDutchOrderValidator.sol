@@ -3,12 +3,13 @@ pragma solidity ^0.8.17;
 
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {DecayLib} from "../../libraries/orders/DecayLib.sol";
-import {LiquidationLogic} from "../../libraries/logic/LiquidationLogic.sol";
+import {SlippageLib} from "../../libraries/SlippageLib.sol";
 
 struct GeneralDutchOrderValidationData {
     uint256 baseSqrtPrice;
     uint256 startSlippageTolerance;
     uint256 endSlippageTolerance;
+    uint256 maxAcceptableSqrtPriceRange;
     uint256 startTime;
     uint256 endTime;
 }
@@ -31,6 +32,8 @@ contract GeneralDutchOrderValidator {
             validationParams.endTime
         );
 
-        LiquidationLogic.checkPrice(validationParams.baseSqrtPrice, tradeResult, slippateTolerance, true);
+        SlippageLib.checkPrice(
+            validationParams.baseSqrtPrice, tradeResult, slippateTolerance, validationParams.maxAcceptableSqrtPriceRange
+        );
     }
 }

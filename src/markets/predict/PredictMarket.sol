@@ -11,7 +11,7 @@ import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
 import "../../base/BaseMarket.sol";
-import "../../libraries/logic/LiquidationLogic.sol";
+import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/math/Bps.sol";
@@ -43,6 +43,8 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     // The auction starts with min slippage(0.1%) and ends with max slippage(2%)
     uint256 private constant _MIN_SLIPPAGE = 1001000;
     uint256 private constant _MAX_SLIPPAGE = 1020000;
+
+    uint256 constant _MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
 
     struct UserPosition {
         address owner;
@@ -193,11 +195,11 @@ contract PredictMarket is IFillerMarket, BaseMarket {
             settlementData
         );
 
-        LiquidationLogic.checkPrice(
+        SlippageLib.checkPrice(
             _predyPool.getSqrtIndexPrice(vault.openPosition.pairId),
             tradeResult,
             _calculateSlippageTolerance(expiration, block.timestamp),
-            vault.openPosition.sqrtPerp.amount != 0
+            vault.openPosition.sqrtPerp.amount == 0 ? 0 : _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
         );
     }
 

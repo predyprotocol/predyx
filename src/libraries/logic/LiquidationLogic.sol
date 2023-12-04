@@ -11,23 +11,16 @@ import {Constants} from "../Constants.sol";
 import {Perp} from "../Perp.sol";
 import {Trade} from "../Trade.sol";
 import {Math} from "../math/Math.sol";
-import {Bps} from "../math/Bps.sol";
 import {DataType} from "../DataType.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 import {PositionCalculator} from "../PositionCalculator.sol";
 import {ScaledAsset} from "../ScaledAsset.sol";
+import {SlippageLib} from "../SlippageLib.sol";
 
 library LiquidationLogic {
     using Math for int256;
-    using Bps for uint256;
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using SafeTransferLib for ERC20;
-
-    error InvalidAveragePrice();
-
-    error SlippageTooLarge();
-
-    error OutOfAcceptablePriceRange();
 
     // 3% scaled by 1e8
     uint256 constant _MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
@@ -79,7 +72,12 @@ library LiquidationLogic {
 
         // Check if the price is within the slippage tolerance range to ensure that the price does not become
         // excessively favorable to the liquidator.
-        checkPrice(sqrtTwap, tradeResult, slippageTolerance, tradeParams.tradeAmountSqrt != 0);
+        SlippageLib.checkPrice(
+            sqrtTwap,
+            tradeResult,
+            slippageTolerance,
+            tradeParams.tradeAmountSqrt == 0 ? 0 : _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
+        );
 
         if (!hasPosition) {
             int256 remainingMargin = vault.margin;
@@ -162,40 +160,5 @@ library LiquidationLogic {
         }
 
         return (riskParams.maxSlippage - ratio * (riskParams.maxSlippage - riskParams.minSlippage) / 1e4);
-    }
-
-    function checkPrice(
-        uint256 sqrtTwap,
-        IPredyPool.TradeResult memory tradeResult,
-        uint256 slippageTolerance,
-        bool hasSquart
-    ) internal pure {
-        uint256 twap = (sqrtTwap * sqrtTwap) >> Constants.RESOLUTION;
-
-        if (tradeResult.averagePrice == 0) {
-            revert InvalidAveragePrice();
-        }
-
-        if (tradeResult.averagePrice > 0) {
-            // short
-            if (twap.lower(slippageTolerance) > uint256(tradeResult.averagePrice)) {
-                revert SlippageTooLarge();
-            }
-        } else if (tradeResult.averagePrice < 0) {
-            // long
-            if (twap.upper(slippageTolerance) < uint256(-tradeResult.averagePrice)) {
-                revert SlippageTooLarge();
-            }
-        }
-
-        if (
-            hasSquart
-                && (
-                    tradeResult.sqrtPrice < sqrtTwap * 1e8 / _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
-                        || sqrtTwap * _MAX_ACCEPTABLE_SQRT_PRICE_RANGE / 1e8 < tradeResult.sqrtPrice
-                )
-        ) {
-            revert OutOfAcceptablePriceRange();
-        }
     }
 }

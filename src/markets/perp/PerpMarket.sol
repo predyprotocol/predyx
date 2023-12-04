@@ -12,7 +12,7 @@ import "../../interfaces/IOrderValidator.sol";
 import "../../base/BaseMarket.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
-import {LiquidationLogic} from "../../libraries/logic/LiquidationLogic.sol";
+import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
 import "./PerpOrder.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
@@ -205,9 +205,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             settlementData
         );
 
-        LiquidationLogic.checkPrice(
-            sqrtPrice, tradeResult, userPosition.slippageTolerance, vault.openPosition.sqrtPerp.amount != 0
-        );
+        SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
     }
 
     function _saveUserPosition(
