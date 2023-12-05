@@ -106,14 +106,14 @@ library Perp {
     }
 
     event PremiumGrowthUpdated(
-        uint256 pairId,
+        uint256 indexed pairId,
         uint256 totalAmount,
         uint256 borrowAmount,
         uint256 fee0Growth,
         uint256 fee1Growth,
         uint256 spread
     );
-    event SqrtPositionUpdated(uint256 pairId, int256 open, int256 close);
+    event SqrtPositionUpdated(uint256 indexed pairId, int256 open, int256 close);
 
     function createAssetStatus(address uniswapPool, int24 tickLower, int24 tickUpper)
         internal

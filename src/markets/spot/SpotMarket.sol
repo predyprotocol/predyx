@@ -34,7 +34,7 @@ contract SpotMarket is IFillerMarket, ILendingPool {
     }
 
     event SpotTraded(
-        address trader,
+        address indexed trader,
         address filler,
         address baseToken,
         address quoteToken,

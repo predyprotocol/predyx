@@ -15,10 +15,10 @@ import {ScaledAsset} from "../ScaledAsset.sol";
 library TradeLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
 
-    event MarginUpdated(uint256 vaultId, int256 updatedMarginAmount);
+    event MarginUpdated(uint256 indexed vaultId, int256 updatedMarginAmount);
 
     event PositionUpdated(
-        uint256 vaultId,
+        uint256 indexed vaultId,
         uint256 pairId,
         int256 tradeAmount,
         int256 tradeSqrtAmount,

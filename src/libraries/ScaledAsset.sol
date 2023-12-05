@@ -22,7 +22,7 @@ library ScaledAsset {
         uint256 lastFeeGrowth;
     }
 
-    event ScaledAssetPositionUpdated(uint256 pairId, bool isStable, int256 open, int256 close);
+    event ScaledAssetPositionUpdated(uint256 indexed pairId, bool isStable, int256 open, int256 close);
 
     function createAssetStatus() internal pure returns (AssetStatus memory) {
         return AssetStatus(0, 0, 0, Constants.ONE, 0, 0);

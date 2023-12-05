@@ -10,7 +10,7 @@ library ApplyInterestLib {
 
     /// @notice Emitted when interest growth is updated
     event InterestGrowthUpdated(
-        uint256 pairId,
+        uint256 indexed pairId,
         ScaledAsset.AssetStatus stableStatus,
         ScaledAsset.AssetStatus underlyingStatus,
         uint256 interestRateStable,

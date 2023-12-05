@@ -64,8 +64,8 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     mapping(uint256 vaultId => UserPosition) public userPositions;
 
     event PredictPositionOpened(
+        uint256 indexed vaultId,
         address trader,
-        uint256 vaultId,
         uint256 pairId,
         uint256 openValue,
         IPredyPool.Payoff payoff,
@@ -147,8 +147,8 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         );
 
         emit PredictPositionOpened(
-            predictOrder.info.trader,
             tradeResult.vaultId,
+            predictOrder.info.trader,
             predictOrder.pairId,
             predictOrder.marginAmount,
             tradeResult.payoff,

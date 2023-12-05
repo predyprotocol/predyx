@@ -26,7 +26,7 @@ library LiquidationLogic {
     uint256 constant _MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
 
     event PositionLiquidated(
-        uint256 vaultId,
+        uint256 indexed vaultId,
         uint256 pairId,
         int256 tradeAmount,
         int256 tradeSqrtAmount,

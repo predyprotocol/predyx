@@ -16,7 +16,7 @@ library ReallocationLogic {
     using SafeTransferLib for ERC20;
 
     event Rebalanced(
-        uint256 pairId,
+        uint256 indexed pairId,
         bool relocationOccurred,
         int24 tickLower,
         int24 tickUpper,

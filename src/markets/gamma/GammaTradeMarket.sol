@@ -54,7 +54,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
     event GammaPositionTraded(
-        address trader,
+        address indexed trader,
         uint256 pairId,
         uint256 vaultId,
         uint256 hedgeInterval,
@@ -64,7 +64,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         int256 marginAmount
     );
     event GammaPositionHedged(
-        address trader,
+        address indexed trader,
         uint256 pairId,
         uint256 vaultId,
         uint256 sqrtPrice,

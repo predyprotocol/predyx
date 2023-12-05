@@ -7,7 +7,7 @@ import "./Setup.t.sol";
 contract TestSupply is TestPool {
     address supplyTokenAddress;
 
-    event TokenSupplied(address account, uint256 pairId, bool isStable, uint256 suppliedAmount);
+    event TokenSupplied(address indexed account, uint256 pairId, bool isStable, uint256 suppliedAmount);
 
     function setUp() public override {
         TestPool.setUp();

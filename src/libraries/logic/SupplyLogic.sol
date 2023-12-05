@@ -15,8 +15,8 @@ library SupplyLogic {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using SafeTransferLib for ERC20;
 
-    event TokenSupplied(address account, uint256 pairId, bool isStable, uint256 suppliedAmount);
-    event TokenWithdrawn(address account, uint256 pairId, bool isStable, uint256 finalWithdrawnAmount);
+    event TokenSupplied(address indexed account, uint256 pairId, bool isStable, uint256 suppliedAmount);
+    event TokenWithdrawn(address indexed account, uint256 pairId, bool isStable, uint256 finalWithdrawnAmount);
 
     function supply(GlobalDataLibrary.GlobalData storage globalData, uint256 _pairId, uint256 _amount, bool _isStable)
         external

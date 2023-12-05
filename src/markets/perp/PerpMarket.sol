@@ -49,7 +49,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
     event PerpTraded(
-        address trader,
+        address indexed trader,
         uint256 pairId,
         uint256 vaultId,
         int256 tradeAmount,
@@ -58,9 +58,14 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         int256 marginAmount
     );
     event PerpClosedByTPSLOrder(
-        address trader, uint256 pairId, int256 tradeAmount, IPredyPool.Payoff payoff, int256 fee, uint256 closeValue
+        address indexed trader,
+        uint256 pairId,
+        int256 tradeAmount,
+        IPredyPool.Payoff payoff,
+        int256 fee,
+        uint256 closeValue
     );
-    event PerpTPSLOrderUpdated(address trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
+    event PerpTPSLOrderUpdated(address indexed trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
 
     constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
         BaseMarket(predyPool, whitelistFiller)

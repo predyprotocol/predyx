@@ -10,7 +10,7 @@ contract TestWithdraw is TestPool {
     address supplyTokenAddress;
     DirectSettlement directSettlement;
 
-    event TokenWithdrawn(address account, uint256 pairId, bool isStable, uint256 finalWithdrawnAmount);
+    event TokenWithdrawn(address indexed account, uint256 pairId, bool isStable, uint256 finalWithdrawnAmount);
 
     function setUp() public override {
         TestPool.setUp();

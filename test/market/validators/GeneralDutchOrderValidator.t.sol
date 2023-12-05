@@ -12,7 +12,7 @@ contract GeneralDutchOrderValidatorTest is Test {
         _generalDutchOrderValidator = new GeneralDutchOrderValidator();
     }
 
-    function testValidate() public {
+    function testValidate(int256 averagePrice) public {
         GeneralDutchOrderValidationData memory dutchOrderValidationData;
 
         dutchOrderValidationData.baseSqrtPrice = 2 ** 96;
@@ -25,9 +25,18 @@ contract GeneralDutchOrderValidatorTest is Test {
 
         IPredyPool.TradeResult memory tradeResult;
 
-        tradeResult.averagePrice = 2 ** 96;
+        tradeResult.averagePrice = averagePrice;
         tradeResult.sqrtPrice = 2 ** 96;
 
+        if (averagePrice > 0 && averagePrice < 2 ** 96) {
+            vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
+        } else if (averagePrice == type(int256).min) {
+            vm.expectRevert();
+        } else if (averagePrice < -(2 ** 96)) {
+            vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
+        } else if (averagePrice == 0) {
+            vm.expectRevert(SlippageLib.InvalidAveragePrice.selector);
+        }
         _generalDutchOrderValidator.validate(0, 0, validationData, tradeResult);
     }
 }
