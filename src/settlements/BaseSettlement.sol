@@ -14,4 +14,13 @@ abstract contract BaseSettlement is ISettlement {
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external virtual;
+    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external virtual;
+
+    function _revertQuoteAmount(int256 quoteAmount) internal pure {
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, quoteAmount)
+            revert(ptr, 32)
+        }
+    }
 }

@@ -8,4 +8,5 @@ interface ISettlement {
     }
 
     function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external;
+    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external;
 }

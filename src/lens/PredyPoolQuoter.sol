@@ -6,6 +6,7 @@ import "../base/BaseHookCallback.sol";
 
 /**
  * @notice Quoter contract for PredyPool
+ * The purpose of lens is to be able to simulate transactions without having tokens.
  */
 contract PredyPoolQuoter is BaseHookCallback {
     address _revertSettlement;
@@ -83,13 +84,13 @@ contract PredyPoolQuoter is BaseHookCallback {
     }
 
     function _parseRevertReasonAsBaseAmountDelta(bytes memory reason) private pure returns (int256) {
-        if (reason.length < 192) {
+        if (reason.length != 32) {
             assembly {
                 revert(add(32, reason), mload(reason))
             }
-        } else {
-            return abi.decode(reason, (int256));
         }
+
+        return abi.decode(reason, (int256));
     }
 
     function _parseRevertReasonAsPairStatus(bytes memory reason)

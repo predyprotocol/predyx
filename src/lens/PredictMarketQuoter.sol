@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {PerpMarket} from "../markets/perp/PerpMarket.sol";
-import {PerpOrder} from "../markets/perp/PerpOrder.sol";
+import {PredictMarket} from "../markets/predict/PredictMarket.sol";
+import {PredictOrder} from "../markets/predict/PredictOrder.sol";
 import "./PredyPoolQuoter.sol";
 
 /**
- * @notice Quoter contract for PerpMarket
+ * @notice Quoter contract for PredictMarket
  */
-contract PerpMarketQuoter {
-    PerpMarket public perpMarket;
+contract PredictMarketQuoter {
+    PredictMarket public predictMarket;
     PredyPoolQuoter public predyPoolQuoter;
 
-    constructor(PerpMarket _perpMarket, PredyPoolQuoter _predyPoolQuoter) {
-        perpMarket = _perpMarket;
+    constructor(PredictMarket _perpMarket, PredyPoolQuoter _predyPoolQuoter) {
+        predictMarket = _perpMarket;
         predyPoolQuoter = _predyPoolQuoter;
     }
 
-    function quoteExecuteOrder(PerpOrder memory order, ISettlement.SettlementData memory settlementData)
+    function quoteExecuteOrder(PredictOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        try perpMarket.quoteExecuteOrder(order, settlementData, predyPoolQuoter) {}
+        try predictMarket.quoteExecuteOrder(order, settlementData, predyPoolQuoter) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

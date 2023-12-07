@@ -203,6 +203,22 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         );
     }
 
+    /// @notice Estimate transaction results and return with revert message
+    function quoteExecuteOrder(
+        PredictOrder memory predictOrder,
+        ISettlement.SettlementData memory settlementData,
+        PredyPoolQuoter quoter
+    ) external {
+        IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
+            IPredyPool.TradeParams(
+                predictOrder.pairId, 0, predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, bytes("")
+            ),
+            settlementData
+        );
+
+        _revertTradeResult(tradeResult);
+    }
+
     function saveUserPosition(uint256 vaultId, address owner, uint256 expiration) internal {
         require(owner != address(0) && vaultId > 0);
 

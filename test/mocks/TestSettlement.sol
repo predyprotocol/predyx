@@ -34,6 +34,10 @@ contract TestSettlementCurrencyNotSettled is BaseSettlement {
             );
         }
     }
+
+    function quoteSettlement(bytes memory, int256) external pure override {
+        _revertQuoteAmount(0);
+    }
 }
 
 contract TestSettlementReentrant is BaseSettlement {
@@ -55,5 +59,9 @@ contract TestSettlementReentrant is BaseSettlement {
         IERC20(settlemendParams.settleTokenAddress).transfer(address(_predyPool), settlemendParams.settleAmount);
 
         IPredyPool(address(_predyPool)).trade(settlemendParams.tradeParams, settlemendParams.settlementData);
+    }
+
+    function quoteSettlement(bytes memory, int256) external pure override {
+        _revertQuoteAmount(0);
     }
 }

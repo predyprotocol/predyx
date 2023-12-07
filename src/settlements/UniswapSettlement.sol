@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IQuoterV2} from "@uniswap/v3-periphery/contracts/interfaces/IQuoterV2.sol";
 import "../interfaces/ILendingPool.sol";
 import "../libraries/math/Math.sol";
 import "./BaseSettlement.sol";
 
 contract UniswapSettlement is BaseSettlement {
     using Math for uint256;
+    using SafeTransferLib for ERC20;
 
     ISwapRouter private immutable _swapRouter;
+    IQuoterV2 private immutable _quoterV2;
+    address public immutable filler;
 
     struct SettlementParams {
         bytes path;
@@ -21,8 +25,14 @@ contract UniswapSettlement is BaseSettlement {
         int256 fee;
     }
 
-    constructor(ILendingPool predyPool, address swapRouterAddress) BaseSettlement(predyPool) {
+    constructor(ILendingPool predyPool, address swapRouterAddress, address quoterAddress, address _filler)
+        BaseSettlement(predyPool)
+    {
         _swapRouter = ISwapRouter(swapRouterAddress);
+
+        _quoterV2 = IQuoterV2(quoterAddress);
+
+        filler = _filler;
     }
 
     function getSettlementParams(
@@ -51,7 +61,7 @@ contract UniswapSettlement is BaseSettlement {
         if (baseAmountDelta > 0) {
             _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
-            IERC20(settlementParams.baseTokenAddress).approve(address(_swapRouter), uint256(baseAmountDelta));
+            ERC20(settlementParams.baseTokenAddress).approve(address(_swapRouter), uint256(baseAmountDelta));
 
             uint256 quoteAmount = _swapRouter.exactInput(
                 ISwapRouter.ExactInputParams(
@@ -63,15 +73,15 @@ contract UniswapSettlement is BaseSettlement {
                 )
             );
 
-            TransferHelper.safeTransfer(
-                settlementParams.quoteTokenAddress, address(_predyPool), quoteAmount.addDelta(-settlementParams.fee)
+            ERC20(settlementParams.quoteTokenAddress).safeTransfer(
+                address(_predyPool), quoteAmount.addDelta(-settlementParams.fee)
             );
         } else {
-            IERC20(settlementParams.quoteTokenAddress).approve(
+            _predyPool.take(true, address(this), settlementParams.amountOutMinimumOrInMaximum);
+
+            ERC20(settlementParams.quoteTokenAddress).approve(
                 address(_swapRouter), settlementParams.amountOutMinimumOrInMaximum
             );
-
-            _predyPool.take(true, address(this), settlementParams.amountOutMinimumOrInMaximum);
 
             uint256 quoteAmount = _swapRouter.exactOutput(
                 ISwapRouter.ExactOutputParams(
@@ -83,11 +93,35 @@ contract UniswapSettlement is BaseSettlement {
                 )
             );
 
-            TransferHelper.safeTransfer(
-                settlementParams.quoteTokenAddress,
+            ERC20(settlementParams.quoteTokenAddress).safeTransfer(
                 address(_predyPool),
-                settlementParams.amountOutMinimumOrInMaximum - quoteAmount.addDelta(-settlementParams.fee)
+                settlementParams.amountOutMinimumOrInMaximum - quoteAmount.addDelta(settlementParams.fee)
             );
         }
+
+        // send fee to the filler
+        if (settlementParams.fee > 0) {
+            ERC20(settlementParams.quoteTokenAddress).safeTransfer(filler, uint256(settlementParams.fee));
+        }
+    }
+
+    /// @notice Quote the amount of quote token to be settled
+    /// @dev This function is not gas efficient and should not be called on chain.
+    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external override {
+        SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
+
+        int256 quoteAmount;
+
+        if (baseAmountDelta > 0) {
+            (uint256 quoteAmountOut,,,) = _quoterV2.quoteExactInput(settlementParams.path, uint256(baseAmountDelta));
+
+            quoteAmount = int256(quoteAmountOut.addDelta(-settlementParams.fee));
+        } else {
+            (uint256 quoteAmountIn,,,) = _quoterV2.quoteExactOutput(settlementParams.path, uint256(-baseAmountDelta));
+
+            quoteAmount = -int256(quoteAmountIn.addDelta(settlementParams.fee));
+        }
+
+        _revertQuoteAmount(quoteAmount);
     }
 }
