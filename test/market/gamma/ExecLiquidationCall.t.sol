@@ -56,7 +56,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         _movePrice(true, 6 * 1e16);
@@ -65,7 +65,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
 
         uint256 beforeMargin = currency1.balanceOf(from1);
         predyPool.execLiquidationCall(
-            1, 1e18, settlement.getSettlementParams(normalSwapRoute, 5 * 1e8, address(currency1), address(currency0), 0)
+            1, 1e18, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
         uint256 afterMargin = currency1.balanceOf(from1);
 

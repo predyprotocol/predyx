@@ -13,11 +13,15 @@ contract RevertSettlement is BaseSettlement {
         _revertBaseAmountDelta(baseAmountDelta);
     }
 
-    function _revertBaseAmountDelta(int256 baseAmountDelta) internal pure {
-        bytes memory data = abi.encode(baseAmountDelta);
+    function quoteSettlement(bytes memory, int256) external pure override {
+        _revertQuoteAmount(0);
+    }
 
+    function _revertBaseAmountDelta(int256 baseAmountDelta) internal pure {
         assembly {
-            revert(add(32, data), mload(data))
+            let ptr := mload(0x40)
+            mstore(ptr, baseAmountDelta)
+            revert(ptr, 32)
         }
     }
 }

@@ -6,7 +6,7 @@ import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
-import "../../../src/settlements/UniswapSettlement.sol";
+import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
@@ -16,7 +16,7 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
-    UniswapSettlement settlement;
+    DirectSettlement settlement;
     GammaTradeMarket fillerMarket;
     IPermit2 permit2;
     LimitOrderValidator limitOrderValidator;
@@ -25,16 +25,11 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
-        address swapRouter = deployCode(
-            "../node_modules/@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol:SwapRouter",
-            abi.encode(uniswapFactory, address(currency0))
-        );
-
         permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        settlement = new UniswapSettlement(predyPool, swapRouter);
+        settlement = new DirectSettlement(predyPool, address(this));
 
         fillerMarket = new GammaTradeMarket(predyPool, address(permit2), address(this));
 
@@ -43,6 +38,9 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         currency0.approve(address(fillerMarket), type(uint256).max);
         currency1.approve(address(fillerMarket), type(uint256).max);
+
+        currency0.approve(address(settlement), type(uint256).max);
+        currency1.approve(address(settlement), type(uint256).max);
 
         limitOrderValidator = new LimitOrderValidator();
     }

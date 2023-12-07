@@ -56,4 +56,8 @@ contract DebugSettlement is BaseSettlement {
             );
         }
     }
+
+    function quoteSettlement(bytes memory, int256) external pure override {
+        _revertQuoteAmount(0);
+    }
 }

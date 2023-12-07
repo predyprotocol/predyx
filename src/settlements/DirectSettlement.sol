@@ -55,4 +55,17 @@ contract DirectSettlement is BaseSettlement {
             );
         }
     }
+
+    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external view override {
+        SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
+        int256 quoteAmount;
+
+        if (baseAmountDelta > 0) {
+            quoteAmount = baseAmountDelta * int256(settlemendParams.price) / 1e4;
+        } else if (baseAmountDelta < 0) {
+            quoteAmount = baseAmountDelta * int256(settlemendParams.price) / 1e4;
+        }
+
+        _revertQuoteAmount(quoteAmount);
+    }
 }

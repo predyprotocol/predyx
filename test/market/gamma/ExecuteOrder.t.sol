@@ -57,11 +57,11 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 980);
-        assertEq(tradeResult.payoff.sqrtEntryUpdate, -1782);
+        assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
+        assertEq(tradeResult.payoff.sqrtEntryUpdate, -1800);
         assertEq(tradeResult.payoff.perpPayoff, 0);
         assertEq(tradeResult.payoff.sqrtPayoff, 0);
     }
@@ -86,8 +86,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+                signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
             );
         }
 
@@ -109,8 +108,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
+                signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
             );
         }
     }
@@ -144,7 +142,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         vm.expectRevert();
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -153,7 +151,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         {
             GammaOrder memory order = GammaOrder(
@@ -218,7 +216,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -243,7 +241,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);

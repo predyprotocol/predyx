@@ -221,6 +221,26 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         );
     }
 
+    /// @notice Estimate transaction results and return with revert message
+    function quoteExecuteOrder(
+        GammaOrder memory gammaOrder,
+        ISettlement.SettlementData memory settlementData,
+        PredyPoolQuoter quoter
+    ) external {
+        IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
+            IPredyPool.TradeParams(
+                gammaOrder.pairId,
+                userPositions[gammaOrder.info.trader][gammaOrder.pairId].vaultId,
+                gammaOrder.tradeAmount,
+                gammaOrder.tradeAmountSqrt,
+                bytes("")
+            ),
+            settlementData
+        );
+
+        _revertTradeResult(tradeResult);
+    }
+
     function _saveUserPosition(
         UserPosition storage userPosition,
         uint256 hedgeInterval,

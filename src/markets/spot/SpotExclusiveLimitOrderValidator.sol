@@ -7,7 +7,7 @@ import {SpotOrder} from "./SpotOrder.sol";
 
 struct SpotExclusiveLimitOrderValidationData {
     address filler;
-    uint256 limitPrice;
+    uint256 limitQuoteTokenAmount;
 }
 
 /**
@@ -28,13 +28,11 @@ contract SpotExclusiveLimitOrderValidator {
         require(validationData.filler == filler);
 
         if (spotOrder.baseTokenAmount != 0) {
-            uint256 tradePrice = Math.abs(quoteTokenAmount) * Constants.Q96 / Math.abs(baseTokenAmount);
-
-            if (spotOrder.baseTokenAmount > 0 && validationData.limitPrice < tradePrice) {
+            if (spotOrder.baseTokenAmount > 0 && validationData.limitQuoteTokenAmount < uint256(-quoteTokenAmount)) {
                 revert PriceGreaterThanLimit();
             }
 
-            if (spotOrder.baseTokenAmount < 0 && validationData.limitPrice > tradePrice) {
+            if (spotOrder.baseTokenAmount < 0 && validationData.limitQuoteTokenAmount > uint256(quoteTokenAmount)) {
                 revert PriceLessThanLimit();
             }
         }

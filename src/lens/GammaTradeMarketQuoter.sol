@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {PerpMarket} from "../markets/perp/PerpMarket.sol";
-import {PerpOrder} from "../markets/perp/PerpOrder.sol";
+import {GammaTradeMarket} from "../markets/gamma/GammaTradeMarket.sol";
+import {GammaOrder} from "../markets/gamma/GammaOrder.sol";
 import "./PredyPoolQuoter.sol";
 
 /**
- * @notice Quoter contract for PerpMarket
+ * @notice Quoter contract for GammaTradeMarket
  */
-contract PerpMarketQuoter {
-    PerpMarket public perpMarket;
+contract GammaTradeMarketQuoter {
+    GammaTradeMarket public gammaTradeMarket;
     PredyPoolQuoter public predyPoolQuoter;
 
-    constructor(PerpMarket _perpMarket, PredyPoolQuoter _predyPoolQuoter) {
-        perpMarket = _perpMarket;
+    constructor(GammaTradeMarket _gammaTradeMarket, PredyPoolQuoter _predyPoolQuoter) {
+        gammaTradeMarket = _gammaTradeMarket;
         predyPoolQuoter = _predyPoolQuoter;
     }
 
-    function quoteExecuteOrder(PerpOrder memory order, ISettlement.SettlementData memory settlementData)
+    function quoteExecuteOrder(GammaOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        try perpMarket.quoteExecuteOrder(order, settlementData, predyPoolQuoter) {}
+        try gammaTradeMarket.quoteExecuteOrder(order, settlementData, predyPoolQuoter) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

@@ -38,4 +38,12 @@ abstract contract BaseMarket is BaseHookCallback, Owned {
 
         return pairStatus.quotePool.token;
     }
+
+    function _revertTradeResult(IPredyPool.TradeResult memory tradeResult) internal pure {
+        bytes memory data = abi.encode(tradeResult);
+
+        assembly {
+            revert(add(32, data), mload(data))
+        }
+    }
 }

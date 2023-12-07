@@ -247,12 +247,12 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         }
     }
 
+    /// @notice Estimate transaction results and return with revert message
     function quoteExecuteOrder(
         PerpOrder memory perpOrder,
         ISettlement.SettlementData memory settlementData,
         PredyPoolQuoter quoter
     ) external {
-        // Execute the trade for the user position in the filler pool
         IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
             IPredyPool.TradeParams(
                 perpOrder.pairId,
@@ -264,15 +264,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             settlementData
         );
 
-        revertTradeResult(tradeResult);
-    }
-
-    function revertTradeResult(IPredyPool.TradeResult memory tradeResult) internal pure {
-        bytes memory data = abi.encode(tradeResult);
-
-        assembly {
-            revert(add(32, data), mload(data))
-        }
+        _revertTradeResult(tradeResult);
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {
