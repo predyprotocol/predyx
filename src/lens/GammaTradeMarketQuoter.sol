@@ -3,25 +3,24 @@ pragma solidity ^0.8.17;
 
 import {GammaTradeMarket} from "../markets/gamma/GammaTradeMarket.sol";
 import {GammaOrder} from "../markets/gamma/GammaOrder.sol";
-import "./PredyPoolQuoter.sol";
+import {ISettlement} from "../interfaces/ISettlement.sol";
+import {IPredyPool} from "../interfaces/IPredyPool.sol";
 
 /**
  * @notice Quoter contract for GammaTradeMarket
  */
 contract GammaTradeMarketQuoter {
     GammaTradeMarket public gammaTradeMarket;
-    PredyPoolQuoter public predyPoolQuoter;
 
-    constructor(GammaTradeMarket _gammaTradeMarket, PredyPoolQuoter _predyPoolQuoter) {
+    constructor(GammaTradeMarket _gammaTradeMarket) {
         gammaTradeMarket = _gammaTradeMarket;
-        predyPoolQuoter = _predyPoolQuoter;
     }
 
     function quoteExecuteOrder(GammaOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        try gammaTradeMarket.quoteExecuteOrder(order, settlementData, predyPoolQuoter) {}
+        try gammaTradeMarket.quoteExecuteOrder(order, settlementData) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

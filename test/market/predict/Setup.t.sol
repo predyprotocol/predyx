@@ -31,7 +31,7 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         settlement = new DirectSettlement(predyPool, address(this));
 
-        fillerMarket = new PredictMarket(predyPool, address(permit2), address(this));
+        fillerMarket = new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);

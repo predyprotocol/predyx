@@ -8,8 +8,6 @@ import "../../src/settlements/UniswapSettlement.sol";
 import "../pool/Setup.t.sol";
 
 contract TestLens is TestPool {
-    PredyPoolQuoter _predyPoolQuoter;
-
     UniswapSettlement uniswapSettlement;
 
     function setUp() public virtual override(TestPool) {
@@ -19,11 +17,6 @@ contract TestLens is TestPool {
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
-
-        // Set up PredyPoolQuoter
-        RevertSettlement revertSettlement = new RevertSettlement(predyPool);
-
-        _predyPoolQuoter = new PredyPoolQuoter(predyPool, address(revertSettlement));
 
         address swapRouter = deployCode(
             "../node_modules/@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol:SwapRouter",

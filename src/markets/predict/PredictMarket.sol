@@ -74,8 +74,8 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     );
     event PredictPositionClosed(uint256 vaultId, uint256 closeValue, IPredyPool.Payoff payoff, int256 fee);
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
-        BaseMarket(predyPool, whitelistFiller)
+    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        BaseMarket(predyPool, whitelistFiller, quoterAddress)
     {
         _permit2 = IPermit2(permit2Address);
     }
@@ -118,10 +118,10 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         PredictOrder memory predictOrder = abi.decode(order.order, (PredictOrder));
         ResolvedOrder memory resolvedOrder = PredictOrderLib.resolve(predictOrder, order.sig);
 
-        validateQuoteTokenAddress(predictOrder.pairId, predictOrder.entryTokenAddress);
+        _validateQuoteTokenAddress(predictOrder.pairId, predictOrder.entryTokenAddress);
 
         // only whitelisted filler can open position
-        if (msg.sender != _whitelistFiller) {
+        if (msg.sender != whitelistFiller) {
             revert CallerIsNotFiller();
         }
 
@@ -138,7 +138,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
             settlementData
         );
 
-        saveUserPosition(tradeResult.vaultId, predictOrder.info.trader, block.timestamp + predictOrder.duration);
+        _saveUserPosition(tradeResult.vaultId, predictOrder.info.trader, block.timestamp + predictOrder.duration);
 
         _predyPool.updateRecepient(tradeResult.vaultId, predictOrder.info.trader);
 
@@ -204,22 +204,24 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(
-        PredictOrder memory predictOrder,
-        ISettlement.SettlementData memory settlementData,
-        PredyPoolQuoter quoter
-    ) external {
-        IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
+    function quoteExecuteOrder(PredictOrder memory predictOrder, ISettlement.SettlementData memory settlementData)
+        external
+    {
+        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(
             IPredyPool.TradeParams(
                 predictOrder.pairId, 0, predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, bytes("")
             ),
             settlementData
         );
 
+        IOrderValidator(predictOrder.validatorAddress).validate(
+            predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, predictOrder.validationData, tradeResult
+        );
+
         _revertTradeResult(tradeResult);
     }
 
-    function saveUserPosition(uint256 vaultId, address owner, uint256 expiration) internal {
+    function _saveUserPosition(uint256 vaultId, address owner, uint256 expiration) internal {
         require(owner != address(0) && vaultId > 0);
 
         if (expiration > block.timestamp + 30 days) {

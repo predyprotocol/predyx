@@ -64,6 +64,8 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
 
         _predyPool = new PredyPool();
         _predyPool.initialize(address(_uniswapFactory));
+        RevertSettlement revertSettlement = new RevertSettlement(_predyPool);
+        PredyPoolQuoter predyPoolQuoter = new PredyPoolQuoter(_predyPool, address(revertSettlement));
 
         DOMAIN_SEPARATOR = _permit2.DOMAIN_SEPARATOR();
 
@@ -71,7 +73,7 @@ contract TestPerpMarket is SigUtils, OrderValidatorUtils {
 
         pairId = registerPair(address(_usdc), address(0));
 
-        perpMarket = new PerpMarket(_predyPool, address(_permit2), address(this));
+        perpMarket = new PerpMarket(_predyPool, address(_permit2), address(this), address(predyPoolQuoter));
         perpMarket.updateQuoteTokenMap(1);
 
         limitOrderValidator = new LimitOrderValidator();

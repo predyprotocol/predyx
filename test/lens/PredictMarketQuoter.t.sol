@@ -22,9 +22,10 @@ contract TestPredictMarketQuoter is TestLens {
 
         IPermit2 permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
 
-        PredictMarket predictMarket = new PredictMarket(predyPool, address(permit2), address(this));
+        PredictMarket predictMarket =
+            new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
-        _quoter = new PredictMarketQuoter(predictMarket, _predyPoolQuoter);
+        _quoter = new PredictMarketQuoter(predictMarket);
 
         from = vm.addr(1);
 
@@ -45,7 +46,7 @@ contract TestPredictMarketQuoter is TestLens {
             address(dutchOrderValidator),
             abi.encode(
                 GeneralDutchOrderValidationData(
-                    Constants.Q96, Bps.ONE, Bps.ONE, 101488915, block.timestamp, block.timestamp + 60
+                    Constants.Q96, Bps.ONE + 100000, Bps.ONE + 200000, 101488915, block.timestamp, block.timestamp + 60
                 )
             )
         );

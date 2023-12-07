@@ -3,14 +3,22 @@ pragma solidity ^0.8.17;
 
 import {Owned} from "@solmate/src/auth/Owned.sol";
 import "./BaseHookCallback.sol";
+import {PredyPoolQuoter} from "../lens/PredyPoolQuoter.sol";
 
 abstract contract BaseMarket is BaseHookCallback, Owned {
-    address public _whitelistFiller;
+    address public whitelistFiller;
+
+    PredyPoolQuoter internal immutable _quoter;
 
     mapping(uint256 pairId => address quoteTokenAddress) internal _quoteTokenMap;
 
-    constructor(IPredyPool predyPool, address whitelistFiller) BaseHookCallback(predyPool) Owned(msg.sender) {
-        _whitelistFiller = whitelistFiller;
+    constructor(IPredyPool predyPool, address _whitelistFiller, address quoterAddress)
+        BaseHookCallback(predyPool)
+        Owned(msg.sender)
+    {
+        whitelistFiller = _whitelistFiller;
+
+        _quoter = PredyPoolQuoter(quoterAddress);
     }
 
     /**
@@ -18,7 +26,7 @@ abstract contract BaseMarket is BaseHookCallback, Owned {
      * @dev only owner can call this function
      */
     function updateWhitelistFiller(address newWhitelistFiller) external onlyOwner {
-        _whitelistFiller = newWhitelistFiller;
+        whitelistFiller = newWhitelistFiller;
     }
 
     /// @notice Registers quote token address for the pair
@@ -29,7 +37,7 @@ abstract contract BaseMarket is BaseHookCallback, Owned {
     }
 
     /// @notice Checks if entryTokenAddress is registerd for the pair
-    function validateQuoteTokenAddress(uint256 pairId, address entryTokenAddress) internal view {
+    function _validateQuoteTokenAddress(uint256 pairId, address entryTokenAddress) internal view {
         require(_quoteTokenMap[pairId] != address(0) && entryTokenAddress == _quoteTokenMap[pairId]);
     }
 

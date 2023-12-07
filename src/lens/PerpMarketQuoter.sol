@@ -3,25 +3,24 @@ pragma solidity ^0.8.17;
 
 import {PerpMarket} from "../markets/perp/PerpMarket.sol";
 import {PerpOrder} from "../markets/perp/PerpOrder.sol";
-import "./PredyPoolQuoter.sol";
+import {ISettlement} from "../interfaces/ISettlement.sol";
+import {IPredyPool} from "../interfaces/IPredyPool.sol";
 
 /**
  * @notice Quoter contract for PerpMarket
  */
 contract PerpMarketQuoter {
     PerpMarket public perpMarket;
-    PredyPoolQuoter public predyPoolQuoter;
 
-    constructor(PerpMarket _perpMarket, PredyPoolQuoter _predyPoolQuoter) {
+    constructor(PerpMarket _perpMarket) {
         perpMarket = _perpMarket;
-        predyPoolQuoter = _predyPoolQuoter;
     }
 
     function quoteExecuteOrder(PerpOrder memory order, ISettlement.SettlementData memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        try perpMarket.quoteExecuteOrder(order, settlementData, predyPoolQuoter) {}
+        try perpMarket.quoteExecuteOrder(order, settlementData) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

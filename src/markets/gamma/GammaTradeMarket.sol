@@ -73,8 +73,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         int256 fee
     );
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
-        BaseMarket(predyPool, whitelistFiller)
+    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        BaseMarket(predyPool, whitelistFiller, quoterAddress)
     {
         _permit2 = IPermit2(permit2Address);
     }
@@ -118,7 +118,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         GammaOrder memory gammaOrder = abi.decode(order.order, (GammaOrder));
         ResolvedOrder memory resolvedOrder = GammaOrderLib.resolve(gammaOrder, order.sig);
 
-        validateQuoteTokenAddress(gammaOrder.pairId, gammaOrder.entryTokenAddress);
+        _validateQuoteTokenAddress(gammaOrder.pairId, gammaOrder.entryTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
@@ -141,7 +141,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         if (tradeResult.minMargin > 0) {
             // only whitelisted filler can open position
-            if (msg.sender != _whitelistFiller) {
+            if (msg.sender != whitelistFiller) {
                 revert CallerIsNotFiller();
             }
         }
@@ -222,12 +222,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(
-        GammaOrder memory gammaOrder,
-        ISettlement.SettlementData memory settlementData,
-        PredyPoolQuoter quoter
-    ) external {
-        IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
+    function quoteExecuteOrder(GammaOrder memory gammaOrder, ISettlement.SettlementData memory settlementData)
+        external
+    {
+        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(
             IPredyPool.TradeParams(
                 gammaOrder.pairId,
                 userPositions[gammaOrder.info.trader][gammaOrder.pairId].vaultId,
@@ -236,6 +234,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 bytes("")
             ),
             settlementData
+        );
+
+        IOrderValidator(gammaOrder.validatorAddress).validate(
+            gammaOrder.tradeAmount, gammaOrder.tradeAmountSqrt, gammaOrder.validationData, tradeResult
         );
 
         _revertTradeResult(tradeResult);

@@ -67,8 +67,8 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     );
     event PerpTPSLOrderUpdated(address indexed trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller)
-        BaseMarket(predyPool, whitelistFiller)
+    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        BaseMarket(predyPool, whitelistFiller, quoterAddress)
     {
         _permit2 = IPermit2(permit2Address);
     }
@@ -120,7 +120,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
         ResolvedOrder memory resolvedOrder = PerpOrderLib.resolve(perpOrder, order.sig);
 
-        validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
+        _validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
 
         _verifyOrder(resolvedOrder);
 
@@ -148,7 +148,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         if (tradeResult.minMargin > 0) {
             // only whitelisted filler can open position
-            if (msg.sender != _whitelistFiller) {
+            if (msg.sender != whitelistFiller) {
                 revert CallerIsNotFiller();
             }
         }
@@ -248,12 +248,8 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(
-        PerpOrder memory perpOrder,
-        ISettlement.SettlementData memory settlementData,
-        PredyPoolQuoter quoter
-    ) external {
-        IPredyPool.TradeResult memory tradeResult = quoter.quoteTrade(
+    function quoteExecuteOrder(PerpOrder memory perpOrder, ISettlement.SettlementData memory settlementData) external {
+        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(
             IPredyPool.TradeParams(
                 perpOrder.pairId,
                 userPositions[perpOrder.info.trader][perpOrder.pairId].vaultId,
@@ -262,6 +258,10 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 bytes("")
             ),
             settlementData
+        );
+
+        IOrderValidator(perpOrder.validatorAddress).validate(
+            perpOrder.tradeAmount, 0, perpOrder.validationData, tradeResult
         );
 
         _revertTradeResult(tradeResult);

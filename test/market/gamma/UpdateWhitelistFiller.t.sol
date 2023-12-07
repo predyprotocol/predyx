@@ -13,6 +13,6 @@ contract TestGammaMarketUpdateWhitelistFiller is TestGammaMarket {
 
         fillerMarket.updateWhitelistFiller(newWhitelistFiller);
 
-        assertEq(fillerMarket._whitelistFiller(), newWhitelistFiller, "whitelist filler not updated");
+        assertEq(fillerMarket.whitelistFiller(), newWhitelistFiller, "whitelist filler not updated");
     }
 }

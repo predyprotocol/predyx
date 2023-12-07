@@ -11,6 +11,8 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../../src/PredyPool.sol";
 import "../../src/libraries/InterestRateModel.sol";
 import "../mocks/MockERC20.sol";
+import "../../src/settlements/RevertSettlement.sol";
+import "../../src/lens/PredyPoolQuoter.sol";
 
 contract TestPool is Test {
     PredyPool predyPool;
@@ -23,6 +25,8 @@ contract TestPool is Test {
     uint256 internal constant RISK_RATIO = 109544511;
 
     address uniswapFactory;
+
+    PredyPoolQuoter _predyPoolQuoter;
 
     function setUp() public virtual {
         currency0 = new MockERC20("currency0","currency0",18);
@@ -59,6 +63,10 @@ contract TestPool is Test {
         _movePrice(true, 100);
         vm.warp(block.timestamp + 30 minutes);
         _movePrice(false, 100);
+
+        RevertSettlement revertSettlement = new RevertSettlement(predyPool);
+
+        _predyPoolQuoter = new PredyPoolQuoter(predyPool, address(revertSettlement));
     }
 
     /**

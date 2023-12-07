@@ -22,9 +22,10 @@ contract TestPredictMarketQuoter is TestLens {
 
         IPermit2 permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
 
-        GammaTradeMarket gammaTradeMarket = new GammaTradeMarket(predyPool, address(permit2), address(this));
+        GammaTradeMarket gammaTradeMarket =
+            new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
-        _quoter = new GammaTradeMarketQuoter(gammaTradeMarket, _predyPoolQuoter);
+        _quoter = new GammaTradeMarketQuoter(gammaTradeMarket);
 
         from = vm.addr(1);
 
@@ -47,7 +48,7 @@ contract TestPredictMarketQuoter is TestLens {
             address(dutchOrderValidator),
             abi.encode(
                 GeneralDutchOrderValidationData(
-                    Constants.Q96, Bps.ONE, Bps.ONE, 101488915, block.timestamp, block.timestamp + 60
+                    Constants.Q96, Bps.ONE + 100000, Bps.ONE + 200000, 101488915, block.timestamp, block.timestamp + 60
                 )
             )
         );
