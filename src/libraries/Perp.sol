@@ -90,8 +90,8 @@ library Perp {
         uint256 fee1Growth;
         ScaledAsset.UserStatus rebalancePositionBase;
         ScaledAsset.UserStatus rebalancePositionQuote;
-        int256 rebalanceFeeGrowthUnderlying;
-        int256 rebalanceFeeGrowthStable;
+        int256 rebalanceInterestGrowthBase;
+        int256 rebalanceInterestGrowthQuote;
     }
 
     struct UserStatus {
@@ -101,8 +101,8 @@ library Perp {
         uint64 lastNumRebalance;
         PositionStatus perp;
         SqrtPositionStatus sqrtPerp;
-        ScaledAsset.UserStatus underlying;
-        ScaledAsset.UserStatus stable;
+        ScaledAsset.UserStatus basePosition;
+        ScaledAsset.UserStatus stablePosition;
     }
 
     event PremiumGrowthUpdated(
@@ -155,18 +155,18 @@ library Perp {
     }
 
     /// @notice Settle the interest on rebalance positions up to this block and update the rebalance fee growth value
-    function updateRebalanceFeeGrowth(
+    function updateRebalanceInterestGrowth(
         DataType.PairStatus memory _pairStatus,
         SqrtPerpAssetStatus storage _sqrtAssetStatus
     ) internal {
         // settle the interest on rebalance position
         // fee growths are scaled by 1e18
         if (_sqrtAssetStatus.lastRebalanceTotalSquartAmount > 0) {
-            _sqrtAssetStatus.rebalanceFeeGrowthUnderlying += _pairStatus.basePool.tokenStatus.settleUserFee(
+            _sqrtAssetStatus.rebalanceInterestGrowthBase += _pairStatus.basePool.tokenStatus.settleUserFee(
                 _sqrtAssetStatus.rebalancePositionBase
             ) * 1e18 / int256(_sqrtAssetStatus.lastRebalanceTotalSquartAmount);
 
-            _sqrtAssetStatus.rebalanceFeeGrowthStable += _pairStatus.quotePool.tokenStatus.settleUserFee(
+            _sqrtAssetStatus.rebalanceInterestGrowthQuote += _pairStatus.quotePool.tokenStatus.settleUserFee(
                 _sqrtAssetStatus.rebalancePositionQuote
             ) * 1e18 / int256(_sqrtAssetStatus.lastRebalanceTotalSquartAmount);
         }
@@ -361,9 +361,11 @@ library Perp {
         );
 
         _pairStatus.basePool.tokenStatus.updatePosition(
-            _userStatus.underlying, deltaPositionUnderlying, _pairStatus.id, false
+            _userStatus.basePosition, deltaPositionUnderlying, _pairStatus.id, false
         );
-        _pairStatus.quotePool.tokenStatus.updatePosition(_userStatus.stable, deltaPositionStable, _pairStatus.id, true);
+        _pairStatus.quotePool.tokenStatus.updatePosition(
+            _userStatus.stablePosition, deltaPositionStable, _pairStatus.id, true
+        );
     }
 
     function updateFeeAndPremiumGrowth(uint256 _pairId, SqrtPerpAssetStatus storage _assetStatus) internal {
@@ -505,14 +507,14 @@ library Perp {
         );
 
         _pairStatus.basePool.tokenStatus.updatePosition(
-            _userStatus.underlying,
+            _userStatus.basePosition,
             _updatePerpParams.tradeAmount + payoff.sqrtRebalanceEntryUpdateUnderlying,
             _pairStatus.id,
             false
         );
 
         _pairStatus.quotePool.tokenStatus.updatePosition(
-            _userStatus.stable,
+            _userStatus.stablePosition,
             payoff.perpEntryUpdate + payoff.sqrtEntryUpdate + payoff.sqrtRebalanceEntryUpdateStable,
             _pairStatus.id,
             true
@@ -807,7 +809,9 @@ library Perp {
         }
     }
 
+    /// @notice called after reallocation
     function finalizeReallocation(SqrtPerpAssetStatus storage sqrtPerpStatus) internal {
+        // LastRebalanceTotalSquartAmount is the total amount of positions that will have to pay rebalancing interest in the future
         sqrtPerpStatus.lastRebalanceTotalSquartAmount = sqrtPerpStatus.totalAmount + sqrtPerpStatus.borrowedAmount;
         sqrtPerpStatus.numRebalance++;
     }

@@ -22,12 +22,12 @@ contract CalculateMinDepositTest is TestPositionCalculator {
         Perp.UserStatus memory openPosition = Perp.createPerpUserStatus(2);
 
         openPosition.sqrtPerp.amount = _amountSquart;
-        openPosition.underlying.positionAmount = _amountUnderlying;
+        openPosition.basePosition.positionAmount = _amountUnderlying;
         openPosition.perp.amount = _amountUnderlying;
 
         openPosition.perp.entryValue = _amountStable;
         openPosition.sqrtPerp.entryValue = 0;
-        openPosition.stable.positionAmount = _amountStable;
+        openPosition.stablePosition.positionAmount = _amountStable;
 
         return DataType.Vault(1, address(usdc), address(this), address(this), _margin, openPosition);
     }

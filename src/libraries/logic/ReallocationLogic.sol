@@ -37,8 +37,8 @@ library ReallocationLogic {
 
         DataType.PairStatus storage pairStatus = globalData.pairs[pairId];
 
-        // Clear rebalance fees up to this block and update fee growth variables
-        Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
+        // Clear rebalance interests up to this block and update interest growth variables
+        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
         {
             int256 deltaPositionBase;
@@ -85,8 +85,8 @@ library ReallocationLogic {
             globalData.rebalanceFeeGrowthCache[PairLib.getRebalanceCacheId(
                 pairId, pairStatus.sqrtAssetStatus.numRebalance
             )] = DataType.RebalanceFeeGrowthCache(
-                pairStatus.sqrtAssetStatus.rebalanceFeeGrowthStable,
-                pairStatus.sqrtAssetStatus.rebalanceFeeGrowthUnderlying
+                pairStatus.sqrtAssetStatus.rebalanceInterestGrowthQuote,
+                pairStatus.sqrtAssetStatus.rebalanceInterestGrowthBase
             );
 
             Perp.finalizeReallocation(pairStatus.sqrtAssetStatus);
