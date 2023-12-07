@@ -28,7 +28,7 @@ library ReallocationLogic {
         GlobalDataLibrary.GlobalData storage globalData,
         uint256 pairId,
         ISettlement.SettlementData memory settlementData
-    ) external returns (bool relocationOccurred) {
+    ) external returns (bool isRangeChanged) {
         // Checks the pair exists
         globalData.validate(pairId);
 
@@ -40,11 +40,13 @@ library ReallocationLogic {
         // Clear rebalance interests up to this block and update interest growth variables
         Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
+        bool relocationOccurred;
+
         {
             int256 deltaPositionBase;
             int256 deltaPositionQuote;
 
-            (relocationOccurred, deltaPositionBase, deltaPositionQuote) =
+            (relocationOccurred, isRangeChanged, deltaPositionBase, deltaPositionQuote) =
                 Perp.reallocate(pairStatus, pairStatus.sqrtAssetStatus);
 
             if (deltaPositionBase != 0) {

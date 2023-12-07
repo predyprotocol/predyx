@@ -201,7 +201,7 @@ library Perp {
     function reallocate(
         DataType.PairStatus storage _assetStatusUnderlying,
         SqrtPerpAssetStatus storage _sqrtAssetStatus
-    ) internal returns (bool, int256 deltaPositionBase, int256 deltaPositionQuote) {
+    ) internal returns (bool, bool, int256 deltaPositionBase, int256 deltaPositionQuote) {
         (uint160 currentSqrtPrice, int24 currentTick,,,,,) = IUniswapV3Pool(_sqrtAssetStatus.uniswapPool).slot0();
 
         // If the current tick does not reach the threshold, then do nothing
@@ -211,7 +211,7 @@ library Perp {
         ) {
             saveLastFeeGrowth(_sqrtAssetStatus);
 
-            return (false, 0, 0);
+            return (false, false, 0, 0);
         }
 
         // If the total liquidity is 0, then do nothing
@@ -225,7 +225,7 @@ library Perp {
 
             saveLastFeeGrowth(_sqrtAssetStatus);
 
-            return (false, 0, 0);
+            return (false, true, 0, 0);
         }
 
         // if the current tick does reach the threshold, then rebalance
@@ -255,7 +255,7 @@ library Perp {
                 swapForOutOfRange(_assetStatusUnderlying, currentSqrtPrice, tick, totalLiquidityAmount);
         }
 
-        return (true, deltaPositionBase, deltaPositionQuote);
+        return (true, true, deltaPositionBase, deltaPositionQuote);
     }
 
     function rebalanceForInRange(

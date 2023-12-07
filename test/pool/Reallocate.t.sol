@@ -51,14 +51,19 @@ contract TestReallocate is TestPool {
     }
 
     function testReallocateSucceeds() public {
-        // reallocation never be happened if total amount is 0
+        // reallocation never be happened if current tick is within safe range
         assertFalse(
             predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
         );
 
+        _movePrice(true, 5 * 1e16);
+
+        // reallocation happens even if total liquidity is 0
+        assertTrue(predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)));
+
         {
             IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-                1, 0, -99900, 100000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+                1, 0, -90000, 100000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 2 * 1e6))
             );
 
             tradeMarket.trade(tradeParams, settlement.getSettlementParams(address(currency1), address(currency0), 1e4));
