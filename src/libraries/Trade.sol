@@ -33,8 +33,8 @@ library Trade {
         DataType.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
-        // update rebalance fee growth
-        Perp.updateRebalanceFeeGrowth(pairStatus, pairStatus.sqrtAssetStatus);
+        // update rebalance interest growth
+        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
         // settle user balance and fee
         (int256 underlyingFee, int256 stableFee) =
