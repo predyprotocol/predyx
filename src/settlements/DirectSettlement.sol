@@ -5,6 +5,7 @@ import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import "../interfaces/ILendingPool.sol";
 import "./BaseSettlement.sol";
+import {Constants} from "../libraries/Constants.sol";
 
 contract DirectSettlement is BaseSettlement {
     using SafeTransferLib for ERC20;
@@ -40,13 +41,13 @@ contract DirectSettlement is BaseSettlement {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
-            uint256 quoteAmount = uint256(baseAmountDelta) * settlemendParams.price / 1e4;
+            uint256 quoteAmount = uint256(baseAmountDelta) * settlemendParams.price / Constants.Q96;
 
             _predyPool.take(false, _filler, uint256(baseAmountDelta));
 
             ERC20(settlemendParams.quoteTokenAddress).safeTransferFrom(_filler, address(_predyPool), quoteAmount);
         } else if (baseAmountDelta < 0) {
-            uint256 quoteAmount = uint256(-baseAmountDelta) * settlemendParams.price / 1e4;
+            uint256 quoteAmount = uint256(-baseAmountDelta) * settlemendParams.price / Constants.Q96;
 
             _predyPool.take(true, _filler, quoteAmount);
 
@@ -56,14 +57,14 @@ contract DirectSettlement is BaseSettlement {
         }
     }
 
-    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external view override {
+    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external pure override {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
         int256 quoteAmount;
 
         if (baseAmountDelta > 0) {
-            quoteAmount = baseAmountDelta * int256(settlemendParams.price) / 1e4;
+            quoteAmount = int256(uint256(baseAmountDelta) * settlemendParams.price / Constants.Q96);
         } else if (baseAmountDelta < 0) {
-            quoteAmount = baseAmountDelta * int256(settlemendParams.price) / 1e4;
+            quoteAmount = -int256(uint256(-baseAmountDelta) * settlemendParams.price / Constants.Q96);
         }
 
         _revertQuoteAmount(quoteAmount);

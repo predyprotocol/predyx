@@ -60,14 +60,14 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
         );
 
-        _tradeMarket.trade(tradeParams, _getSettlementData(1e4));
+        _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(address(_tradeMarket));
-        _tradeMarket.execLiquidationCall(1, closeRatio, _getSettlementData(11000));
+        _tradeMarket.execLiquidationCall(1, closeRatio, _getSettlementData(Constants.Q96 * 11000 / 10000));
         uint256 afterMargin = currency1.balanceOf(address(_tradeMarket));
 
         if (closeRatio == 1e18) {
@@ -83,14 +83,14 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
         );
 
-        _tradeMarket.trade(tradeParams, _getSettlementData(1e4));
+        _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         {
-            ISettlement.SettlementData memory settlementData = _getSettlementData(20000);
+            ISettlement.SettlementData memory settlementData = _getSettlementData(2 * Constants.Q96);
 
             vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
             _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
@@ -118,7 +118,7 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 10 minutes);
 
-        predyPool.execLiquidationCall(2, 1e18, _getSettlementData(9000));
+        predyPool.execLiquidationCall(2, 1e18, _getSettlementData(Constants.Q96 * 9000 / 10000));
 
         checkMarginEqZero(2);
     }
@@ -129,7 +129,7 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -48 * 1e7, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
         );
 
-        _tradeMarket.trade(tradeParams, _getSettlementData(1e4));
+        _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
         _movePrice(true, 8 * 1e16);
 
@@ -140,7 +140,7 @@ contract TestExecLiquidationCall is TestPool {
         vm.warp(block.timestamp + 29 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(address(this));
-        predyPool.execLiquidationCall(1, 1e18, _getSettlementData(12300));
+        predyPool.execLiquidationCall(1, 1e18, _getSettlementData(Constants.Q96 * 12300 / 10000));
         uint256 afterMargin = currency1.balanceOf(address(this));
 
         assertGt(beforeMargin - afterMargin, 0);
@@ -154,7 +154,7 @@ contract TestExecLiquidationCall is TestPool {
         );
 
         ISettlement.SettlementData memory settlementData =
-            _settlement.getSettlementParams(address(currency1), address(currency0), 1e4);
+            _settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
         _tradeMarket.trade(tradeParams, settlementData);
 
@@ -168,13 +168,13 @@ contract TestExecLiquidationCall is TestPool {
             1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
         );
 
-        _tradeMarket.trade(tradeParams, _getSettlementData(1e4));
+        _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
-        ISettlement.SettlementData memory settlementData = _getSettlementData(11000);
+        ISettlement.SettlementData memory settlementData = _getSettlementData(Constants.Q96 * 11000 / 10000);
 
         _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
 

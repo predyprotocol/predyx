@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
+import {Constants} from "../../../src/libraries/Constants.sol";
 
 contract TestExecLiquidationCall is TestGammaMarket {
     bytes normalSwapRoute;
@@ -56,7 +57,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         _movePrice(true, 6 * 1e16);
@@ -65,7 +66,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
 
         uint256 beforeMargin = currency1.balanceOf(from1);
         predyPool.execLiquidationCall(
-            1, 1e18, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            1, 1e18, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
         uint256 afterMargin = currency1.balanceOf(from1);
 
