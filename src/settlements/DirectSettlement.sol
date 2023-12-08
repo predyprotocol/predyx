@@ -16,12 +16,18 @@ contract DirectSettlement is BaseSettlement {
         uint256 price;
     }
 
-    address immutable _filler;
+    address internal immutable _filler;
 
     constructor(ILendingPool predyPool, address filler) BaseSettlement(predyPool) {
         _filler = filler;
     }
 
+    /**
+     * @notice Returns the settlement data for the given quote token, base token and price.
+     * @param quoteTokenAddress The address of the quote token.
+     * @param baseTokenAddress The address of the base token.
+     * @param price The price of the quote token in terms of the base token scaled by 2^96.
+     */
     function getSettlementParams(address quoteTokenAddress, address baseTokenAddress, uint256 price)
         external
         view
