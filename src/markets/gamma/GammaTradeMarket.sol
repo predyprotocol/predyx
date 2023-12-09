@@ -89,18 +89,14 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         if (tradeResult.minMargin == 0) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-            ILendingPool(address(_predyPool)).take(true, address(this), uint256(vault.margin));
-
-            quoteToken.safeTransfer(callbackData.trader, uint256(vault.margin));
+            ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(vault.margin));
         } else {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
             if (marginAmountUpdate > 0) {
                 quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
             } else if (marginAmountUpdate < 0) {
-                ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
-
-                quoteToken.safeTransfer(callbackData.trader, uint256(-marginAmountUpdate));
+                ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
         }
     }
