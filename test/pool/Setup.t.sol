@@ -11,6 +11,7 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../../src/PredyPool.sol";
 import "../../src/libraries/InterestRateModel.sol";
 import "../mocks/MockERC20.sol";
+import "../mocks/TestTradeMarket.sol";
 import "../../src/settlements/RevertSettlement.sol";
 import "../../src/lens/PredyPoolQuoter.sol";
 
@@ -122,5 +123,13 @@ contract TestPool is Test {
         } else {
             uniswapPool.swap(address(this), false, amount, TickMath.MAX_SQRT_RATIO - 1, "");
         }
+    }
+
+    function _getTradeAfterParams(uint256 updateMarginAmount)
+        internal
+        view
+        returns (TestTradeMarket.TradeAfterParams memory)
+    {
+        return TestTradeMarket.TradeAfterParams(address(this), address(currency1), updateMarginAmount);
     }
 }

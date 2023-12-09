@@ -56,9 +56,8 @@ contract TestExecLiquidationCall is TestPool {
     function testLiquidateSucceedsIfVaultIsDanger(uint256 closeRatio) public {
         closeRatio = bound(closeRatio, 1e17, 1e18);
 
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -4 * 1e8, 0, abi.encode(_getTradeAfterParams(1e8)));
 
         _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
@@ -79,9 +78,8 @@ contract TestExecLiquidationCall is TestPool {
 
     // liquidate fails if slippage too large
     function testLiquidateFailIfSlippageTooLarge() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -4 * 1e8, 0, abi.encode(_getTradeAfterParams(1e8)));
 
         _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
@@ -100,17 +98,12 @@ contract TestExecLiquidationCall is TestPool {
     // liquidate succeeds by premium payment
     function testLiquidateSucceedsByPremiumPayment() public {
         _tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, -2 * 1e8, 2 * 1e8, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
-            ),
+            IPredyPool.TradeParams(1, 0, -2 * 1e8, 2 * 1e8, abi.encode(_getTradeAfterParams(1e7))),
             _getSettlementData(1e4)
         );
 
         _tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, 1e8, -1e8, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-            ),
-            _getSettlementData(1e4)
+            IPredyPool.TradeParams(1, 0, 1e8, -1e8, abi.encode(_getTradeAfterParams(1e6))), _getSettlementData(1e4)
         );
 
         _movePrice(true, 2 * 1e16);
@@ -125,9 +118,8 @@ contract TestExecLiquidationCall is TestPool {
 
     // liquidate succeeds with insolvent vault
     function testLiquidateSucceedsWithInsolvent() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -48 * 1e7, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -48 * 1e7, 0, abi.encode(_getTradeAfterParams(1e8)));
 
         _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 
@@ -149,9 +141,8 @@ contract TestExecLiquidationCall is TestPool {
 
     // liquidate fails if the vault is safe
     function testLiquidateFailsIfVaultIsSafe() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -4 * 1e8, 0, abi.encode(_getTradeAfterParams(1e8)));
 
         ISettlement.SettlementData memory settlementData =
             _settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
@@ -164,9 +155,8 @@ contract TestExecLiquidationCall is TestPool {
 
     // liquidate fails after liquidation
     function testLiquidateFailsAfterLiquidation() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -4 * 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -4 * 1e8, 0, abi.encode(_getTradeAfterParams(1e8)));
 
         _tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
 

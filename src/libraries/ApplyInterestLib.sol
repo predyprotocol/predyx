@@ -21,12 +21,12 @@ library ApplyInterestLib {
     function applyInterestForToken(mapping(uint256 => DataType.PairStatus) storage pairs, uint256 pairId) internal {
         DataType.PairStatus storage pairStatus = pairs[pairId];
 
+        Perp.updateFeeAndPremiumGrowth(pairId, pairStatus.sqrtAssetStatus);
+
         // avoid applying interest rate multiple times in the same block
         if (pairStatus.lastUpdateTimestamp >= block.timestamp) {
             return;
         }
-
-        Perp.updateFeeAndPremiumGrowth(pairId, pairStatus.sqrtAssetStatus);
 
         uint256 interestRateStable =
             applyInterestForPoolStatus(pairStatus.quotePool, pairStatus.lastUpdateTimestamp, pairStatus.feeRatio);
