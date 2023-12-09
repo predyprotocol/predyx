@@ -45,9 +45,8 @@ contract TestTrade is TestPool {
     }
 
     function testTradeSucceeds() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e6)));
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
             tradeParams, directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
@@ -67,16 +66,12 @@ contract TestTrade is TestPool {
     // trade succeeds for close
     function testTradeSucceedsForClose() public {
         tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-            ),
+            IPredyPool.TradeParams(1, 0, -99 * 1e4, 0, abi.encode(_getTradeAfterParams(1e8))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 1, 99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))
-            ),
+            IPredyPool.TradeParams(1, 1, 99 * 1e4, 0, abi.encode(_getTradeAfterParams(0))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
@@ -87,18 +82,14 @@ contract TestTrade is TestPool {
     // trade succeeds with zero amount
     function testTradeSucceedsWithZeroAmount() public {
         IPredyPool.TradeResult memory tradeResult1 = tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, -1e7, 9 * 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-            ),
+            IPredyPool.TradeParams(1, 0, -1e7, 9 * 1e6, abi.encode(_getTradeAfterParams(1e8))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         vm.warp(block.timestamp + 10 hours);
 
         IPredyPool.TradeResult memory tradeResult2 = tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, tradeResult1.vaultId, 0, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))
-            ),
+            IPredyPool.TradeParams(1, tradeResult1.vaultId, 0, 0, abi.encode(_getTradeAfterParams(0))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
@@ -119,9 +110,8 @@ contract TestTrade is TestPool {
         int256 baseTokenAmount = int256(bound(a, 0, 1000000)) - 500000;
         int256 quoteTokenAmount = int256(bound(b, 0, 1000000)) - 500000;
 
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e8)));
         bytes memory settlementData = abi.encode(
             TestSettlementCurrencyNotSettled.SettlementParams(
                 address(currency0), address(currency1), baseTokenAmount, quoteTokenAmount
@@ -141,13 +131,11 @@ contract TestTrade is TestPool {
     // trade fails if caller is not vault owner
     function testTradeFails_IfCallerIsNotVaultOwner() public {
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-            ),
+            IPredyPool.TradeParams(1, 0, -99 * 1e4, 0, abi.encode(_getTradeAfterParams(1e8))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
-        bytes memory extraData = abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0));
+        bytes memory extraData = abi.encode(_getTradeAfterParams(0));
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
@@ -156,9 +144,8 @@ contract TestTrade is TestPool {
     }
 
     function testTradeFails_IfCallerIsNotAllowed() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            whitelistPairId, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(whitelistPairId, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e6)));
 
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
@@ -173,9 +160,8 @@ contract TestTrade is TestPool {
 
     // trade fails if pairId does not exist
     function testTradeFailsIfPairIdDoesNotExist() public {
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            100, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(100, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e6)));
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
@@ -187,9 +173,8 @@ contract TestTrade is TestPool {
     function testTradeFailsIfVaultIsNotSafe(uint256 marginAmount) public {
         marginAmount = bound(marginAmount, 0, 1e8);
 
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), marginAmount))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, 1e8, 0, abi.encode(_getTradeAfterParams(marginAmount)));
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
@@ -205,9 +190,8 @@ contract TestTrade is TestPool {
 
         currency1.transfer(address(predyPool), 1e10);
 
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, int256(tradeAmount), 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e10))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, int256(tradeAmount), 0, abi.encode(_getTradeAfterParams(1e10)));
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
@@ -222,15 +206,12 @@ contract TestTrade is TestPool {
         borrowAmount = bound(borrowAmount, 0, 20000);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, -9000, 10000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-            ),
+            IPredyPool.TradeParams(1, 0, -9000, 10000, abi.encode(_getTradeAfterParams(1e8))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
-        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, 10000, -int256(borrowAmount), abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
-        );
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, 10000, -int256(borrowAmount), abi.encode(_getTradeAfterParams(1e8)));
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
@@ -246,9 +227,8 @@ contract TestTrade is TestPool {
     // trade fails if current tick is not within safe range
     function testTradeFailsIfCurrentTickIsNotInRange() public {
         {
-            IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-                1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-            );
+            IPredyPool.TradeParams memory tradeParams =
+                IPredyPool.TradeParams(1, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e6)));
 
             tradeMarket.trade(
                 tradeParams, directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
@@ -258,9 +238,8 @@ contract TestTrade is TestPool {
         _movePrice(true, 5 * 1e16);
 
         {
-            IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-                1, 0, 400, -500, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-            );
+            IPredyPool.TradeParams memory tradeParams =
+                IPredyPool.TradeParams(1, 0, 400, -500, abi.encode(_getTradeAfterParams(1e6)));
 
             ISettlement.SettlementData memory settlementData =
                 directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);

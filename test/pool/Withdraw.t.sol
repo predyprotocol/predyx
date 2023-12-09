@@ -64,9 +64,7 @@ contract TestPoolWithdraw is TestPool {
         predyPool.supply(1, false, 1e6);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(
-                1, 0, -10000, 9000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
-            ),
+            IPredyPool.TradeParams(1, 0, -10000, 9000, abi.encode(_getTradeAfterParams(1e6))),
             directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
