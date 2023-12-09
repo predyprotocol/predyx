@@ -101,7 +101,11 @@ contract TestExecLiquidationCall is TestPool {
     function testLiquidateSucceedsByPremiumPayment() public {
         _tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -2 * 1e8, 2 * 1e8, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e7))
+                1,
+                0,
+                -2 * 1e8,
+                2 * 1e8,
+                abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e7))
             ),
             _getSettlementData(1e4)
         );

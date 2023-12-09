@@ -20,18 +20,17 @@ contract TestTradeMarket is BaseHookCallback {
 
     constructor(IPredyPool predyPool) BaseHookCallback(predyPool) {}
 
-    function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory tradeResult)
-        external
-        override(BaseHookCallback)
-    {
+    function predyTradeAfterCallback(
+        IPredyPool.TradeParams memory tradeParams,
+        IPredyPool.TradeResult memory tradeResult
+    ) external override(BaseHookCallback) {
         TradeAfterParams memory tradeAfterParams = abi.decode(tradeParams.extraData, (TradeAfterParams));
 
-        if(tradeResult.minMargin == 0) {
+        if (tradeResult.minMargin == 0) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
             ILendingPool(address(_predyPool)).take(true, tradeAfterParams.trader, uint256(vault.margin));
         } else {
-
             ERC20(tradeAfterParams.quoteTokenAddress).transfer(address(_predyPool), tradeAfterParams.marginAmountUpdate);
         }
     }
