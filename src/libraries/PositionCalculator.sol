@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import "./UniHelper.sol";
 import "./Perp.sol";
 import "./DataType.sol";
@@ -88,7 +87,7 @@ library PositionCalculator {
             pairStatus.riskParams.riskRatio
         );
 
-        int256 minMinValue = SafeCast.toInt256(calculateRequiredCollateralWithDebt() * debtValue / 1e6);
+        int256 minMinValue = (calculateRequiredCollateralWithDebt() * debtValue).toInt256() / 1e6;
 
         minMargin = vaultValue - minValue + minMinValue;
 
