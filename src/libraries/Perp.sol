@@ -379,7 +379,7 @@ library Perp {
         uint256 f0;
         uint256 f1;
 
-        // overflow of feeGrowth is unchecked in Uniswap V3
+        // overflow of feeGrowth is unchecked in Uniswap V3 smart contracts
         unchecked {
             f0 = feeGrowthInside0X128 - _assetStatus.lastFee0Growth;
             f1 = feeGrowthInside1X128 - _assetStatus.lastFee1Growth;
