@@ -76,8 +76,8 @@ library PerpFee {
             return (feeUnderlying, feeStable);
         }
 
-        int256 fee0 = Math.mulDivDownInt256(sqrtPerp.amount, growthDiff0, Constants.Q128);
-        int256 fee1 = Math.mulDivDownInt256(sqrtPerp.amount, growthDiff1, Constants.Q128);
+        int256 fee0 = Math.fullMulDivDownInt256(sqrtPerp.amount, growthDiff0, Constants.Q128);
+        int256 fee1 = Math.fullMulDivDownInt256(sqrtPerp.amount, growthDiff1, Constants.Q128);
 
         if (baseAssetStatus.isMarginZero) {
             feeStable = fee0;
