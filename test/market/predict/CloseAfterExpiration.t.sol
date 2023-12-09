@@ -49,13 +49,13 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
     }
 
     function testCloseFails() public {
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
         vm.expectRevert(PredictMarket.CloseBeforeExpiration.selector);
         fillerMarket.closeAfterExpiration(1, settlementData);
@@ -65,7 +65,7 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
         vm.warp(block.timestamp + 10 minutes);
 
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.closeAfterExpiration(1, settlementData);
@@ -79,7 +79,7 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
         vm.warp(block.timestamp + 10 minutes);
 
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
         fillerMarket.closeAfterExpiration(1, settlementData);
 

@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import "../../src/settlements/DirectSettlement.sol";
 import "../mocks/TestTradeMarket.sol";
+import {Constants} from "../../src/libraries/Constants.sol";
 
-contract TestWithdraw is TestPool {
+contract TestPoolWithdraw is TestPool {
     TestTradeMarket tradeMarket;
     address supplyTokenAddress;
     DirectSettlement directSettlement;
@@ -66,7 +67,7 @@ contract TestWithdraw is TestPool {
             IPredyPool.TradeParams(
                 1, 0, -10000, 9000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
             ),
-            directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         if (amount >= 998562) {
