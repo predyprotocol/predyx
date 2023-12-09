@@ -63,7 +63,7 @@ contract TestReallocate is TestPool {
 
         {
             IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-                1, 0, -90000, 100000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 2 * 1e6))
+                1, 0, -90000, 100000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 2 * 1e6))
             );
 
             tradeMarket.trade(tradeParams, settlement.getSettlementParams(address(currency1), address(currency0), 1e4));

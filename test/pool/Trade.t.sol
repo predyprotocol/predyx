@@ -46,7 +46,7 @@ contract TestTrade is TestPool {
 
     function testTradeSucceeds() public {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e6))
         );
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
@@ -68,14 +68,14 @@ contract TestTrade is TestPool {
     function testTradeSucceedsForClose() public {
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e8))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 1, 99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))
+                1, 1, 99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 0))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -88,7 +88,7 @@ contract TestTrade is TestPool {
     function testTradeSucceedsWithZeroAmount() public {
         IPredyPool.TradeResult memory tradeResult1 = tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -1e7, 9 * 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+                1, 0, -1e7, 9 * 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e8))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -97,7 +97,7 @@ contract TestTrade is TestPool {
 
         IPredyPool.TradeResult memory tradeResult2 = tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, tradeResult1.vaultId, 0, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))
+                1, tradeResult1.vaultId, 0, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 0))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -120,7 +120,7 @@ contract TestTrade is TestPool {
         int256 quoteTokenAmount = int256(bound(b, 0, 1000000)) - 500000;
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+            1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e8))
         );
         bytes memory settlementData = abi.encode(
             TestSettlementCurrencyNotSettled.SettlementParams(
@@ -142,12 +142,12 @@ contract TestTrade is TestPool {
     function testTradeFails_IfCallerIsNotVaultOwner() public {
         IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+                1, 0, -99 * 1e4, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e8))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
-        bytes memory extraData = abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0));
+        bytes memory extraData = abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 0));
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
 
@@ -157,7 +157,7 @@ contract TestTrade is TestPool {
 
     function testTradeFails_IfCallerIsNotAllowed() public {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            whitelistPairId, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+            whitelistPairId, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e6))
         );
 
         ISettlement.SettlementData memory settlementData =
@@ -174,7 +174,7 @@ contract TestTrade is TestPool {
     // trade fails if pairId does not exist
     function testTradeFailsIfPairIdDoesNotExist() public {
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            100, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+            100, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e6))
         );
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
@@ -188,7 +188,7 @@ contract TestTrade is TestPool {
         marginAmount = bound(marginAmount, 0, 1e8);
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), marginAmount))
+            1, 0, 1e8, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), marginAmount))
         );
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
@@ -206,7 +206,7 @@ contract TestTrade is TestPool {
         currency1.transfer(address(predyPool), 1e10);
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, int256(tradeAmount), 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e10))
+            1, 0, int256(tradeAmount), 0, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e10))
         );
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
@@ -223,13 +223,13 @@ contract TestTrade is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -9000, 10000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+                1, 0, -9000, 10000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e8))
             ),
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-            1, 0, 10000, -int256(borrowAmount), abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e8))
+            1, 0, 10000, -int256(borrowAmount), abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e8))
         );
         ISettlement.SettlementData memory settlementData =
             directSettlement.getSettlementParams(address(currency1), address(currency0), 1e4);
@@ -247,7 +247,7 @@ contract TestTrade is TestPool {
     function testTradeFailsIfCurrentTickIsNotInRange() public {
         {
             IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-                1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+                1, 0, -900, 1000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e6))
             );
 
             tradeMarket.trade(
@@ -259,7 +259,7 @@ contract TestTrade is TestPool {
 
         {
             IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
-                1, 0, 400, -500, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e6))
+                1, 0, 400, -500, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 1e6))
             );
 
             ISettlement.SettlementData memory settlementData =

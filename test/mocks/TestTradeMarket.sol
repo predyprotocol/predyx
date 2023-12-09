@@ -13,18 +13,27 @@ import "../../src/libraries/logic/TradeLogic.sol";
  */
 contract TestTradeMarket is BaseHookCallback {
     struct TradeAfterParams {
+        address trader;
         address quoteTokenAddress;
         uint256 marginAmountUpdate;
     }
 
     constructor(IPredyPool predyPool) BaseHookCallback(predyPool) {}
 
-    function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory)
+    function predyTradeAfterCallback(IPredyPool.TradeParams memory tradeParams, IPredyPool.TradeResult memory tradeResult)
         external
         override(BaseHookCallback)
     {
         TradeAfterParams memory tradeAfterParams = abi.decode(tradeParams.extraData, (TradeAfterParams));
-        ERC20(tradeAfterParams.quoteTokenAddress).transfer(address(_predyPool), tradeAfterParams.marginAmountUpdate);
+
+        if(tradeResult.minMargin == 0) {
+            DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
+
+            ILendingPool(address(_predyPool)).take(true, tradeAfterParams.trader, uint256(vault.margin));
+        } else {
+
+            ERC20(tradeAfterParams.quoteTokenAddress).transfer(address(_predyPool), tradeAfterParams.marginAmountUpdate);
+        }
     }
 
     function trade(IPredyPool.TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)

@@ -24,16 +24,20 @@ contract ProtocolInsolvencyTest is TestPool {
 
         settlement = new DirectSettlement(predyPool, address(this));
 
-        currency0.transfer(address(tradeMarket), 1e8);
-        currency1.transfer(address(tradeMarket), 1e8);
+        // currency0.transfer(address(tradeMarket), 1e10);
+        currency1.transfer(address(tradeMarket), 1e10);
 
-        currency0.approve(address(settlement), 1e8);
-        currency1.approve(address(settlement), 1e8);
+        currency0.approve(address(settlement), 1e10);
+        currency1.approve(address(settlement), 1e10);
+    }
+
+    function _getTradeAfterParams(uint256 updateMarginAmount) internal view returns (TestTradeMarket.TradeAfterParams memory) {
+        return TestTradeMarket.TradeAfterParams(address(this), address(currency1), updateMarginAmount);
     }
 
     function testNormalFlow() external {
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 0, 1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))),
+            IPredyPool.TradeParams(1, 0, 1e6, 0, abi.encode(_getTradeAfterParams(1e7))),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
@@ -44,7 +48,7 @@ contract ProtocolInsolvencyTest is TestPool {
         vm.warp(block.timestamp + 1 days);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, -1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, -1e6, 0, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 10100)
         );
 
@@ -65,7 +69,7 @@ contract ProtocolInsolvencyTest is TestPool {
         vm.warp(block.timestamp + 7 days);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, -1e6, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, -1e6, 0, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 10100)
         );
 
@@ -85,7 +89,7 @@ contract ProtocolInsolvencyTest is TestPool {
     function testEarnTradeFeeFlow() external {
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -1e6, 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
+                1, 0, -1e6, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -100,7 +104,7 @@ contract ProtocolInsolvencyTest is TestPool {
         vm.warp(block.timestamp + 1 days);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
@@ -117,6 +121,64 @@ contract ProtocolInsolvencyTest is TestPool {
         assertEq(currency1.balanceOf(address(predyPool)), 10000014);
     }
 
+    function testBorrowSquartFlow() external {
+        assertFalse(
+            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
+        );
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(
+                1, 0, -9 * 1e7, 1e8, abi.encode(_getTradeAfterParams(1e7))
+            ),
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+        );
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(
+                1, 0, 1e7, -1e7, abi.encode(_getTradeAfterParams(1e7))
+            ),
+            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+        );
+
+        _movePrice(true, 3 * 1e16);
+
+        // vm.warp(block.timestamp + 1 days);
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 1, -1e7, 0, abi.encode(_getTradeAfterParams(0))),
+            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+        );
+
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 2, -1e7, 1e7, abi.encode(_getTradeAfterParams(0))),
+            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+        );
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 1, 1e8, -1e8, abi.encode(_getTradeAfterParams(0))),
+            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+        );
+
+        predyPool.withdraw(1, true, 1e18);
+        predyPool.withdraw(1, false, 1e18);
+
+        // check payouts are correct
+        {
+            DataType.Vault memory vault1 = predyPool.getVault(1);
+            assertEq(vault1.margin, 10050012);
+        }
+
+        {
+            DataType.Vault memory vault2 = predyPool.getVault(2);
+            assertEq(vault2.margin, 9999992);
+        }
+
+        assertEq(currency0.balanceOf(address(predyPool)), 4);
+        assertEq(currency1.balanceOf(address(predyPool)), 20050029);
+    }
+
+
     function testReallocationFlow() external {
         assertFalse(
             predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
@@ -124,14 +186,14 @@ contract ProtocolInsolvencyTest is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -9 * 1e5, 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
+                1, 0, -9 * 1e5, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, 1e5, -1e5, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
+                1, 0, 1e5, -1e5, abi.encode(_getTradeAfterParams(1e7))
             ),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -146,7 +208,7 @@ contract ProtocolInsolvencyTest is TestPool {
         vm.warp(block.timestamp + 1 days);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, -1e5, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, -1e5, 0, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 15000)
         );
 
@@ -158,12 +220,12 @@ contract ProtocolInsolvencyTest is TestPool {
         );
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 2, -1e5, 1e5, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 2, -1e5, 1e5, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 10000)
         );
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 10000)
         );
 
@@ -192,14 +254,14 @@ contract ProtocolInsolvencyTest is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -9 * 1e5, 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
+                1, 0, -9 * 1e5, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
-                1, 0, -9 * 1e5, 1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 1e7))
+                1, 0, -9 * 1e5, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
             settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
         );
@@ -214,12 +276,12 @@ contract ProtocolInsolvencyTest is TestPool {
         vm.warp(block.timestamp + 1 days);
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 2, -1e5, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 2, -1e5, 0, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 15000)
         );
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, -1e5, 0, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, -1e5, 0, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 15000)
         );
 
@@ -231,12 +293,12 @@ contract ProtocolInsolvencyTest is TestPool {
         );
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 10000)
         );
 
         tradeMarket.trade(
-            IPredyPool.TradeParams(1, 2, 1e6, -1e6, abi.encode(TestTradeMarket.TradeAfterParams(address(currency1), 0))),
+            IPredyPool.TradeParams(1, 2, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
             settlement.getSettlementParams(address(currency1), address(currency0), 10000)
         );
 

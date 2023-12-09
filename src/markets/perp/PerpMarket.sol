@@ -85,9 +85,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
             uint256 closeValue = uint256(vault.margin);
 
-            ILendingPool(address(_predyPool)).take(true, address(this), closeValue);
-
-            quoteToken.safeTransfer(callbackData.trader, closeValue);
+            ILendingPool(address(_predyPool)).take(true, callbackData.trader, closeValue);
 
             if (callbackData.callbackSource == CallbackSource.CLOSE) {
                 emit PerpClosedByTPSLOrder(
@@ -100,9 +98,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             if (marginAmountUpdate > 0) {
                 quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
             } else if (marginAmountUpdate < 0) {
-                ILendingPool(address(_predyPool)).take(true, address(this), uint256(-marginAmountUpdate));
-
-                quoteToken.safeTransfer(callbackData.trader, uint256(-marginAmountUpdate));
+                ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
         }
     }
