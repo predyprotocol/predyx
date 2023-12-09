@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
@@ -30,6 +30,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
     using Bps for uint256;
+    using SafeTransferLib for ERC20;
 
     error NullOwner();
     error DurationTooLong();
@@ -87,19 +88,15 @@ contract PredictMarket is IFillerMarket, BaseMarket {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
         if (callbackData.callbackSource == CallbackSource.OPEN) {
-            TransferHelper.safeTransfer(
-                _getQuoteTokenAddress(tradeParams.pairId), address(_predyPool), callbackData.depositAmount
+            ERC20(_getQuoteTokenAddress(tradeParams.pairId)).safeTransfer(
+                address(_predyPool), callbackData.depositAmount
             );
         } else if (callbackData.callbackSource == CallbackSource.CLOSE) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
             uint256 closeValue = uint256(vault.margin);
 
-            ILendingPool(address(_predyPool)).take(true, address(this), closeValue);
-
-            TransferHelper.safeTransfer(
-                _getQuoteTokenAddress(tradeParams.pairId), userPositions[tradeParams.vaultId].owner, closeValue
-            );
+            ILendingPool(address(_predyPool)).take(true, userPositions[tradeParams.vaultId].owner, closeValue);
 
             emit PredictPositionClosed(tradeParams.vaultId, closeValue, tradeResult.payoff, tradeResult.fee);
         }
