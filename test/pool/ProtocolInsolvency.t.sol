@@ -6,8 +6,9 @@ import {TestTradeMarket} from "../mocks/TestTradeMarket.sol";
 import {DirectSettlement} from "../../src/settlements/DirectSettlement.sol";
 import {IPredyPool} from "../../src/interfaces/IPredyPool.sol";
 import {DataType} from "../../src/libraries/DataType.sol";
+import {Constants} from "../../src/libraries/Constants.sol";
 
-contract ProtocolInsolvencyTest is TestPool {
+contract TestPoolProtocolInsolvency is TestPool {
     DirectSettlement private settlement;
     TestTradeMarket private tradeMarket;
     address private filler;
@@ -38,7 +39,7 @@ contract ProtocolInsolvencyTest is TestPool {
     function testNormalFlow() external {
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 0, 1e6, 0, abi.encode(_getTradeAfterParams(1e7))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         _movePrice(true, 1000);
@@ -49,7 +50,7 @@ contract ProtocolInsolvencyTest is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, -1e6, 0, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 10100)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 10100 / 10000)
         );
 
         predyPool.withdraw(1, true, 1e18);
@@ -58,11 +59,11 @@ contract ProtocolInsolvencyTest is TestPool {
         {
             DataType.Vault memory vault = predyPool.getVault(1);
 
-            assertEq(vault.margin, 1e7 + 9958);
+            assertEq(vault.margin, 1e7 + 9957);
         }
 
         assertEq(currency0.balanceOf(address(predyPool)), 0);
-        assertEq(currency1.balanceOf(address(predyPool)), 1e7 + 9959);
+        assertEq(currency1.balanceOf(address(predyPool)), 1e7 + 9958);
 
         vm.revertTo(snapshot);
 
@@ -70,7 +71,7 @@ contract ProtocolInsolvencyTest is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, -1e6, 0, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 10100)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 10100 / 10000)
         );
 
         predyPool.withdraw(1, true, 1e18);
@@ -79,11 +80,11 @@ contract ProtocolInsolvencyTest is TestPool {
         {
             DataType.Vault memory vault = predyPool.getVault(1);
 
-            assertEq(vault.margin, 1e7 + 9712);
+            assertEq(vault.margin, 1e7 + 9711);
         }
 
         assertEq(currency0.balanceOf(address(predyPool)), 0);
-        assertEq(currency1.balanceOf(address(predyPool)), 1e7 + 9713);
+        assertEq(currency1.balanceOf(address(predyPool)), 1e7 + 9712);
     }
 
     function testEarnTradeFeeFlow() external {
@@ -91,7 +92,7 @@ contract ProtocolInsolvencyTest is TestPool {
             IPredyPool.TradeParams(
                 1, 0, -1e6, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         _movePrice(true, 1e15);
@@ -105,7 +106,7 @@ contract ProtocolInsolvencyTest is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         predyPool.withdraw(1, true, 1e18);
@@ -181,52 +182,58 @@ contract ProtocolInsolvencyTest is TestPool {
 
     function testReallocationFlow() external {
         assertFalse(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
                 1, 0, -9 * 1e5, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
                 1, 0, 1e5, -1e5, abi.encode(_getTradeAfterParams(1e7))
             ),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         _movePrice(true, 5 * 1e16);
 
         // reallocation is happened
         assertTrue(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 15000))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
+            )
         );
 
         vm.warp(block.timestamp + 1 days);
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, -1e5, 0, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 15000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
         );
 
         _movePrice(false, 5 * 1e16);
         vm.warp(block.timestamp + 1 days);
 
         assertTrue(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 9000))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 9000 / 10000)
+            )
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 2, -1e5, 1e5, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         predyPool.withdraw(1, true, 1e18);
@@ -249,57 +256,63 @@ contract ProtocolInsolvencyTest is TestPool {
 
     function testReallocationEdgeFlow() external {
         assertFalse(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
                 1, 0, -9 * 1e5, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(
                 1, 0, -9 * 1e5, 1e6, abi.encode(_getTradeAfterParams(1e7))
             ),
-            settlement.getSettlementParams(address(currency1), address(currency0), 1e4)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         _movePrice(true, 5 * 1e16);
 
         // reallocation is happened
         assertTrue(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 15000))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
+            )
         );
 
         vm.warp(block.timestamp + 1 days);
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 2, -1e5, 0, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 15000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, -1e5, 0, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 15000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
         );
 
         _movePrice(false, 5 * 1e16);
         vm.warp(block.timestamp + 1 days);
 
         assertTrue(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 10000))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 1, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 2, 1e6, -1e6, abi.encode(_getTradeAfterParams(0))),
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         predyPool.withdraw(1, true, 1e18);

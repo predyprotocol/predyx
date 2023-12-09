@@ -6,6 +6,7 @@ import {TestTradeMarket} from "../mocks/TestTradeMarket.sol";
 import {DirectSettlement} from "../../src/settlements/DirectSettlement.sol";
 import {ISettlement} from "../../src/interfaces/ISettlement.sol";
 import {IPredyPool} from "../../src/interfaces/IPredyPool.sol";
+import {Constants} from "../../src/libraries/Constants.sol";
 
 contract TestReallocate is TestPool {
     DirectSettlement private settlement;
@@ -41,7 +42,7 @@ contract TestReallocate is TestPool {
 
     function testReallocateFailsByInvalidPairId() public {
         ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
         vm.expectRevert(IPredyPool.InvalidPairId.selector);
         predyPool.reallocate(0, settlementData);
@@ -53,25 +54,35 @@ contract TestReallocate is TestPool {
     function testReallocateSucceeds() public {
         // reallocation never be happened if current tick is within safe range
         assertFalse(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
         );
 
         _movePrice(true, 5 * 1e16);
 
         // reallocation happens even if total liquidity is 0
-        assertTrue(predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4)));
+        assertTrue(
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
+        );
 
         {
             IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
                 1, 0, -90000, 100000, abi.encode(TestTradeMarket.TradeAfterParams(address(this), address(currency1), 2 * 1e6))
             );
 
-            tradeMarket.trade(tradeParams, settlement.getSettlementParams(address(currency1), address(currency0), 1e4));
+            tradeMarket.trade(
+                tradeParams, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            );
         }
 
         // reallocation never be happened if current tick is within safe range
         assertFalse(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 1e4))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
         );
 
         _movePrice(true, 5 * 1e16);
@@ -80,7 +91,9 @@ contract TestReallocate is TestPool {
 
         // reallocation is happened
         assertTrue(
-            predyPool.reallocate(1, settlement.getSettlementParams(address(currency1), address(currency0), 15000))
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
+            )
         );
 
         vm.revertTo(snapshot);
@@ -88,7 +101,7 @@ contract TestReallocate is TestPool {
         {
             // fails if quote token amount is not enough
             ISettlement.SettlementData memory settlementData =
-                settlement.getSettlementParams(address(currency1), address(currency0), 10000);
+                settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
             vm.expectRevert(IPredyPool.QuoteTokenNotSettled.selector);
             predyPool.reallocate(1, settlementData);

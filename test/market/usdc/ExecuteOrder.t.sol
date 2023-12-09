@@ -47,10 +47,11 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, _fromPrivateKey);
 
-        IPredyPool.TradeResult memory tradeResult =
-            perpMarket.executeOrder(signedOrder, settlement.getSettlementParams(address(_usdc), address(_weth), 1600));
+        IPredyPool.TradeResult memory tradeResult = perpMarket.executeOrder(
+            signedOrder, settlement.getSettlementParams(address(_usdc), address(_weth), Constants.Q96 * 1600 / 10000)
+        );
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 160);
+        assertEq(tradeResult.payoff.perpEntryUpdate, 159);
         assertEq(tradeResult.payoff.perpPayoff, 0);
     }
 }

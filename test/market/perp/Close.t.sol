@@ -78,11 +78,11 @@ contract TestGammaClose is TestPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder2 = _createSignedOrder(order2, fromPrivateKey2);
 
         fillerMarket.executeOrder(
-            signedOrder1, directSettlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            signedOrder1, directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
 
         fillerMarket.executeOrder(
-            signedOrder2, directSettlement.getSettlementParams(address(currency1), address(currency0), 10000)
+            signedOrder2, directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
     }
 
@@ -90,7 +90,7 @@ contract TestGammaClose is TestPerpMarket {
         mockPriceFeed.setSqrtPrice(2 ** 96);
 
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(currency1), address(currency0), 10000);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
 
         vm.expectRevert();
         fillerMarket.close(from1, 1, settlementData);
@@ -100,7 +100,7 @@ contract TestGammaClose is TestPerpMarket {
         mockPriceFeed.setSqrtPrice(1011 * Constants.Q96 / 1000);
 
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(currency1), address(currency0), 10220);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 10220 / 10000);
 
         vm.expectRevert();
         fillerMarket.close(from2, 1, settlementData);
@@ -110,7 +110,7 @@ contract TestGammaClose is TestPerpMarket {
         mockPriceFeed.setSqrtPrice(987 * Constants.Q96 / 1000);
 
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(currency1), address(currency0), 9730);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 9730 / 10000);
 
         vm.expectRevert();
         fillerMarket.close(from2, 1, settlementData);
@@ -120,7 +120,7 @@ contract TestGammaClose is TestPerpMarket {
         mockPriceFeed.setSqrtPrice(1011 * Constants.Q96 / 1000);
 
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(currency1), address(currency0), 10220);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 10220 / 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.close(from1, 1, settlementData);
@@ -134,7 +134,7 @@ contract TestGammaClose is TestPerpMarket {
         mockPriceFeed.setSqrtPrice(987 * Constants.Q96 / 1000);
 
         ISettlement.SettlementData memory settlementData =
-            directSettlement.getSettlementParams(address(currency1), address(currency0), 9730);
+            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 9730 / 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.close(from1, 1, settlementData);
