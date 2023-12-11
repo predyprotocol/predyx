@@ -34,7 +34,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
             abi.encode(uniswapFactory, address(currency0))
         );
 
-        permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
+        permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 

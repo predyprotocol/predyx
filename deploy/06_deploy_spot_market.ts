@@ -1,7 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
-
-const Permit2Address = ''
+import { Permit2 } from '../addressList'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre
@@ -11,20 +10,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
-  await deploy('SpotDutchOrderValidator', {
-    from: deployer,
-    log: true,
-  })
-
-  await deploy('SpotExclusiveLimitOrderValidator', {
-    from: deployer,
-    log: true,
-  })
-
   await deploy('SpotMarket', {
     from: deployer,
     log: true,
-    args: [Permit2Address]
+    args: [Permit2]
   })
 }
 

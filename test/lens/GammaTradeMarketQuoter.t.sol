@@ -10,7 +10,7 @@ import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
 import "../../src/settlements/UniswapSettlement.sol";
 
-contract TestPredictMarketQuoter is TestLens {
+contract TestGammaTradeMarketQuoter is TestLens {
     GammaTradeMarketQuoter _quoter;
 
     GeneralDutchOrderValidator dutchOrderValidator;
@@ -20,7 +20,7 @@ contract TestPredictMarketQuoter is TestLens {
     function setUp() public override {
         TestLens.setUp();
 
-        IPermit2 permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
+        IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
         GammaTradeMarket gammaTradeMarket =
             new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));

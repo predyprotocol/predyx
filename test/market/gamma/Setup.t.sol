@@ -25,7 +25,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
-        permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
+        permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
