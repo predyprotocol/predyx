@@ -27,7 +27,7 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 const config: HardhatUserConfig = {
   networks: {
     localhost: {
-      url: 'http://localhost:7545',
+      url: 'http://127.0.0.1:7545',
     },
     sepolia: {
       url: `https://sepolia.infura.io/v3/${InfuraKey}`,
