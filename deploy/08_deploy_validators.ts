@@ -1,8 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 
-const Permit2Address = ''
-
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
@@ -11,23 +9,32 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
-  const PredyPool = await ethers.getContract('PredyPool', deployer)
-
-  await deploy('GammaDutchOrderValidator', {
+  await deploy('DutchOrderValidator', {
     from: deployer,
     log: true,
   })
 
-  await deploy('GammaLimitOrderValidator', {
+  await deploy('GeneralDutchOrderValidator', {
     from: deployer,
     log: true,
   })
 
-  await deploy('GammaTradeMarket', {
+  await deploy('LimitOrderValidator', {
     from: deployer,
     log: true,
-    args: [PredyPool.address, Permit2Address]
   })
+
+  // for spot market
+  await deploy('SpotDutchOrderValidator', {
+    from: deployer,
+    log: true,
+  })
+
+  await deploy('SpotExclusiveLimitOrderValidator', {
+    from: deployer,
+    log: true,
+  })
+
 }
 
 export default func

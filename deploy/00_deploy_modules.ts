@@ -14,11 +14,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   })
 
-  await deploy('MarginLogic', {
-    from: deployer,
-    log: true
-  })
-
   await deploy('ReaderLogic', {
     from: deployer,
     log: true

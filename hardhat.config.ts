@@ -9,8 +9,6 @@ import 'hardhat-deploy'
 import '@eth-optimism/hardhat-ovm'
 import '@nomiclabs/hardhat-ethers'
 import 'hardhat-preprocessor'
-// eslint-disable-next-line node/no-missing-import
-import './tasks/update-asset-risk-params'
 
 dotenv.config()
 
@@ -31,18 +29,9 @@ const config: HardhatUserConfig = {
     localhost: {
       url: 'http://localhost:7545',
     },
-    rinkeby: {
-      url: `https://rinkeby.infura.io/v3/${InfuraKey}`,
+    sepolia: {
+      url: `https://sepolia.infura.io/v3/${InfuraKey}`,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    },
-    kovan: {
-      url: `https://kovan.infura.io/v3/${InfuraKey}`,
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    },
-    ropsten: {
-      url: `https://ropsten.infura.io/v3/${InfuraKey}`,
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      gas: 8000000,
     },
     goerli: {
       url: `https://goerli.infura.io/v3/${InfuraKey}`,

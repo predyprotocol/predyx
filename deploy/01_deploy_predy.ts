@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 
-const uniswapFactory = ''
+const uniswapFactory = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers, network } = hre
@@ -16,7 +16,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const ReaderLogic = await ethers.getContract('ReaderLogic', deployer)
   const SupplyLogic = await ethers.getContract('SupplyLogic', deployer)
   const TradeLogic = await ethers.getContract('TradeLogic', deployer)
-  const MarginLogic = await ethers.getContract('MarginLogic', deployer)
 
   await deploy('PredyPool', {
     from: deployer,
@@ -27,8 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       ReaderLogic: ReaderLogic.address,
       AddPairLogic: AddPairLogic.address,
       SupplyLogic: SupplyLogic.address,
-      TradeLogic: TradeLogic.address,
-      MarginLogic: MarginLogic.address
+      TradeLogic: TradeLogic.address
     },
     log: true,
     proxy: {

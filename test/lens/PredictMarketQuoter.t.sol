@@ -20,7 +20,7 @@ contract TestPredictMarketQuoter is TestLens {
     function setUp() public override {
         TestLens.setUp();
 
-        IPermit2 permit2 = IPermit2(deployCode("../artifacts/Permit2.sol:Permit2"));
+        IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
         PredictMarket predictMarket =
             new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));

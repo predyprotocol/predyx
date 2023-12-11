@@ -13,7 +13,8 @@ docs/
 # Dotenv file
 .env
 
+cache_hardhat/
 
 node_modules
-
+artifacts
 typechain

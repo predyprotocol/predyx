@@ -1,7 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
-
-const Permit2Address = ''
+import { Filler, Permit2 } from '../addressList'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre
@@ -12,21 +11,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments
 
   const PredyPool = await ethers.getContract('PredyPool', deployer)
-
-  await deploy('PerpDutchOrderValidator', {
-    from: deployer,
-    log: true,
-  })
-
-  await deploy('PerpLimitOrderValidator', {
-    from: deployer,
-    log: true,
-  })
+  const PredyPoolQuoter = await ethers.getContract('PredyPoolQuoter', deployer)
 
   await deploy('PerpMarket', {
     from: deployer,
     log: true,
-    args: [PredyPool.address, Permit2Address]
+    args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
   })
 }
 
