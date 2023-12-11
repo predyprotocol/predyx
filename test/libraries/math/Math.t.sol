@@ -30,9 +30,14 @@ contract MathTest is Test {
         assertEq(Math.mulDivDownInt256(-111, 111, 2), -6161);
     }
 
-    function testMulDivDownInt256Fuzz(uint256 _x) public {
-        assertGe(Math.mulDivDownInt256(111, _x, _Q128), 0);
-        assertLe(Math.mulDivDownInt256(-111, _x, _Q128), 0);
+    function testFullMulDivDownInt256() public {
+        assertEq(Math.fullMulDivDownInt256(111, 111, 2), 6160);
+        assertEq(Math.fullMulDivDownInt256(-111, 111, 2), -6161);
+    }
+
+    function testFullMulDivDownInt256Fuzz(uint256 _x) public {
+        assertGe(Math.fullMulDivDownInt256(111, _x, _Q128), 0);
+        assertLe(Math.fullMulDivDownInt256(-111, _x, _Q128), 0);
     }
 
     function testAddDelta(uint256 x, int256 y) public {

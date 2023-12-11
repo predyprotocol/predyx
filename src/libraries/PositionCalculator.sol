@@ -87,7 +87,7 @@ library PositionCalculator {
             pairStatus.riskParams.riskRatio
         );
 
-        int256 minMinValue = SafeCast.toInt256(calculateRequiredCollateralWithDebt() * debtValue / 1e6);
+        int256 minMinValue = (calculateRequiredCollateralWithDebt() * debtValue).toInt256() / 1e6;
 
         minMargin = vaultValue - minValue + minMinValue;
 
@@ -204,6 +204,7 @@ library PositionCalculator {
         }
 
         if (_positionParams.amountSqrt < 0 && _positionParams.amountUnderlying > 0) {
+            // amountSqrt * 2^96 is fits in 256 bits
             uint256 minSqrtPrice =
                 (uint256(-_positionParams.amountSqrt) * Constants.Q96) / uint256(_positionParams.amountUnderlying);
 
@@ -226,8 +227,8 @@ library PositionCalculator {
     function calculateValue(uint256 _sqrtPrice, PositionParams memory _positionParams) internal pure returns (int256) {
         uint256 price = (_sqrtPrice * _sqrtPrice) >> Constants.RESOLUTION;
 
-        return ((_positionParams.amountUnderlying * price.toInt256()) / int256(Constants.Q96))
-            + (2 * (_positionParams.amountSqrt * _sqrtPrice.toInt256()) / int256(Constants.Q96))
+        return Math.fullMulDivInt256(_positionParams.amountUnderlying, price, Constants.Q96)
+            + Math.fullMulDivInt256(2 * _positionParams.amountSqrt, _sqrtPrice, Constants.Q96)
             + _positionParams.amountStable;
     }
 
