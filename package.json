@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "slither": "slither ."
+    "slither": "slither .",
+    "deploy-localhost": "npx hardhat deploy —network localhost"
   },
   "repository": {
     "type": "git",
