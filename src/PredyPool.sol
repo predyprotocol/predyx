@@ -339,17 +339,6 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
         return globalData.vaults[vaultId];
     }
 
-    /// @notice Gets the status of the vault
-    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {
-        uint256 pairId = globalData.vaults[vaultId].openPosition.pairId;
-
-        (int256 minMargin, int256 vaultValue,,) = PositionCalculator.calculateMinDeposit(
-            globalData.pairs[pairId], globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
-        );
-
-        return VaultStatus(vaultId, vaultValue, minMargin);
-    }
-
     /// @notice Gets the status of pair
     /// @dev This function always reverts
     function revertPairStatus(uint256 pairId) external {

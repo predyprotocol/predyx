@@ -7,7 +7,6 @@ import "./UniHelper.sol";
 import "./Perp.sol";
 import "./DataType.sol";
 import "./Constants.sol";
-import "./PerpFee.sol";
 import "./math/Math.sol";
 import "../PriceFeed.sol";
 
@@ -32,12 +31,12 @@ library PositionCalculator {
 
     function isLiquidatable(
         DataType.PairStatus memory pairStatus,
-        mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        DataType.Vault memory _vault
+        DataType.Vault memory _vault,
+        DataType.UnrealizedFee memory unrealizedFee
     ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint256 twap) {
         bool hasPosition;
 
-        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _vault, unrealizedFee);
 
         bool isSafe = vaultValue >= minMargin && _vault.margin >= 0;
 
@@ -46,12 +45,12 @@ library PositionCalculator {
 
     function checkSafe(
         DataType.PairStatus memory pairStatus,
-        mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        DataType.Vault memory _vault
+        DataType.Vault memory _vault,
+        DataType.UnrealizedFee memory unrealizedFee
     ) internal view returns (int256 minMargin) {
         bool isSafe;
 
-        (minMargin, isSafe,) = getIsSafe(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, unrealizedFee);
 
         if (!isSafe) {
             revert NotSafe();
@@ -60,20 +59,20 @@ library PositionCalculator {
 
     function getIsSafe(
         DataType.PairStatus memory pairStatus,
-        mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        DataType.Vault memory _vault
+        DataType.Vault memory _vault,
+        DataType.UnrealizedFee memory unrealizedFee
     ) internal view returns (int256 minMargin, bool isSafe, bool hasPosition) {
         int256 vaultValue;
 
-        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _rebalanceFeeGrowthCache, _vault);
+        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _vault, unrealizedFee);
 
         isSafe = vaultValue >= minMargin && _vault.margin >= 0;
     }
 
     function calculateMinDeposit(
         DataType.PairStatus memory pairStatus,
-        mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        DataType.Vault memory vault
+        DataType.Vault memory vault,
+        DataType.UnrealizedFee memory unrealizedFee
     ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint256 twap) {
         int256 minValue;
         uint256 debtValue;
@@ -82,7 +81,7 @@ library PositionCalculator {
 
         (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
             vault.margin,
-            getPositionWithUnrealizedFee(pairStatus, _rebalanceFeeGrowthCache, vault.openPosition),
+            getPositionWithUnrealizedFee(vault.openPosition, unrealizedFee),
             twap,
             pairStatus.riskParams.riskRatio
         );
@@ -142,17 +141,13 @@ library PositionCalculator {
     }
 
     function getPositionWithUnrealizedFee(
-        DataType.PairStatus memory pairStatus,
-        mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage _rebalanceFeeGrowthCache,
-        Perp.UserStatus memory _perpUserStatus
-    ) internal view returns (PositionParams memory positionParams) {
-        (int256 unrealizedFeeUnderlying, int256 unrealizedFeeStable) =
-            PerpFee.computeUserFee(pairStatus, _rebalanceFeeGrowthCache, _perpUserStatus);
-
+        Perp.UserStatus memory perpUserStatus,
+        DataType.UnrealizedFee memory unrealizedFee
+    ) internal pure returns (PositionParams memory positionParams) {
         return PositionParams(
-            _perpUserStatus.perp.entryValue + _perpUserStatus.sqrtPerp.entryValue + unrealizedFeeStable,
-            _perpUserStatus.sqrtPerp.amount,
-            _perpUserStatus.perp.amount + unrealizedFeeUnderlying
+            perpUserStatus.perp.entryValue + perpUserStatus.sqrtPerp.entryValue + unrealizedFee.feeAmountQuote,
+            perpUserStatus.sqrtPerp.amount,
+            perpUserStatus.perp.amount + unrealizedFee.feeAmountBase
         );
     }
 

@@ -32,4 +32,9 @@ library DataType {
         int256 stableGrowth;
         int256 underlyingGrowth;
     }
+
+    struct UnrealizedFee {
+        int256 feeAmountBase;
+        int256 feeAmountQuote;
+    }
 }

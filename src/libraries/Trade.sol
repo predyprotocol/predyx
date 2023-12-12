@@ -33,11 +33,8 @@ library Trade {
         DataType.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
-        // update rebalance interest growth
-        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
-
         // settle user balance and fee
-        (int256 underlyingFee, int256 stableFee) =
+        DataType.UnrealizedFee memory realizedFee =
             settleUserBalanceAndFee(pairStatus, globalData.rebalanceFeeGrowthCache, openPosition);
 
         // calculate required token amounts
@@ -52,7 +49,7 @@ library Trade {
         SwapStableResult memory swapResult = swap(
             globalData,
             tradeParams.pairId,
-            SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, underlyingFee, 0),
+            SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, realizedFee.feeAmountBase, 0),
             settlementData,
             tradeResult.sqrtPrice
         );
@@ -67,7 +64,7 @@ library Trade {
             Perp.UpdateSqrtPerpParams(tradeParams.tradeAmountSqrt, swapResult.amountSqrtPerp + stableAmountForSqrt)
         );
 
-        tradeResult.fee = stableFee + swapResult.fee;
+        tradeResult.fee = realizedFee.feeAmountQuote + swapResult.fee;
         tradeResult.vaultId = tradeParams.vaultId;
     }
 
@@ -135,8 +132,8 @@ library Trade {
         DataType.PairStatus storage _pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus storage _userStatus
-    ) internal returns (int256 underlyingFee, int256 stableFee) {
-        (underlyingFee, stableFee) = PerpFee.settleUserFee(_pairStatus, rebalanceFeeGrowthCache, _userStatus);
+    ) internal returns (DataType.UnrealizedFee memory realizedFee) {
+        realizedFee = PerpFee.settleUserFee(_pairStatus, rebalanceFeeGrowthCache, _userStatus);
 
         Perp.settleUserBalance(_pairStatus, _userStatus);
     }

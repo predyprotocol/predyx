@@ -9,6 +9,7 @@ import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {ApplyInterestLib} from "../ApplyInterestLib.sol";
 import {Constants} from "../Constants.sol";
 import {Perp} from "../Perp.sol";
+import {PerpFee} from "../PerpFee.sol";
 import {Trade} from "../Trade.sol";
 import {Math} from "../math/Math.sol";
 import {DataType} from "../DataType.sol";
@@ -47,6 +48,9 @@ library LiquidationLogic {
         // update interest growth
         ApplyInterestLib.applyInterestForToken(globalData.pairs, vault.openPosition.pairId);
 
+        // update rebalance interest growth
+        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
+
         // Checks the vault is danger
         (uint256 sqrtTwap, uint256 slippageTolerance) =
             checkVaultIsDanger(pairStatus, vault, globalData.rebalanceFeeGrowthCache);
@@ -68,7 +72,7 @@ library LiquidationLogic {
         bool hasPosition;
 
         (tradeResult.minMargin,, hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, globalData.rebalanceFeeGrowthCache, vault);
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
 
         // Check if the price is within the slippage tolerance range to ensure that the price does not become
         // excessively favorable to the liquidator.
@@ -125,8 +129,11 @@ library LiquidationLogic {
         int256 minMargin;
         int256 vaultValue;
 
+        DataType.UnrealizedFee memory unrealizedFee =
+            PerpFee.computeUserFee(pairStatus, rebalanceFeeGrowthCache, vault.openPosition);
+
         (isLiquidatable, minMargin, vaultValue, sqrtTwap) =
-            PositionCalculator.isLiquidatable(pairStatus, rebalanceFeeGrowthCache, vault);
+            PositionCalculator.isLiquidatable(pairStatus, vault, unrealizedFee);
 
         if (!isLiquidatable) {
             revert IPredyPool.VaultIsNotDanger();

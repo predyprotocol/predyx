@@ -209,6 +209,15 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
     }
 
+    function getUserPosition(address owner, uint256 pairId)
+        external
+        returns (UserPosition memory userPosition, IPredyPool.VaultStatus memory, DataType.Vault memory)
+    {
+        userPosition = userPositions[owner][pairId];
+
+        return (userPosition, _quoter.quoteVaultStatus(userPosition.vaultId), _predyPool.getVault(userPosition.vaultId));
+    }
+
     function _saveUserPosition(
         UserPosition storage userPosition,
         address trader,

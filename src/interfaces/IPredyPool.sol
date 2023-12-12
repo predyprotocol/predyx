@@ -70,6 +70,8 @@ interface IPredyPool {
         uint256 id;
         int256 vaultValue;
         int256 minMargin;
+        uint256 oraclePrice;
+        DataType.UnrealizedFee unrealizedFee;
     }
 
     function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
@@ -88,7 +90,6 @@ interface IPredyPool {
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint256);
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
-    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);
     function getPairStatus(uint256 pairId) external view returns (DataType.PairStatus memory);
 
     function revertPairStatus(uint256 pairId) external;

@@ -17,9 +17,9 @@ library PerpFee {
         DataType.PairStatus memory assetStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus memory userStatus
-    ) internal view returns (int256 unrealizedFeeUnderlying, int256 unrealizedFeeStable) {
-        unrealizedFeeUnderlying = assetStatus.basePool.tokenStatus.computeUserFee(userStatus.basePosition);
-        unrealizedFeeStable = assetStatus.quotePool.tokenStatus.computeUserFee(userStatus.stablePosition);
+    ) internal view returns (DataType.UnrealizedFee memory) {
+        int256 unrealizedFeeUnderlying = assetStatus.basePool.tokenStatus.computeUserFee(userStatus.basePosition);
+        int256 unrealizedFeeStable = assetStatus.quotePool.tokenStatus.computeUserFee(userStatus.stablePosition);
 
         {
             (int256 rebalanceInterestBase, int256 rebalanceInterestQuote) = computeRebalanceInterest(
@@ -34,16 +34,18 @@ library PerpFee {
             unrealizedFeeUnderlying += feeUnderlying;
             unrealizedFeeStable += feeStable;
         }
+
+        return DataType.UnrealizedFee(unrealizedFeeUnderlying, unrealizedFeeStable);
     }
 
     function settleUserFee(
         DataType.PairStatus storage assetStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus storage userStatus
-    ) internal returns (int256 totalFeeUnderlying, int256 totalFeeStable) {
+    ) internal returns (DataType.UnrealizedFee memory) {
         // settle asset interest
-        totalFeeUnderlying = assetStatus.basePool.tokenStatus.settleUserFee(userStatus.basePosition);
-        totalFeeStable = assetStatus.quotePool.tokenStatus.settleUserFee(userStatus.stablePosition);
+        int256 totalFeeUnderlying = assetStatus.basePool.tokenStatus.settleUserFee(userStatus.basePosition);
+        int256 totalFeeStable = assetStatus.quotePool.tokenStatus.settleUserFee(userStatus.stablePosition);
 
         // settle rebalance interest
         (int256 rebalanceInterestBase, int256 rebalanceInterestQuote) =
@@ -54,6 +56,8 @@ library PerpFee {
 
         totalFeeStable += feeStable + rebalanceInterestQuote;
         totalFeeUnderlying += feeUnderlying + rebalanceInterestBase;
+
+        return DataType.UnrealizedFee(totalFeeUnderlying, totalFeeStable);
     }
 
     // Trade fee and premium
