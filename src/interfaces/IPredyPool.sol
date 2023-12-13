@@ -27,7 +27,7 @@ interface IPredyPool {
     error InvalidPairId();
 
     /// @notice Thrown when a vault isn't danger
-    error VaultIsNotDanger();
+    error VaultIsNotDanger(int256 vaultValue, int256 minMargin);
 
     /// @notice Thrown when a trader address is not allowed
     error TraderNotAllowed();

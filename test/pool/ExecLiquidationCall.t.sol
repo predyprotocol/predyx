@@ -149,7 +149,7 @@ contract TestExecLiquidationCall is TestPool {
 
         _tradeMarket.trade(tradeParams, settlementData);
 
-        vm.expectRevert(IPredyPool.VaultIsNotDanger.selector);
+        vm.expectRevert(abi.encodeWithSelector(IPredyPool.VaultIsNotDanger.selector, 99960001, 80007996));
         _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
     }
 
@@ -168,7 +168,7 @@ contract TestExecLiquidationCall is TestPool {
 
         _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
 
-        vm.expectRevert(IPredyPool.VaultIsNotDanger.selector);
+        vm.expectRevert(abi.encodeWithSelector(IPredyPool.VaultIsNotDanger.selector, 0, 0));
         _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
     }
 }

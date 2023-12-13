@@ -136,7 +136,7 @@ library LiquidationLogic {
             PositionCalculator.isLiquidatable(pairStatus, vault, FeeAmount);
 
         if (!isLiquidatable) {
-            revert IPredyPool.VaultIsNotDanger();
+            revert IPredyPool.VaultIsNotDanger(vaultValue, minMargin);
         }
 
         slippageTolerance = calculateSlippageTolerance(minMargin, vaultValue, pairStatus.riskParams);
