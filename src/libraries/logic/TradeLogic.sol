@@ -45,16 +45,15 @@ library TradeLogic {
             tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
 
         (tradeResult.minMargin,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
-            pairStatus, globalData.vaults[tradeParams.vaultId], DataType.UnrealizedFee(0, 0)
+            pairStatus, globalData.vaults[tradeParams.vaultId], DataType.FeeAmount(0, 0)
         );
 
         // The caller deposits or withdraws margin from the callback that is called below.
         callTradeAfterCallback(globalData, tradeParams, tradeResult);
 
         // check vault safety
-        tradeResult.minMargin = PositionCalculator.checkSafe(
-            pairStatus, globalData.vaults[tradeParams.vaultId], DataType.UnrealizedFee(0, 0)
-        );
+        tradeResult.minMargin =
+            PositionCalculator.checkSafe(pairStatus, globalData.vaults[tradeParams.vaultId], DataType.FeeAmount(0, 0));
 
         emit PositionUpdated(
             tradeParams.vaultId,

@@ -33,7 +33,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
 
     function testCalculateMinDepositZero() public {
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, getVault(0, 0, 0, 0), DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, getVault(0, 0, 0, 0), DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 0);
         assertEq(vaultValue, 0);
@@ -44,7 +44,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
         int256 amountStable = int256(bound(_amountStable, 0, 1e36));
 
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) = PositionCalculator.calculateMinDeposit(
-            pairStatus, getVault(amountStable, 0, 0, 0), DataType.UnrealizedFee(0, 0)
+            pairStatus, getVault(amountStable, 0, 0, 0), DataType.FeeAmount(0, 0)
         );
 
         assertEq(minDeposit, 0);
@@ -56,13 +56,13 @@ contract CalculateMinDepositTest is TestPositionCalculator {
         DataType.Vault memory vault = getVault(-1000, 0, 1000, 0);
 
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 1000000);
         assertEq(vaultValue, 0);
         assertTrue(hasPosition);
 
-        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertFalse(isSafe);
     }
@@ -70,14 +70,14 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaShort() public {
         DataType.Vault memory vault = getVault(-2 * 1e8, 1e8, 0, 0);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 17425814);
         assertEq(vaultValue, 0);
         assertTrue(hasPosition);
 
-        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.UnrealizedFee(0, 0));
-        (bool isLiquidatable,,,) = PositionCalculator.isLiquidatable(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.FeeAmount(0, 0));
+        (bool isLiquidatable,,,) = PositionCalculator.isLiquidatable(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertFalse(isSafe);
         assertTrue(isLiquidatable);
@@ -86,27 +86,27 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaShortSafe() public {
         DataType.Vault memory vault = getVault(-2 * 1e8, 1e8, 0, 20000000);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 17425814);
         assertEq(vaultValue, 20000000);
         assertTrue(hasPosition);
 
-        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.FeeAmount(0, 0));
         assertTrue(isSafe);
     }
 
     function testCalculateMinDepositGammaLong() public {
         DataType.Vault memory vault = getVault(2 * 1e8, -1e8, 0, 0);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 19489021);
         assertEq(vaultValue, 0);
         assertTrue(hasPosition);
 
-        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.UnrealizedFee(0, 0));
-        (bool isLiquidatable,,,) = PositionCalculator.isLiquidatable(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.FeeAmount(0, 0));
+        (bool isLiquidatable,,,) = PositionCalculator.isLiquidatable(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertFalse(isSafe);
         assertTrue(isLiquidatable);
@@ -115,21 +115,21 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaLongSafe() public {
         DataType.Vault memory vault = getVault(2 * 1e8, -1e8, 0, 22000000);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 19489021);
         assertEq(vaultValue, 22000000);
         assertTrue(hasPosition);
 
-        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.FeeAmount(0, 0));
         assertTrue(isSafe);
     }
 
     function testMarginIsNegative() public {
         DataType.Vault memory vault = getVault(0, 0, 0, -100);
 
-        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.UnrealizedFee(0, 0));
-        (bool isLiquidatable,,,) = PositionCalculator.isLiquidatable(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+        (, bool isSafe,) = PositionCalculator.getIsSafe(pairStatus, vault, DataType.FeeAmount(0, 0));
+        (bool isLiquidatable,,,) = PositionCalculator.isLiquidatable(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertFalse(isSafe);
         assertFalse(isLiquidatable);

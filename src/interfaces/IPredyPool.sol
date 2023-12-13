@@ -71,7 +71,7 @@ interface IPredyPool {
         int256 vaultValue;
         int256 minMargin;
         uint256 oraclePrice;
-        DataType.UnrealizedFee unrealizedFee;
+        DataType.FeeAmount FeeAmount;
     }
 
     function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)

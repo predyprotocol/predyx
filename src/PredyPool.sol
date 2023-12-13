@@ -320,7 +320,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
     function getSqrtPrice(uint256 pairId) external view returns (uint160) {
         return UniHelper.convertSqrtPrice(
             UniHelper.getSqrtPrice(globalData.pairs[pairId].sqrtAssetStatus.uniswapPool),
-            globalData.pairs[pairId].isMarginZero
+            globalData.pairs[pairId].isQuoteZero
         );
     }
 

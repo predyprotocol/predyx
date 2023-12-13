@@ -72,7 +72,7 @@ library LiquidationLogic {
         bool hasPosition;
 
         (tradeResult.minMargin,, hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.UnrealizedFee(0, 0));
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         // Check if the price is within the slippage tolerance range to ensure that the price does not become
         // excessively favorable to the liquidator.
@@ -129,11 +129,11 @@ library LiquidationLogic {
         int256 minMargin;
         int256 vaultValue;
 
-        DataType.UnrealizedFee memory unrealizedFee =
+        DataType.FeeAmount memory FeeAmount =
             PerpFee.computeUserFee(pairStatus, rebalanceFeeGrowthCache, vault.openPosition);
 
         (isLiquidatable, minMargin, vaultValue, sqrtTwap) =
-            PositionCalculator.isLiquidatable(pairStatus, vault, unrealizedFee);
+            PositionCalculator.isLiquidatable(pairStatus, vault, FeeAmount);
 
         if (!isLiquidatable) {
             revert IPredyPool.VaultIsNotDanger();

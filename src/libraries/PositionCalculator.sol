@@ -32,11 +32,11 @@ library PositionCalculator {
     function isLiquidatable(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.UnrealizedFee memory unrealizedFee
+        DataType.FeeAmount memory FeeAmount
     ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint256 twap) {
         bool hasPosition;
 
-        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _vault, unrealizedFee);
+        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _vault, FeeAmount);
 
         bool isSafe = vaultValue >= minMargin && _vault.margin >= 0;
 
@@ -46,11 +46,11 @@ library PositionCalculator {
     function checkSafe(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.UnrealizedFee memory unrealizedFee
+        DataType.FeeAmount memory FeeAmount
     ) internal view returns (int256 minMargin) {
         bool isSafe;
 
-        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, unrealizedFee);
+        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, FeeAmount);
 
         if (!isSafe) {
             revert NotSafe();
@@ -60,11 +60,11 @@ library PositionCalculator {
     function getIsSafe(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.UnrealizedFee memory unrealizedFee
+        DataType.FeeAmount memory FeeAmount
     ) internal view returns (int256 minMargin, bool isSafe, bool hasPosition) {
         int256 vaultValue;
 
-        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _vault, unrealizedFee);
+        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _vault, FeeAmount);
 
         isSafe = vaultValue >= minMargin && _vault.margin >= 0;
     }
@@ -72,7 +72,7 @@ library PositionCalculator {
     function calculateMinDeposit(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory vault,
-        DataType.UnrealizedFee memory unrealizedFee
+        DataType.FeeAmount memory FeeAmount
     ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint256 twap) {
         int256 minValue;
         uint256 debtValue;
@@ -80,10 +80,7 @@ library PositionCalculator {
         twap = getSqrtIndexPrice(pairStatus);
 
         (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
-            vault.margin,
-            getPositionWithUnrealizedFee(vault.openPosition, unrealizedFee),
-            twap,
-            pairStatus.riskParams.riskRatio
+            vault.margin, getPositionWithFeeAmount(vault.openPosition, FeeAmount), twap, pairStatus.riskParams.riskRatio
         );
 
         int256 minMinValue = (calculateRequiredCollateralWithDebt() * debtValue).toInt256() / 1e6;
@@ -135,19 +132,20 @@ library PositionCalculator {
             return PriceFeed(pairStatus.priceFeed).getSqrtPrice();
         } else {
             return UniHelper.convertSqrtPrice(
-                UniHelper.getSqrtTWAP(pairStatus.sqrtAssetStatus.uniswapPool), pairStatus.isMarginZero
+                UniHelper.getSqrtTWAP(pairStatus.sqrtAssetStatus.uniswapPool), pairStatus.isQuoteZero
             );
         }
     }
 
-    function getPositionWithUnrealizedFee(
-        Perp.UserStatus memory perpUserStatus,
-        DataType.UnrealizedFee memory unrealizedFee
-    ) internal pure returns (PositionParams memory positionParams) {
+    function getPositionWithFeeAmount(Perp.UserStatus memory perpUserStatus, DataType.FeeAmount memory FeeAmount)
+        internal
+        pure
+        returns (PositionParams memory positionParams)
+    {
         return PositionParams(
-            perpUserStatus.perp.entryValue + perpUserStatus.sqrtPerp.entryValue + unrealizedFee.feeAmountQuote,
+            perpUserStatus.perp.entryValue + perpUserStatus.sqrtPerp.entryValue + FeeAmount.feeAmountQuote,
             perpUserStatus.sqrtPerp.amount,
-            perpUserStatus.perp.amount + unrealizedFee.feeAmountBase
+            perpUserStatus.perp.amount + FeeAmount.feeAmountBase
         );
     }
 

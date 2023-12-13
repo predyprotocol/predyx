@@ -24,8 +24,8 @@ library UniHelper {
     /**
      * sqrt price in stable token
      */
-    function convertSqrtPrice(uint160 sqrtPriceX96, bool isMarginZero) internal pure returns (uint160) {
-        if (isMarginZero) {
+    function convertSqrtPrice(uint160 sqrtPriceX96, bool isQuoteZero) internal pure returns (uint160) {
+        if (isQuoteZero) {
             return uint160((Constants.Q96 << Constants.RESOLUTION) / sqrtPriceX96);
         } else {
             return sqrtPriceX96;

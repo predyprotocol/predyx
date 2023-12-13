@@ -17,32 +17,32 @@ library PerpFee {
         DataType.PairStatus memory assetStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus memory userStatus
-    ) internal view returns (DataType.UnrealizedFee memory) {
-        int256 unrealizedFeeUnderlying = assetStatus.basePool.tokenStatus.computeUserFee(userStatus.basePosition);
-        int256 unrealizedFeeStable = assetStatus.quotePool.tokenStatus.computeUserFee(userStatus.stablePosition);
+    ) internal view returns (DataType.FeeAmount memory) {
+        int256 FeeAmountUnderlying = assetStatus.basePool.tokenStatus.computeUserFee(userStatus.basePosition);
+        int256 FeeAmountStable = assetStatus.quotePool.tokenStatus.computeUserFee(userStatus.stablePosition);
 
         {
             (int256 rebalanceInterestBase, int256 rebalanceInterestQuote) = computeRebalanceInterest(
                 assetStatus.id, assetStatus.sqrtAssetStatus, rebalanceFeeGrowthCache, userStatus
             );
-            unrealizedFeeUnderlying += rebalanceInterestBase;
-            unrealizedFeeStable += rebalanceInterestQuote;
+            FeeAmountUnderlying += rebalanceInterestBase;
+            FeeAmountStable += rebalanceInterestQuote;
         }
 
         {
             (int256 feeUnderlying, int256 feeStable) = computePremium(assetStatus, userStatus.sqrtPerp);
-            unrealizedFeeUnderlying += feeUnderlying;
-            unrealizedFeeStable += feeStable;
+            FeeAmountUnderlying += feeUnderlying;
+            FeeAmountStable += feeStable;
         }
 
-        return DataType.UnrealizedFee(unrealizedFeeUnderlying, unrealizedFeeStable);
+        return DataType.FeeAmount(FeeAmountUnderlying, FeeAmountStable);
     }
 
     function settleUserFee(
         DataType.PairStatus storage assetStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus storage userStatus
-    ) internal returns (DataType.UnrealizedFee memory) {
+    ) internal returns (DataType.FeeAmount memory) {
         // settle asset interest
         int256 totalFeeUnderlying = assetStatus.basePool.tokenStatus.settleUserFee(userStatus.basePosition);
         int256 totalFeeStable = assetStatus.quotePool.tokenStatus.settleUserFee(userStatus.stablePosition);
@@ -57,7 +57,7 @@ library PerpFee {
         totalFeeStable += feeStable + rebalanceInterestQuote;
         totalFeeUnderlying += feeUnderlying + rebalanceInterestBase;
 
-        return DataType.UnrealizedFee(totalFeeUnderlying, totalFeeStable);
+        return DataType.FeeAmount(totalFeeUnderlying, totalFeeStable);
     }
 
     // Trade fee and premium
@@ -83,7 +83,7 @@ library PerpFee {
         int256 fee0 = Math.fullMulDivDownInt256(sqrtPerp.amount, growthDiff0, Constants.Q128);
         int256 fee1 = Math.fullMulDivDownInt256(sqrtPerp.amount, growthDiff1, Constants.Q128);
 
-        if (baseAssetStatus.isMarginZero) {
+        if (baseAssetStatus.isQuoteZero) {
             feeStable = fee0;
             feeUnderlying = fee1;
         } else {

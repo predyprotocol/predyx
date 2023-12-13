@@ -316,7 +316,7 @@ library Perp {
         int256 deltaPosition1 =
             LPMath.calculateAmount1ForLiquidity(_currentSqrtPrice, tickSqrtPrice, _totalLiquidityAmount, true);
 
-        if (pairStatus.isMarginZero) {
+        if (pairStatus.isQuoteZero) {
             deltaPositionQuote = -deltaPosition0;
             deltaPositionBase = -deltaPosition1;
         } else {
@@ -342,7 +342,7 @@ library Perp {
 
     function settleUserBalance(DataType.PairStatus storage _pairStatus, UserStatus storage _userStatus) internal {
         (int256 deltaPositionUnderlying, int256 deltaPositionStable) =
-            updateRebalanceEntry(_pairStatus.sqrtAssetStatus, _userStatus, _pairStatus.isMarginZero);
+            updateRebalanceEntry(_pairStatus.sqrtAssetStatus, _userStatus, _pairStatus.isQuoteZero);
 
         if (deltaPositionUnderlying == 0 && deltaPositionStable == 0) {
             return;
@@ -423,7 +423,7 @@ library Perp {
      */
     function computeRequiredAmounts(
         SqrtPerpAssetStatus storage _sqrtAssetStatus,
-        bool _isMarginZero,
+        bool _isQuoteZero,
         UserStatus memory _userStatus,
         int256 _tradeSqrtAmount
     ) internal returns (int256 requiredAmountUnderlying, int256 requiredAmountStable) {
@@ -449,7 +449,7 @@ library Perp {
             (requiredAmount0, requiredAmount1) = decrease(_sqrtAssetStatus, uint256(-_tradeSqrtAmount));
         }
 
-        if (_isMarginZero) {
+        if (_isQuoteZero) {
             requiredAmountStable = requiredAmount0;
             requiredAmountUnderlying = requiredAmount1;
         } else {
@@ -458,7 +458,7 @@ library Perp {
         }
 
         (int256 offsetUnderlying, int256 offsetStable) = calculateSqrtPerpOffset(
-            _userStatus, _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper, _tradeSqrtAmount, _isMarginZero
+            _userStatus, _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper, _tradeSqrtAmount, _isQuoteZero
         );
 
         requiredAmountUnderlying -= offsetUnderlying;
@@ -483,7 +483,7 @@ library Perp {
             _pairStatus.sqrtAssetStatus.tickLower,
             _pairStatus.sqrtAssetStatus.tickUpper,
             _updateSqrtPerpParams.tradeSqrtAmount,
-            _pairStatus.isMarginZero
+            _pairStatus.isQuoteZero
         );
 
         (payoff.sqrtEntryUpdate, payoff.sqrtPayoff) = calculateEntry(
@@ -616,7 +616,7 @@ library Perp {
     function updateRebalanceEntry(
         SqrtPerpAssetStatus storage _assetStatus,
         UserStatus storage _userStatus,
-        bool _isMarginZero
+        bool _isQuoteZero
     ) internal returns (int256 rebalancePositionUpdateUnderlying, int256 rebalancePositionUpdateStable) {
         // Rebalance position should be over repayed or deposited.
         // rebalancePositionUpdate values must be rounded down to a smaller value.
@@ -659,7 +659,7 @@ library Perp {
             deltaPosition1 = -deltaPosition1;
         }
 
-        if (_isMarginZero) {
+        if (_isQuoteZero) {
             rebalancePositionUpdateUnderlying = deltaPosition1;
             rebalancePositionUpdateStable = deltaPosition0;
         } else {
@@ -745,7 +745,7 @@ library Perp {
         int24 _tickLower,
         int24 _tickUpper,
         int256 _tradeSqrtAmount,
-        bool _isMarginZero
+        bool _isQuoteZero
     ) internal pure returns (int256 offsetUnderlying, int256 offsetStable) {
         int256 openAmount;
         int256 closeAmount;
@@ -773,7 +773,7 @@ library Perp {
                 offsetStable = -offsetStable;
             }
 
-            if (_isMarginZero) {
+            if (_isQuoteZero) {
                 // Swap if the pool is Stable-Underlying pair
                 (offsetUnderlying, offsetStable) = (offsetStable, offsetUnderlying);
             }
@@ -792,7 +792,7 @@ library Perp {
     ) internal {
         SqrtPerpAssetStatus storage sqrtAsset = _pairStatus.sqrtAssetStatus;
 
-        if (_pairStatus.isMarginZero) {
+        if (_pairStatus.isQuoteZero) {
             _pairStatus.quotePool.tokenStatus.updatePosition(
                 sqrtAsset.rebalancePositionQuote, _updateAmount0, _pairStatus.id, true
             );
