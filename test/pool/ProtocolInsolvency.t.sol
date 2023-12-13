@@ -226,4 +226,40 @@ contract TestPoolProtocolInsolvency is TestPool {
         assertEq(currency0.balanceOf(address(predyPool)), 4);
         assertEq(currency1.balanceOf(address(predyPool)), 3);
     }
+
+    function testLiquidation() external {
+        assertFalse(
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            )
+        );
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 0, -1e8, 1e8, abi.encode(_getTradeAfterParams(3 * 1e6))),
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+        );
+
+        _movePrice(true, 5 * 1e16);
+
+        // reallocation is happened
+        assertTrue(
+            predyPool.reallocate(
+                1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 15000 / 10000)
+            )
+        );
+
+        vm.warp(block.timestamp + 100 days);
+
+        predyPool.execLiquidationCall(
+            1,
+            1e18,
+            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96 * 11000 / 10000)
+        );
+
+        predyPool.withdraw(1, true, 1e18);
+        predyPool.withdraw(1, false, 1e18);
+
+        assertEq(currency0.balanceOf(address(predyPool)), 1);
+        assertEq(currency1.balanceOf(address(predyPool)), 1);
+    }
 }

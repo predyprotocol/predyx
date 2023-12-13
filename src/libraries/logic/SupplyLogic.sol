@@ -3,12 +3,13 @@ pragma solidity ^0.8.17;
 
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
-import "../../interfaces/IPredyPool.sol";
-import "../../interfaces/ISupplyToken.sol";
-import "../DataType.sol";
-import "../ScaledAsset.sol";
-import "../ApplyInterestLib.sol";
-import "../../types/GlobalData.sol";
+import {IPredyPool} from "../../interfaces/IPredyPool.sol";
+import {ISupplyToken} from "../../interfaces/ISupplyToken.sol";
+import {DataType} from "../DataType.sol";
+import {Perp} from "../Perp.sol";
+import {ScaledAsset} from "../ScaledAsset.sol";
+import {ApplyInterestLib} from "../ApplyInterestLib.sol";
+import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 
 library SupplyLogic {
     using ScaledAsset for ScaledAsset.AssetStatus;

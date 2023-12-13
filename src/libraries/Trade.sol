@@ -33,26 +33,23 @@ library Trade {
         DataType.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
         Perp.UserStatus storage openPosition = globalData.vaults[tradeParams.vaultId].openPosition;
 
-        // update rebalance interest growth
-        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
-
         // settle user balance and fee
-        (int256 underlyingFee, int256 stableFee) =
+        DataType.FeeAmount memory realizedFee =
             settleUserBalanceAndFee(pairStatus, globalData.rebalanceFeeGrowthCache, openPosition);
 
         // calculate required token amounts
         (int256 underlyingAmountForSqrt, int256 stableAmountForSqrt) = Perp.computeRequiredAmounts(
-            pairStatus.sqrtAssetStatus, pairStatus.isMarginZero, openPosition, tradeParams.tradeAmountSqrt
+            pairStatus.sqrtAssetStatus, pairStatus.isQuoteZero, openPosition, tradeParams.tradeAmountSqrt
         );
 
-        tradeResult.sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isMarginZero);
+        tradeResult.sqrtPrice = getSqrtPrice(pairStatus.sqrtAssetStatus.uniswapPool, pairStatus.isQuoteZero);
 
         // swap tokens
 
         SwapStableResult memory swapResult = swap(
             globalData,
             tradeParams.pairId,
-            SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, underlyingFee, 0),
+            SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, realizedFee.feeAmountBase, 0),
             settlementData,
             tradeResult.sqrtPrice
         );
@@ -67,7 +64,7 @@ library Trade {
             Perp.UpdateSqrtPerpParams(tradeParams.tradeAmountSqrt, swapResult.amountSqrtPerp + stableAmountForSqrt)
         );
 
-        tradeResult.fee = stableFee + swapResult.fee;
+        tradeResult.fee = realizedFee.feeAmountQuote + swapResult.fee;
         tradeResult.vaultId = tradeParams.vaultId;
     }
 
@@ -108,8 +105,8 @@ library Trade {
         return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
     }
 
-    function getSqrtPrice(address uniswapPoolAddress, bool isMarginZero) internal view returns (uint256 sqrtPriceX96) {
-        return UniHelper.convertSqrtPrice(UniHelper.getSqrtPrice(uniswapPoolAddress), isMarginZero);
+    function getSqrtPrice(address uniswapPoolAddress, bool isQuoteZero) internal view returns (uint256 sqrtPriceX96) {
+        return UniHelper.convertSqrtPrice(UniHelper.getSqrtPrice(uniswapPoolAddress), isQuoteZero);
     }
 
     function calculateStableAmount(uint256 currentSqrtPrice, uint256 baseAmount) internal pure returns (uint256) {
@@ -135,8 +132,8 @@ library Trade {
         DataType.PairStatus storage _pairStatus,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache,
         Perp.UserStatus storage _userStatus
-    ) internal returns (int256 underlyingFee, int256 stableFee) {
-        (underlyingFee, stableFee) = PerpFee.settleUserFee(_pairStatus, rebalanceFeeGrowthCache, _userStatus);
+    ) internal returns (DataType.FeeAmount memory realizedFee) {
+        realizedFee = PerpFee.settleUserFee(_pairStatus, rebalanceFeeGrowthCache, _userStatus);
 
         Perp.settleUserBalance(_pairStatus, _userStatus);
     }

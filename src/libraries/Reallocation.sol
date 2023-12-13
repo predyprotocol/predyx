@@ -25,7 +25,7 @@ library Reallocation {
         ScaledAsset.AssetStatus memory token0Status;
         ScaledAsset.AssetStatus memory token1Status;
 
-        if (_assetStatusUnderlying.isMarginZero) {
+        if (_assetStatusUnderlying.isQuoteZero) {
             token0Status = _assetStatusUnderlying.quotePool.tokenStatus;
             token1Status = _assetStatusUnderlying.basePool.tokenStatus;
         } else {

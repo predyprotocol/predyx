@@ -13,7 +13,7 @@ library DataType {
         Perp.AssetRiskParams riskParams;
         Perp.SqrtPerpAssetStatus sqrtAssetStatus;
         address priceFeed;
-        bool isMarginZero;
+        bool isQuoteZero;
         bool whitelistEnabled;
         uint8 feeRatio;
         uint256 lastUpdateTimestamp;
@@ -31,5 +31,10 @@ library DataType {
     struct RebalanceFeeGrowthCache {
         int256 stableGrowth;
         int256 underlyingGrowth;
+    }
+
+    struct FeeAmount {
+        int256 feeAmountBase;
+        int256 feeAmountQuote;
     }
 }

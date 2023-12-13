@@ -36,22 +36,24 @@ library TradeLogic {
         // update interest growth
         ApplyInterestLib.applyInterestForToken(globalData.pairs, tradeParams.pairId);
 
+        // update rebalance interest growth
+        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
+
         tradeResult = Trade.trade(globalData, tradeParams, settlementData);
 
         globalData.vaults[tradeParams.vaultId].margin +=
             tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
 
         (tradeResult.minMargin,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
-            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
+            pairStatus, globalData.vaults[tradeParams.vaultId], DataType.FeeAmount(0, 0)
         );
 
         // The caller deposits or withdraws margin from the callback that is called below.
         callTradeAfterCallback(globalData, tradeParams, tradeResult);
 
         // check vault safety
-        tradeResult.minMargin = PositionCalculator.checkSafe(
-            pairStatus, globalData.rebalanceFeeGrowthCache, globalData.vaults[tradeParams.vaultId]
-        );
+        tradeResult.minMargin =
+            PositionCalculator.checkSafe(pairStatus, globalData.vaults[tradeParams.vaultId], DataType.FeeAmount(0, 0));
 
         emit PositionUpdated(
             tradeParams.vaultId,

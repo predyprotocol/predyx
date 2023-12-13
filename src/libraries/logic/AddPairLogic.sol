@@ -22,8 +22,8 @@ library AddPairLogic {
         bool whitelistEnabled;
         uint8 fee;
         Perp.AssetRiskParams assetRiskParams;
-        InterestRateModel.IRMParams stableIrmParams;
-        InterestRateModel.IRMParams underlyingIrmParams;
+        InterestRateModel.IRMParams quoteIrmParams;
+        InterestRateModel.IRMParams baseIrmParams;
     }
 
     error InvalidUniswapPool();
@@ -31,7 +31,7 @@ library AddPairLogic {
     event PairAdded(uint256 pairId, address marginId, address uniswapPool);
     event AssetRiskParamsUpdated(uint256 pairId, Perp.AssetRiskParams riskParams);
     event IRMParamsUpdated(
-        uint256 pairId, InterestRateModel.IRMParams stableIrmParams, InterestRateModel.IRMParams underlyingIrmParams
+        uint256 pairId, InterestRateModel.IRMParams quoteIrmParams, InterestRateModel.IRMParams baseIrmParams
     );
     event FeeRatioUpdated(uint256 pairId, uint8 feeRatio);
     event PoolOwnerUpdated(uint256 pairId, address poolOwner);
@@ -77,14 +77,14 @@ library AddPairLogic {
 
         require(uniswapPool.token0() == stableTokenAddress || uniswapPool.token1() == stableTokenAddress, "C3");
 
-        bool isMarginZero = uniswapPool.token0() == stableTokenAddress;
+        bool isQuoteZero = uniswapPool.token0() == stableTokenAddress;
 
         _storePairStatus(
             stableTokenAddress,
             _global.pairs,
             pairId,
-            isMarginZero ? uniswapPool.token1() : uniswapPool.token0(),
-            isMarginZero,
+            isQuoteZero ? uniswapPool.token1() : uniswapPool.token0(),
+            isQuoteZero,
             _addPairParam
         );
 
@@ -142,7 +142,7 @@ library AddPairLogic {
         mapping(uint256 => DataType.PairStatus) storage _pairs,
         uint256 _pairId,
         address _tokenAddress,
-        bool _isMarginZero,
+        bool _isQuoteZero,
         AddPairParams memory _addPairParam
     ) internal {
         validateRiskParams(_addPairParam.assetRiskParams);
@@ -158,7 +158,7 @@ library AddPairLogic {
                 marginId,
                 deploySupplyToken(marginId),
                 ScaledAsset.createAssetStatus(),
-                _addPairParam.stableIrmParams,
+                _addPairParam.quoteIrmParams,
                 0,
                 0
             ),
@@ -166,7 +166,7 @@ library AddPairLogic {
                 _tokenAddress,
                 deploySupplyToken(_tokenAddress),
                 ScaledAsset.createAssetStatus(),
-                _addPairParam.underlyingIrmParams,
+                _addPairParam.baseIrmParams,
                 0,
                 0
             ),
@@ -177,14 +177,14 @@ library AddPairLogic {
                 _addPairParam.assetRiskParams.rangeSize
             ),
             _addPairParam.priceFeed,
-            _isMarginZero,
+            _isQuoteZero,
             _addPairParam.whitelistEnabled,
             _addPairParam.fee,
             block.timestamp
         );
 
         emit AssetRiskParamsUpdated(_pairId, _addPairParam.assetRiskParams);
-        emit IRMParamsUpdated(_pairId, _addPairParam.stableIrmParams, _addPairParam.underlyingIrmParams);
+        emit IRMParamsUpdated(_pairId, _addPairParam.quoteIrmParams, _addPairParam.baseIrmParams);
     }
 
     function deploySupplyToken(address _tokenAddress) internal returns (address) {

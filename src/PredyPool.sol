@@ -320,7 +320,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
     function getSqrtPrice(uint256 pairId) external view returns (uint160) {
         return UniHelper.convertSqrtPrice(
             UniHelper.getSqrtPrice(globalData.pairs[pairId].sqrtAssetStatus.uniswapPool),
-            globalData.pairs[pairId].isMarginZero
+            globalData.pairs[pairId].isQuoteZero
         );
     }
 
@@ -337,17 +337,6 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
     /// @notice Gets the vault
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory) {
         return globalData.vaults[vaultId];
-    }
-
-    /// @notice Gets the status of the vault
-    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory) {
-        uint256 pairId = globalData.vaults[vaultId].openPosition.pairId;
-
-        (int256 minMargin, int256 vaultValue,,) = PositionCalculator.calculateMinDeposit(
-            globalData.pairs[pairId], globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
-        );
-
-        return VaultStatus(vaultId, vaultValue, minMargin);
     }
 
     /// @notice Gets the status of pair

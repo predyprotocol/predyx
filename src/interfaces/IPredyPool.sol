@@ -27,7 +27,7 @@ interface IPredyPool {
     error InvalidPairId();
 
     /// @notice Thrown when a vault isn't danger
-    error VaultIsNotDanger();
+    error VaultIsNotDanger(int256 vaultValue, int256 minMargin);
 
     /// @notice Thrown when a trader address is not allowed
     error TraderNotAllowed();
@@ -70,6 +70,8 @@ interface IPredyPool {
         uint256 id;
         int256 vaultValue;
         int256 minMargin;
+        uint256 oraclePrice;
+        DataType.FeeAmount FeeAmount;
     }
 
     function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
@@ -88,7 +90,6 @@ interface IPredyPool {
     function getSqrtIndexPrice(uint256 pairId) external view returns (uint256);
 
     function getVault(uint256 vaultId) external view returns (DataType.Vault memory);
-    function getVaultStatus(uint256 vaultId) external view returns (VaultStatus memory);
     function getPairStatus(uint256 pairId) external view returns (DataType.PairStatus memory);
 
     function revertPairStatus(uint256 pairId) external;

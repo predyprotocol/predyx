@@ -5,6 +5,7 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {Constants} from "../Constants.sol";
 import {DataType} from "../DataType.sol";
 import {Perp} from "../Perp.sol";
+import {PerpFee} from "../PerpFee.sol";
 import {ApplyInterestLib} from "../ApplyInterestLib.sol";
 import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 import {PositionCalculator} from "../PositionCalculator.sol";
@@ -21,15 +22,20 @@ library ReaderLogic {
     }
 
     function getVaultStatus(GlobalDataLibrary.GlobalData storage globalData, uint256 vaultId) external {
-        uint256 pairId = globalData.vaults[vaultId].openPosition.pairId;
+        DataType.Vault memory vault = globalData.vaults[vaultId];
+        DataType.PairStatus storage pairStatus = globalData.pairs[vault.openPosition.pairId];
 
-        ApplyInterestLib.applyInterestForToken(globalData.pairs, pairId);
+        ApplyInterestLib.applyInterestForToken(globalData.pairs, vault.openPosition.pairId);
 
-        (int256 minMargin, int256 vaultValue,,) = PositionCalculator.calculateMinDeposit(
-            globalData.pairs[pairId], globalData.rebalanceFeeGrowthCache, globalData.vaults[vaultId]
-        );
+        Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
-        revertVaultStatus(IPredyPool.VaultStatus(vaultId, vaultValue, minMargin));
+        DataType.FeeAmount memory FeeAmount =
+            PerpFee.computeUserFee(pairStatus, globalData.rebalanceFeeGrowthCache, vault.openPosition);
+
+        (int256 minMargin, int256 vaultValue,, uint256 oraclePice) =
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, FeeAmount);
+
+        revertVaultStatus(IPredyPool.VaultStatus(vaultId, vaultValue, minMargin, oraclePice, FeeAmount));
     }
 
     function revertPairStatus(DataType.PairStatus memory pairStatus) internal pure {

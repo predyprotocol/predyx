@@ -74,7 +74,7 @@ contract PredyPoolQuoter is BaseHookCallback {
         pure
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        if (reason.length < 192) {
+        if (reason.length != 384) {
             assembly {
                 revert(add(32, reason), mload(reason))
             }
@@ -98,7 +98,7 @@ contract PredyPoolQuoter is BaseHookCallback {
         pure
         returns (DataType.PairStatus memory pairStatus)
     {
-        if (reason.length < 192) {
+        if (reason.length != 1920) {
             assembly {
                 revert(add(32, reason), mload(reason))
             }
