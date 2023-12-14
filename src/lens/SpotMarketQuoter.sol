@@ -33,7 +33,6 @@ contract SpotMarketQuoter {
     /// @param reason abi-encoded quoteTokenAmount
     function _parseRevertReason(bytes memory reason) private pure returns (int256) {
         if (reason.length != 32) {
-            if (reason.length < 68) revert("Unexpected error");
             assembly {
                 reason := add(reason, 0x04)
             }

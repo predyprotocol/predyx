@@ -12,8 +12,8 @@ import {IPredyPool} from "../interfaces/IPredyPool.sol";
 contract PredictMarketQuoter {
     PredictMarket public predictMarket;
 
-    constructor(PredictMarket _perpMarket) {
-        predictMarket = _perpMarket;
+    constructor(PredictMarket _predictMarket) {
+        predictMarket = _predictMarket;
     }
 
     function quoteExecuteOrder(PredictOrder memory order, ISettlement.SettlementData memory settlementData)

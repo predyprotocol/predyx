@@ -22,20 +22,21 @@ library SpotOrderLib {
         "SpotOrder(",
         "OrderInfo info,",
         "address quoteToken,",
-        "address baseToken",
-        "int256 baseTokenAmount",
-        "uint256 quoteTokenAmount",
-        "address validatorAddress",
-        "bytes validationData)"
+        "address baseToken,",
+        "int256 baseTokenAmount,",
+        "uint256 quoteTokenAmount,",
+        "address validatorAddress," "bytes validationData)"
     );
 
-    /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
-    bytes internal constant ORDER_TYPE = abi.encodePacked(OrderInfoLib.ORDER_INFO_TYPE, SPOT_ORDER_TYPE);
-    bytes32 internal constant SPOT_ORDER_TYPE_HASH = keccak256(SPOT_ORDER_TYPE);
+    bytes internal constant ORDER_TYPE = abi.encodePacked(SPOT_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
+    bytes32 internal constant SPOT_ORDER_TYPE_HASH = keccak256(ORDER_TYPE);
 
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
-    string internal constant PERMIT2_ORDER_TYPE =
-        string(abi.encodePacked("SpotOrder witness)", ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
+
+    /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
+    string internal constant PERMIT2_ORDER_TYPE = string(
+        abi.encodePacked("SpotOrder witness)", OrderInfoLib.ORDER_INFO_TYPE, SPOT_ORDER_TYPE, TOKEN_PERMISSIONS_TYPE)
+    );
 
     /// @notice hash the given order
     /// @param order the order to hash
@@ -50,7 +51,7 @@ library SpotOrderLib {
                 order.baseTokenAmount,
                 order.quoteTokenAmount,
                 order.validatorAddress,
-                order.validationData
+                keccak256(order.validationData)
             )
         );
     }

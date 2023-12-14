@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "forge-std/Test.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -24,7 +25,7 @@ interface USDC {
         external;
 }
 
-contract TestPerpMarket is SigUtils, OrderValidatorUtils {
+contract TestPerpMarket is Test, SigUtils, OrderValidatorUtils {
     using PerpOrderLib for PerpOrder;
 
     uint256 internal _arbitrumFork;
