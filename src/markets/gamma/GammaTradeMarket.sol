@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
-import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
@@ -39,9 +39,17 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         uint64 maxSlippageTolerance;
     }
 
+    enum CallbackSource {
+        TRADE,
+        QUOTE
+    }
+
     struct CallbackData {
+        CallbackSource callbackSource;
         address trader;
         int256 marginAmountUpdate;
+        address validatorAddress;
+        bytes validationData;
     }
 
     // 0.1%
@@ -86,18 +94,26 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
-        if (tradeResult.minMargin == 0) {
-            DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
+        if (callbackData.callbackSource == CallbackSource.TRADE) {
+            if (tradeResult.minMargin == 0) {
+                DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-            ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(vault.margin));
-        } else {
-            int256 marginAmountUpdate = callbackData.marginAmountUpdate;
+                ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(vault.margin));
+            } else {
+                int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
-            if (marginAmountUpdate > 0) {
-                quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
-            } else if (marginAmountUpdate < 0) {
-                ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
+                if (marginAmountUpdate > 0) {
+                    quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
+                } else if (marginAmountUpdate < 0) {
+                    ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
+                }
             }
+        } else if (callbackData.callbackSource == CallbackSource.QUOTE) {
+            IOrderValidator(callbackData.validatorAddress).validate(
+                tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, callbackData.validationData, tradeResult
+            );
+
+            _revertTradeResult(tradeResult);
         }
     }
 
@@ -130,7 +146,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 userPosition.vaultId,
                 gammaOrder.tradeAmount,
                 gammaOrder.tradeAmountSqrt,
-                abi.encode(CallbackData(gammaOrder.info.trader, gammaOrder.marginAmount))
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.TRADE, gammaOrder.info.trader, gammaOrder.marginAmount, address(0), bytes("")
+                    )
+                )
             ),
             settlementData
         );
@@ -200,7 +220,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
-                vault.openPosition.pairId, userPosition.vaultId, -delta, 0, abi.encode(CallbackData(owner, 0))
+                vault.openPosition.pairId,
+                userPosition.vaultId,
+                -delta,
+                0,
+                abi.encode(CallbackData(CallbackSource.TRADE, owner, 0, address(0), bytes("")))
             ),
             settlementData
         );
@@ -221,22 +245,24 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     function quoteExecuteOrder(GammaOrder memory gammaOrder, ISettlement.SettlementData memory settlementData)
         external
     {
-        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(
+        _predyPool.trade(
             IPredyPool.TradeParams(
                 gammaOrder.pairId,
                 userPositions[gammaOrder.info.trader][gammaOrder.pairId].vaultId,
                 gammaOrder.tradeAmount,
                 gammaOrder.tradeAmountSqrt,
-                bytes("")
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.QUOTE,
+                        gammaOrder.info.trader,
+                        0,
+                        gammaOrder.validatorAddress,
+                        gammaOrder.validationData
+                    )
+                )
             ),
             settlementData
         );
-
-        IOrderValidator(gammaOrder.validatorAddress).validate(
-            gammaOrder.tradeAmount, gammaOrder.tradeAmountSqrt, gammaOrder.validationData, tradeResult
-        );
-
-        _revertTradeResult(tradeResult);
     }
 
     function getUserPosition(address owner, uint256 pairId)

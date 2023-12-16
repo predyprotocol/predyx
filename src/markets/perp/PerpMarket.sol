@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
@@ -35,13 +35,16 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
     enum CallbackSource {
         TRADE,
-        CLOSE
+        CLOSE,
+        QUOTE
     }
 
     struct CallbackData {
         CallbackSource callbackSource;
         address trader;
         int256 marginAmountUpdate;
+        address validatorAddress;
+        bytes validationData;
     }
 
     IPermit2 private immutable _permit2;
@@ -92,7 +95,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                     owner, tradeParams.pairId, tradeParams.tradeAmount, tradeResult.payoff, tradeResult.fee, closeValue
                 );
             }
-        } else {
+        } else if (callbackData.callbackSource == CallbackSource.TRADE) {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
             if (marginAmountUpdate > 0) {
@@ -100,6 +103,12 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             } else if (marginAmountUpdate < 0) {
                 ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
+        } else if (callbackData.callbackSource == CallbackSource.QUOTE) {
+            IOrderValidator(callbackData.validatorAddress).validate(
+                tradeParams.tradeAmount, 0, callbackData.validationData, tradeResult
+            );
+
+            _revertTradeResult(tradeResult);
         }
     }
 
@@ -137,7 +146,11 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 userPosition.vaultId,
                 perpOrder.tradeAmount,
                 0,
-                abi.encode(CallbackData(CallbackSource.TRADE, perpOrder.info.trader, perpOrder.marginAmount))
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.TRADE, perpOrder.info.trader, perpOrder.marginAmount, address(0), bytes("")
+                    )
+                )
             ),
             settlementData
         );
@@ -201,7 +214,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 userPosition.vaultId,
                 -vault.openPosition.perp.amount,
                 -vault.openPosition.sqrtPerp.amount,
-                abi.encode(CallbackData(CallbackSource.CLOSE, owner, 0))
+                abi.encode(CallbackData(CallbackSource.CLOSE, owner, 0, address(0), bytes("")))
             ),
             settlementData
         );
@@ -254,22 +267,24 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
     /// @notice Estimate transaction results and return with revert message
     function quoteExecuteOrder(PerpOrder memory perpOrder, ISettlement.SettlementData memory settlementData) external {
-        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(
+        _predyPool.trade(
             IPredyPool.TradeParams(
                 perpOrder.pairId,
                 userPositions[perpOrder.info.trader][perpOrder.pairId].vaultId,
                 perpOrder.tradeAmount,
                 0,
-                bytes("")
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.QUOTE,
+                        perpOrder.info.trader,
+                        perpOrder.marginAmount,
+                        perpOrder.validatorAddress,
+                        perpOrder.validationData
+                    )
+                )
             ),
             settlementData
         );
-
-        IOrderValidator(perpOrder.validatorAddress).validate(
-            perpOrder.tradeAmount, 0, perpOrder.validationData, tradeResult
-        );
-
-        _revertTradeResult(tradeResult);
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {
