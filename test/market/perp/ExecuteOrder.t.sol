@@ -334,4 +334,57 @@ contract TestPerpExecuteOrder is TestPerpMarket {
     // executeOrder fails if the vault is danger
 
     // executeOrder fails if pairId does not exist
+
+    function testExecuteOrderSucceedsForTPSL() public {
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000 * 1e4,
+                2 * 1e8,
+                0,
+                0,
+                0,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            fillerMarket.executeOrder(
+                signedOrder,
+                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
+            );
+        }
+
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                0,
+                0,
+                Constants.Q96 * 10 / 11,
+                Constants.Q96 * 11 / 10,
+                10000,
+                address(0),
+                bytes("")
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            fillerMarket.executeOrder(
+                signedOrder,
+                settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
+            );
+        }
+
+        (, uint256 takeProfitPrice, uint256 stopLossPrice, uint64 slippageTolerance) =
+            fillerMarket.userPositions(from1, 1);
+
+        assertEq(takeProfitPrice, Constants.Q96 * 10 / 11);
+        assertEq(stopLossPrice, Constants.Q96 * 11 / 10);
+        assertEq(slippageTolerance, 1010000);
+    }
 }

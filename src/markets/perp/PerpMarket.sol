@@ -140,6 +140,10 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             perpOrder.slippageTolerance
         );
 
+        if (perpOrder.tradeAmount == 0 && perpOrder.marginAmount == 0) {
+            return tradeResult;
+        }
+
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
                 perpOrder.pairId,
