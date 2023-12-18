@@ -54,12 +54,15 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
     enum CallbackSource {
         OPEN,
-        CLOSE
+        CLOSE,
+        QUOTE
     }
 
     struct CallbackData {
         CallbackSource callbackSource;
         uint256 depositAmount;
+        address validatorAddress;
+        bytes validationData;
     }
 
     mapping(uint256 vaultId => UserPosition) public userPositions;
@@ -87,7 +90,13 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     ) external override(BaseHookCallback) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
-        if (callbackData.callbackSource == CallbackSource.OPEN) {
+        if (callbackData.callbackSource == CallbackSource.QUOTE) {
+            IOrderValidator(callbackData.validatorAddress).validate(
+                tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, callbackData.validationData, tradeResult
+            );
+
+            _revertTradeResult(tradeResult);
+        } else if (callbackData.callbackSource == CallbackSource.OPEN) {
             ERC20(_getQuoteTokenAddress(tradeParams.pairId)).safeTransfer(
                 address(_predyPool), callbackData.depositAmount
             );
@@ -130,7 +139,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                 0,
                 predictOrder.tradeAmount,
                 predictOrder.tradeAmountSqrt,
-                abi.encode(CallbackData(CallbackSource.OPEN, predictOrder.marginAmount))
+                abi.encode(CallbackData(CallbackSource.OPEN, predictOrder.marginAmount, address(0), bytes("")))
             ),
             settlementData
         );
@@ -187,7 +196,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                 positionId,
                 -vault.openPosition.perp.amount,
                 -vault.openPosition.sqrtPerp.amount,
-                abi.encode(CallbackData(CallbackSource.CLOSE, 0))
+                abi.encode(CallbackData(CallbackSource.CLOSE, 0, address(0), bytes("")))
             ),
             settlementData
         );
@@ -204,18 +213,18 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     function quoteExecuteOrder(PredictOrder memory predictOrder, ISettlement.SettlementData memory settlementData)
         external
     {
-        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(
+        _predyPool.trade(
             IPredyPool.TradeParams(
-                predictOrder.pairId, 0, predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, bytes("")
+                predictOrder.pairId,
+                0,
+                predictOrder.tradeAmount,
+                predictOrder.tradeAmountSqrt,
+                abi.encode(
+                    CallbackData(CallbackSource.QUOTE, 0, predictOrder.validatorAddress, predictOrder.validationData)
+                )
             ),
             settlementData
         );
-
-        IOrderValidator(predictOrder.validatorAddress).validate(
-            predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, predictOrder.validationData, tradeResult
-        );
-
-        _revertTradeResult(tradeResult);
     }
 
     function _saveUserPosition(uint256 vaultId, address owner, uint256 expiration) internal {

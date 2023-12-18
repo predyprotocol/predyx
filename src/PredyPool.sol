@@ -5,7 +5,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPredyPool} from "./interfaces/IPredyPool.sol";
 import {ILendingPool} from "./interfaces/ILendingPool.sol";

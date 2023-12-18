@@ -29,17 +29,20 @@ library PredictOrderLib {
         "int256 tradeAmount,",
         "int256 tradeAmountSqrt,",
         "uint256 marginAmount,",
-        "address validatorAddress",
+        "address validatorAddress,",
         "bytes validationData)"
     );
 
     /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
-    bytes internal constant ORDER_TYPE = abi.encodePacked(OrderInfoLib.ORDER_INFO_TYPE, PREDICT_ORDER_TYPE);
-    bytes32 internal constant PREDICT_ORDER_TYPE_HASH = keccak256(PREDICT_ORDER_TYPE);
+    bytes internal constant ORDER_TYPE = abi.encodePacked(PREDICT_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
+    bytes32 internal constant PREDICT_ORDER_TYPE_HASH = keccak256(ORDER_TYPE);
 
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
-    string internal constant PERMIT2_ORDER_TYPE =
-        string(abi.encodePacked("PredictOrder witness)", ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
+    string internal constant PERMIT2_ORDER_TYPE = string(
+        abi.encodePacked(
+            "PredictOrder witness)", OrderInfoLib.ORDER_INFO_TYPE, PREDICT_ORDER_TYPE, TOKEN_PERMISSIONS_TYPE
+        )
+    );
 
     /// @notice hash the given order
     /// @param order the order to hash
@@ -56,7 +59,7 @@ library PredictOrderLib {
                 order.tradeAmountSqrt,
                 order.marginAmount,
                 order.validatorAddress,
-                order.validationData
+                keccak256(order.validationData)
             )
         );
     }
