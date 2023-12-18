@@ -94,7 +94,13 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
-        if (callbackData.callbackSource == CallbackSource.TRADE) {
+        if (callbackData.callbackSource == CallbackSource.QUOTE) {
+            IOrderValidator(callbackData.validatorAddress).validate(
+                tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, callbackData.validationData, tradeResult
+            );
+
+            _revertTradeResult(tradeResult);
+        } else if (callbackData.callbackSource == CallbackSource.TRADE) {
             if (tradeResult.minMargin == 0) {
                 DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
@@ -108,12 +114,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                     ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
                 }
             }
-        } else if (callbackData.callbackSource == CallbackSource.QUOTE) {
-            IOrderValidator(callbackData.validatorAddress).validate(
-                tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, callbackData.validationData, tradeResult
-            );
-
-            _revertTradeResult(tradeResult);
         }
     }
 

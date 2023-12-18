@@ -83,7 +83,13 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
-        if (tradeResult.minMargin == 0 || callbackData.callbackSource == CallbackSource.CLOSE) {
+        if (callbackData.callbackSource == CallbackSource.QUOTE) {
+            IOrderValidator(callbackData.validatorAddress).validate(
+                tradeParams.tradeAmount, 0, callbackData.validationData, tradeResult
+            );
+
+            _revertTradeResult(tradeResult);
+        } else if (tradeResult.minMargin == 0 || callbackData.callbackSource == CallbackSource.CLOSE) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
             uint256 closeValue = uint256(vault.margin);
@@ -103,12 +109,6 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             } else if (marginAmountUpdate < 0) {
                 ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
-        } else if (callbackData.callbackSource == CallbackSource.QUOTE) {
-            IOrderValidator(callbackData.validatorAddress).validate(
-                tradeParams.tradeAmount, 0, callbackData.validationData, tradeResult
-            );
-
-            _revertTradeResult(tradeResult);
         }
     }
 

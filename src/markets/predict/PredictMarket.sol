@@ -90,7 +90,13 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     ) external override(BaseHookCallback) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
-        if (callbackData.callbackSource == CallbackSource.OPEN) {
+        if (callbackData.callbackSource == CallbackSource.QUOTE) {
+            IOrderValidator(callbackData.validatorAddress).validate(
+                tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, callbackData.validationData, tradeResult
+            );
+
+            _revertTradeResult(tradeResult);
+        } else if (callbackData.callbackSource == CallbackSource.OPEN) {
             ERC20(_getQuoteTokenAddress(tradeParams.pairId)).safeTransfer(
                 address(_predyPool), callbackData.depositAmount
             );
@@ -102,12 +108,6 @@ contract PredictMarket is IFillerMarket, BaseMarket {
             ILendingPool(address(_predyPool)).take(true, userPositions[tradeParams.vaultId].owner, closeValue);
 
             emit PredictPositionClosed(tradeParams.vaultId, closeValue, tradeResult.payoff, tradeResult.fee);
-        } else if (callbackData.callbackSource == CallbackSource.QUOTE) {
-            IOrderValidator(callbackData.validatorAddress).validate(
-                tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, callbackData.validationData, tradeResult
-            );
-
-            _revertTradeResult(tradeResult);
         }
     }
 
