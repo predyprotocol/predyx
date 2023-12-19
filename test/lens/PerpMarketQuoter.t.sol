@@ -42,6 +42,7 @@ contract TestPerpMarketQuoter is TestLens {
             0,
             0,
             0,
+            2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );

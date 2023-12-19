@@ -31,6 +31,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         uint256 takeProfitPrice;
         uint256 stopLossPrice;
         uint64 slippageTolerance;
+        uint8 lastLeverage;
     }
 
     enum CallbackSource {
@@ -131,14 +132,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         UserPosition storage userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
 
-        _saveUserPosition(
-            userPosition,
-            perpOrder.info.trader,
-            perpOrder.pairId,
-            perpOrder.takeProfitPrice,
-            perpOrder.stopLossPrice,
-            perpOrder.slippageTolerance
-        );
+        _saveUserPosition(userPosition, perpOrder);
 
         if (perpOrder.tradeAmount == 0 && perpOrder.marginAmount == 0) {
             return tradeResult;
@@ -235,21 +229,17 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         return (userPosition, _quoter.quoteVaultStatus(userPosition.vaultId), _predyPool.getVault(userPosition.vaultId));
     }
 
-    function _saveUserPosition(
-        UserPosition storage userPosition,
-        address trader,
-        uint256 pairId,
-        uint256 takeProfitPrice,
-        uint256 stopLossPrice,
-        uint64 slippageTolerance
-    ) internal {
-        require(slippageTolerance <= Bps.ONE);
+    function _saveUserPosition(UserPosition storage userPosition, PerpOrder memory perpOrder) internal {
+        require(perpOrder.slippageTolerance <= Bps.ONE);
 
-        userPosition.takeProfitPrice = takeProfitPrice;
-        userPosition.stopLossPrice = stopLossPrice;
-        userPosition.slippageTolerance = slippageTolerance + Bps.ONE;
+        userPosition.takeProfitPrice = perpOrder.takeProfitPrice;
+        userPosition.stopLossPrice = perpOrder.stopLossPrice;
+        userPosition.slippageTolerance = perpOrder.slippageTolerance + Bps.ONE;
+        userPosition.lastLeverage = perpOrder.leverage;
 
-        emit PerpTPSLOrderUpdated(trader, pairId, takeProfitPrice, stopLossPrice);
+        emit PerpTPSLOrderUpdated(
+            perpOrder.info.trader, perpOrder.pairId, perpOrder.takeProfitPrice, perpOrder.stopLossPrice
+        );
     }
 
     function _validateTPSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)

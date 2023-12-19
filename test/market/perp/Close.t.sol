@@ -56,6 +56,7 @@ contract TestGammaClose is TestPerpMarket {
             101 * Constants.Q96 / 100,
             100 * Constants.Q96 / 101,
             5000,
+            2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
@@ -71,6 +72,7 @@ contract TestGammaClose is TestPerpMarket {
             0,
             0,
             5000,
+            2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );

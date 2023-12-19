@@ -9,12 +9,14 @@ import {PredictMarket} from "../../../src/markets/predict/PredictMarket.sol";
 import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {PredictOrder, PredictOrderLib} from "../../../src/markets/predict/PredictOrder.sol";
+import {PredictCloseOrder, PredictCloseOrderLib} from "../../../src/markets/predict/PredictCloseOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
 contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
     using PredictOrderLib for PredictOrder;
+    using PredictCloseOrderLib for PredictCloseOrder;
 
     DirectSettlement settlement;
     PredictMarket fillerMarket;
@@ -62,5 +64,24 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
         );
 
         signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
+    }
+
+    function _createSignedOrder(PredictCloseOrder memory order, uint256 fromPrivateKey)
+        internal
+        view
+        returns (IFillerMarket.SignedOrder memory signedOrder)
+    {
+        bytes32 witness = order.hash();
+
+        bytes memory sig = getPermitSignature(
+            fromPrivateKey,
+            _toPermit(order),
+            address(fillerMarket),
+            PredictOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
+
+        signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
     }
 }

@@ -53,6 +53,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -86,6 +87,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -118,6 +120,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -140,6 +143,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -165,6 +169,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -187,6 +192,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -221,6 +227,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             0,
             0,
             0,
+            2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
         );
@@ -249,6 +256,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -268,6 +276,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -293,6 +302,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             0,
             0,
             0,
+            2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
         );
@@ -317,6 +327,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             0,
             0,
             0,
+            2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
         );
@@ -346,6 +357,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 0,
                 0,
+                2,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -368,6 +380,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 Constants.Q96 * 10 / 11,
                 Constants.Q96 * 11 / 10,
                 10000,
+                2,
                 address(0),
                 bytes("")
             );
@@ -380,11 +393,12 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             );
         }
 
-        (, uint256 takeProfitPrice, uint256 stopLossPrice, uint64 slippageTolerance) =
+        (, uint256 takeProfitPrice, uint256 stopLossPrice, uint64 slippageTolerance, uint8 leverage) =
             fillerMarket.userPositions(from1, 1);
 
         assertEq(takeProfitPrice, Constants.Q96 * 10 / 11);
         assertEq(stopLossPrice, Constants.Q96 * 11 / 10);
         assertEq(slippageTolerance, 1010000);
+        assertEq(leverage, 2);
     }
 }

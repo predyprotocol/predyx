@@ -16,6 +16,7 @@ import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/math/Bps.sol";
 import {PredictOrderLib, PredictOrder} from "./PredictOrder.sol";
+import {PredictCloseOrderLib, PredictCloseOrder} from "./PredictCloseOrder.sol";
 import "../../libraries/math/Math.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
@@ -27,6 +28,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 contract PredictMarket is IFillerMarket, BaseMarket {
     using ResolvedOrderLib for ResolvedOrder;
     using PredictOrderLib for PredictOrder;
+    using PredictCloseOrderLib for PredictCloseOrder;
     using Permit2Lib for ResolvedOrder;
     using Math for uint256;
     using Bps for uint256;
@@ -34,6 +36,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
     error NullOwner();
     error DurationTooLong();
+    error CloseAfterExpiration();
     error CloseBeforeExpiration();
 
     IPermit2 private immutable _permit2;
@@ -166,7 +169,46 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     }
 
     /**
-     * @notice Closes a predict position
+     * @notice Closes a predict position before expiration
+     * @param order signed orfer
+     * @param settlementData The route of settlement created by filler
+     * @return tradeResult The result of trade
+     */
+    function close(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
+        PredictCloseOrder memory closeOrder = abi.decode(order.order, (PredictCloseOrder));
+        ResolvedOrder memory resolvedOrder = PredictCloseOrderLib.resolve(closeOrder, order.sig);
+        UserPosition storage userPosition = userPositions[closeOrder.positionId];
+
+        _verifyOrder(resolvedOrder);
+
+        if (userPosition.expiration <= block.timestamp) {
+            revert CloseAfterExpiration();
+        }
+
+        userPosition.expiration = 0;
+
+        DataType.Vault memory vault = _predyPool.getVault(closeOrder.positionId);
+
+        IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
+            vault.openPosition.pairId,
+            closeOrder.positionId,
+            -vault.openPosition.perp.amount,
+            -vault.openPosition.sqrtPerp.amount,
+            abi.encode(CallbackData(CallbackSource.CLOSE, 0, address(0), bytes("")))
+        );
+
+        tradeResult = _predyPool.trade(tradeParams, settlementData);
+
+        IOrderValidator(closeOrder.validatorAddress).validate(
+            tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, closeOrder.validationData, tradeResult
+        );
+    }
+
+    /**
+     * @notice Closes a predict position after expiration
      * @param positionId The id of position
      * @param settlementData The route of settlement created by filler
      * @return tradeResult The result of trade

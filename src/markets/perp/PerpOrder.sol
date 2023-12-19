@@ -15,6 +15,7 @@ struct PerpOrder {
     uint256 takeProfitPrice;
     uint256 stopLossPrice;
     uint64 slippageTolerance;
+    uint8 leverage;
     address validatorAddress;
     bytes validationData;
 }
@@ -33,6 +34,7 @@ library PerpOrderLib {
         "uint256 takeProfitPrice,",
         "uint256 stopLossPrice,",
         "uint64 slippageTolerance,",
+        "uint8 leverage,",
         "address validatorAddress,",
         "bytes validationData)"
     );
@@ -61,6 +63,7 @@ library PerpOrderLib {
                 order.takeProfitPrice,
                 order.stopLossPrice,
                 order.slippageTolerance,
+                order.leverage,
                 order.validatorAddress,
                 keccak256(order.validationData)
             )
