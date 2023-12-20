@@ -18,6 +18,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
   })
+
+  const GammaTradeMarket = await ethers.getContract('GammaTradeMarket', deployer)
+
+  await deploy('GammaTradeMarketQuoter', {
+    from: deployer,
+    log: true,
+    args: [GammaTradeMarket.address]
+  })
+
 }
 
 export default func
