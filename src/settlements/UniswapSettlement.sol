@@ -58,6 +58,12 @@ contract UniswapSettlement is BaseSettlement {
         // filler can set negative fee
         SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
 
+        if (settlementParams.fee < 0) {
+            ERC20(settlementParams.quoteTokenAddress).safeTransferFrom(
+                filler, address(this), uint256(-settlementParams.fee)
+            );
+        }
+
         if (baseAmountDelta > 0) {
             _predyPool.take(false, address(this), uint256(baseAmountDelta));
 
