@@ -9,8 +9,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
-  const PredyPool = await ethers.getContract('PredyPool', deployer)
-  const RevertSettlement = await ethers.getContract('RevertSettlement', deployer)
+  const PredyPool = await deployments.get('PredyPool')
+  const RevertSettlement = await deployments.get('RevertSettlement')
 
   await deploy('PredyPoolQuoter', {
     from: deployer,
@@ -18,5 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [PredyPool.address, RevertSettlement.address]
   })
 }
+
+func.tags = ['quoter'];
 
 export default func

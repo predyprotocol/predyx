@@ -3,15 +3,15 @@ import { DeployFunction } from 'hardhat-deploy/types'
 import { Filler, Permit2 } from '../addressList'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts } = hre
+  const { deployments, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
   console.log(`Start deploying gamma market with ${deployer}`)
 
   const { deploy } = deployments
 
-  const PredyPool = await ethers.getContract('PredyPool', deployer)
-  const PredyPoolQuoter = await ethers.getContract('PredyPoolQuoter', deployer)
+  const PredyPool = await deployments.get('PredyPool')
+  const PredyPoolQuoter = await deployments.get('PredyPoolQuoter')
 
   await deploy('PerpMarket', {
     from: deployer,
@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
   })
 
-  const PerpMarket = await ethers.getContract('PerpMarket', deployer)
+  const PerpMarket = await deployments.get('PerpMarket')
 
   await deploy('PerpMarketQuoter', {
     from: deployer,

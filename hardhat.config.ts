@@ -1,30 +1,15 @@
 import * as dotenv from 'dotenv'
 import fs from 'fs'
 
-import { HardhatUserConfig, task } from 'hardhat/config'
-import "@nomicfoundation/hardhat-verify"
-import '@typechain/hardhat'
-import 'hardhat-contract-sizer'
-import 'hardhat-deploy'
-import '@eth-optimism/hardhat-ovm'
-import '@nomiclabs/hardhat-ethers'
-import 'hardhat-preprocessor'
+import "@nomicfoundation/hardhat-toolbox"
+import "hardhat-preprocessor"
+import "hardhat-deploy"
 
 dotenv.config()
 
 const InfuraKey = process.env.INFURA_API_KEY
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners()
-
-  for (const account of accounts) {
-    console.log(account.address)
-  }
-})
-
-const config: HardhatUserConfig = {
+const config = {
   networks: {
     localhost: {
       url: 'http://127.0.0.1:8545',
@@ -104,9 +89,6 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-  },
-  ovm: {
-    solcVersion: '0.7.6',
   },
   namedAccounts: {
     deployer: {

@@ -10,8 +10,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
-  const PredyPool = await ethers.getContract('PredyPool', deployer)
-  const PredyPoolQuoter = await ethers.getContract('PredyPoolQuoter', deployer)
+  const PredyPool = await deployments.get('PredyPool')
+  const PredyPoolQuoter = await deployments.get('PredyPoolQuoter')
 
   await deploy('PredictMarket', {
     from: deployer,
@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
   })
 
-  const PredictMarket = await ethers.getContract('PredictMarket', deployer)
+  const PredictMarket = await deployments.get('PredictMarket')
 
   await deploy('PredictMarketQuoter', {
     from: deployer,
