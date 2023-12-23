@@ -15,6 +15,7 @@ import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
+import {Math} from "../../libraries/math/Math.sol";
 import "./PerpOrder.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
@@ -26,6 +27,8 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
     using SafeTransferLib for ERC20;
+
+    error TPSLConditionDoesNotMatch();
 
     struct UserPosition {
         uint256 vaultId;
@@ -215,7 +218,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
 
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(vault.openPosition.pairId);
 
-        _validateTPSLCondition(vault.openPosition.perp.amount > 0, userPosition, sqrtPrice);
+        bool slConditionMet = _getSLCondition(vault.openPosition.perp.amount > 0, userPosition, sqrtPrice);
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
@@ -228,7 +231,14 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
             settlementData
         );
 
-        SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
+        if (slConditionMet) {
+            SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
+        } else {
+            if (!_getTPCondition(vault.openPosition.perp.amount > 0, userPosition, Math.abs(tradeResult.averagePrice)))
+            {
+                revert TPSLConditionDoesNotMatch();
+            }
+        }
     }
 
     function getUserPosition(address owner, uint256 pairId)
@@ -253,20 +263,37 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
         );
     }
 
-    function _validateTPSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)
+    function _getSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)
         internal
         pure
+        returns (bool)
     {
+        uint256 priceX96 = Math.calSqrtPriceToPrice(sqrtIndexPrice);
+
+        if (userPosition.stopLossPrice == 0) {
+            return false;
+        }
+
         if (isLong) {
-            require(
-                (0 < userPosition.stopLossPrice && sqrtIndexPrice <= userPosition.stopLossPrice)
-                    || (0 < userPosition.takeProfitPrice && userPosition.takeProfitPrice <= sqrtIndexPrice)
-            );
+            return priceX96 <= userPosition.stopLossPrice;
         } else {
-            require(
-                (0 < userPosition.takeProfitPrice && sqrtIndexPrice <= userPosition.takeProfitPrice)
-                    || (0 < userPosition.stopLossPrice && userPosition.stopLossPrice <= sqrtIndexPrice)
-            );
+            return userPosition.stopLossPrice <= priceX96;
+        }
+    }
+
+    function _getTPCondition(bool isLong, UserPosition memory userPosition, uint256 averagePrice)
+        internal
+        pure
+        returns (bool)
+    {
+        if (userPosition.takeProfitPrice == 0) {
+            return false;
+        }
+
+        if (isLong) {
+            return userPosition.takeProfitPrice <= averagePrice;
+        } else {
+            return averagePrice <= userPosition.takeProfitPrice;
         }
     }
 
