@@ -331,6 +331,8 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
 
     /// @notice Gets the status of pair
     function getPairStatus(uint256 pairId) external view returns (DataType.PairStatus memory) {
+        globalData.validate(pairId);
+
         return globalData.pairs[pairId];
     }
 
