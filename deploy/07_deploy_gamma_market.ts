@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
-  console.log(`Start deploying predict market with ${deployer}`)
+  console.log(`Start deploying gamma market with ${deployer}`)
 
   const { deploy } = deployments
 

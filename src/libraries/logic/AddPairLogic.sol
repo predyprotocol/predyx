@@ -192,11 +192,11 @@ library AddPairLogic {
 
         return address(
             new SupplyToken(
-                        address(this),
-                        string.concat("Predy6-Supply-", erc20.name()),
-                        string.concat("p", erc20.symbol()),
-                        erc20.decimals()
-                        )
+                address(this),
+                string.concat("Predy6-Supply-", erc20.name()),
+                string.concat("p", erc20.symbol()),
+                erc20.decimals()
+            )
         );
     }
 

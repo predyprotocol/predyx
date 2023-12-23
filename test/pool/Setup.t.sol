@@ -30,8 +30,8 @@ contract TestPool is Test {
     PredyPoolQuoter _predyPoolQuoter;
 
     function setUp() public virtual {
-        currency0 = new MockERC20("currency0","currency0",18);
-        currency1 = new MockERC20("currency1","currency1",18);
+        currency0 = new MockERC20("currency0", "currency0", 18);
+        currency1 = new MockERC20("currency1", "currency1", 18);
 
         if (address(currency0) < address(currency1)) {
             (currency0, currency1) = (currency1, currency0);

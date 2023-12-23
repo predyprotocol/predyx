@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
-  console.log(`Start deploying gamma market with ${deployer}`)
+  console.log(`Start deploying perp market with ${deployer}`)
 
   const { deploy } = deployments
 
@@ -16,7 +16,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy('PerpMarket', {
     from: deployer,
     log: true,
-    args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
+    args: [],
+    proxy: {
+      execute: {
+        init: {
+          methodName: 'initialize',
+          args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address],
+        },
+      },
+      proxyContract: "EIP173Proxy",
+    },
   })
 
   const PerpMarket = await deployments.get('PerpMarket')

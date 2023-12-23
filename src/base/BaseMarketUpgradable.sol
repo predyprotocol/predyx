@@ -1,22 +1,32 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {Owned} from "@solmate/src/auth/Owned.sol";
-import "./BaseHookCallback.sol";
+import {BaseHookCallbackUpgradable} from "./BaseHookCallbackUpgradable.sol";
 import {PredyPoolQuoter} from "../lens/PredyPoolQuoter.sol";
+import {IPredyPool} from "../interfaces/IPredyPool.sol";
+import {DataType} from "../libraries/DataType.sol";
 import "../interfaces/IFillerMarket.sol";
 
-abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
+abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgradable {
     address public whitelistFiller;
 
-    PredyPoolQuoter internal immutable _quoter;
+    PredyPoolQuoter internal _quoter;
 
     mapping(uint256 pairId => address quoteTokenAddress) internal _quoteTokenMap;
 
-    constructor(IPredyPool predyPool, address _whitelistFiller, address quoterAddress)
-        BaseHookCallback(predyPool)
-        Owned(msg.sender)
+    modifier onlyFiller() {
+        if (msg.sender != whitelistFiller) revert CallerIsNotFiller();
+        _;
+    }
+
+    constructor() {}
+
+    function __BaseMarket_init(IPredyPool predyPool, address _whitelistFiller, address quoterAddress)
+        internal
+        onlyInitializing
     {
+        __BaseHookCallback_init(predyPool);
+
         whitelistFiller = _whitelistFiller;
 
         _quoter = PredyPoolQuoter(quoterAddress);
@@ -26,7 +36,7 @@ abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
      * @notice Updates the whitelist filler address
      * @dev only owner can call this function
      */
-    function updateWhitelistFiller(address newWhitelistFiller) external onlyOwner {
+    function updateWhitelistFiller(address newWhitelistFiller) external onlyFiller {
         whitelistFiller = newWhitelistFiller;
     }
 

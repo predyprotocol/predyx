@@ -5,11 +5,12 @@ import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
-import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseMarket.sol";
+import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
+import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
@@ -20,7 +21,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 /**
  * @notice Perp market contract
  */
-contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
+contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     using ResolvedOrderLib for ResolvedOrder;
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
@@ -48,7 +49,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         bytes validationData;
     }
 
-    IPermit2 private immutable _permit2;
+    IPermit2 private _permit2;
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
@@ -71,16 +72,21 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     );
     event PerpTPSLOrderUpdated(address indexed trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
-        BaseMarket(predyPool, whitelistFiller, quoterAddress)
+    constructor() {}
+
+    function initialize(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        public
+        initializer
     {
+        __BaseMarket_init(predyPool, whitelistFiller, quoterAddress);
+
         _permit2 = IPermit2(permit2Address);
     }
 
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) onlyPredyPool {
+    ) external override(BaseHookCallbackUpgradable) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
@@ -99,7 +105,12 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
             if (callbackData.callbackSource == CallbackSource.CLOSE) {
                 emit PerpClosedByTPSLOrder(
-                    owner, tradeParams.pairId, tradeParams.tradeAmount, tradeResult.payoff, tradeResult.fee, closeValue
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeParams.tradeAmount,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    closeValue
                 );
             }
         } else if (callbackData.callbackSource == CallbackSource.TRADE) {
