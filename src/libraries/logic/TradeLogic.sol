@@ -74,13 +74,11 @@ library TradeLogic {
 
         IHooks(msg.sender).predyTradeAfterCallback(tradeParams, tradeResult);
 
-        if (globalData.settle(false) != 0) {
+        (int256 marginAmountUpdate, int256 settledBaseAmount) = globalData.finalizeLock();
+
+        if (settledBaseAmount != 0) {
             revert IPredyPool.BaseTokenNotSettled();
         }
-
-        int256 marginAmountUpdate = GlobalDataLibrary.settle(globalData, true);
-
-        delete globalData.lockData;
 
         globalData.vaults[tradeParams.vaultId].margin += marginAmountUpdate;
 

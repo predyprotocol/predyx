@@ -45,6 +45,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
             12 hours,
             0,
             1000,
+            1000,
             address(dutchOrderValidator),
             abi.encode(
                 GeneralDutchOrderValidationData(
