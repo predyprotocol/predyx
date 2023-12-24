@@ -36,6 +36,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         uint256 hedgeInterval;
         uint256 lastHedgedSqrtPrice;
         uint256 sqrtPriceTrigger;
+        uint64 minSlippageTolerance;
         uint64 maxSlippageTolerance;
     }
 
@@ -52,10 +53,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         bytes validationData;
     }
 
-    // 0.1%
-    uint256 private constant _MIN_SLIPPAGE = 1001000;
-    // The duration of dutch auction is 20 minutes
-    uint256 private constant _AUCTION_DURATION = 20 minutes;
+    // The duration of dutch auction is 16 minutes
+    uint256 private constant _AUCTION_DURATION = 16 minutes;
+    // The range of auction price
+    uint256 private constant _AUCTION_RANGE = 100;
 
     IPermit2 private immutable _permit2;
 
@@ -137,7 +138,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         UserPosition storage userPosition = userPositions[gammaOrder.info.trader][gammaOrder.pairId];
 
         _saveUserPosition(
-            userPosition, gammaOrder.hedgeInterval, gammaOrder.sqrtPriceTrigger, gammaOrder.maxSlippageTolerance
+            userPosition,
+            gammaOrder.hedgeInterval,
+            gammaOrder.sqrtPriceTrigger,
+            gammaOrder.minSlippageTolerance,
+            gammaOrder.maxSlippageTolerance
         );
 
         tradeResult = _predyPool.trade(
@@ -209,11 +214,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         int256 delta = _calculateDelta(sqrtPrice, vault.openPosition.sqrtPerp.amount, vault.openPosition.perp.amount);
 
-        if (!_validateHedgeCondition(userPosition, sqrtPrice)) {
+        (bool hedgeRequired, uint256 slippageTorelance) = _validateHedgeCondition(userPosition, sqrtPrice);
+
+        if (!hedgeRequired) {
             revert HedgeTriggerNotMatched();
         }
-
-        uint256 hedgeAuctionStartTime = userPosition.lastHedgedTime + userPosition.hedgeInterval;
 
         userPosition.lastHedgedSqrtPrice = sqrtPrice;
         userPosition.lastHedgedTime = block.timestamp;
@@ -229,12 +234,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             settlementData
         );
 
-        SlippageLib.checkPrice(
-            sqrtPrice,
-            tradeResult,
-            _calculateSlippageTolerance(hedgeAuctionStartTime, block.timestamp, userPosition.maxSlippageTolerance),
-            0
-        );
+        SlippageLib.checkPrice(sqrtPrice, tradeResult, slippageTorelance, 0);
 
         emit GammaPositionHedged(
             owner, pairId, userPosition.vaultId, sqrtPrice, delta, tradeResult.payoff, tradeResult.fee
@@ -278,16 +278,19 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         UserPosition storage userPosition,
         uint256 hedgeInterval,
         uint256 sqrtPriceTrigger,
+        uint64 minSlippageTolerance,
         uint64 maxSlippageTolerance
     ) internal {
         if (2 hours > hedgeInterval) {
             revert TooSmallHedgeInterval();
         }
 
-        require(maxSlippageTolerance <= Bps.ONE && maxSlippageTolerance + Bps.ONE >= _MIN_SLIPPAGE);
+        require(maxSlippageTolerance >= minSlippageTolerance);
+        require(maxSlippageTolerance <= Bps.ONE);
 
         userPosition.hedgeInterval = hedgeInterval;
         userPosition.sqrtPriceTrigger = sqrtPriceTrigger;
+        userPosition.minSlippageTolerance = minSlippageTolerance + Bps.ONE;
         userPosition.maxSlippageTolerance = maxSlippageTolerance + Bps.ONE;
     }
 
@@ -302,38 +305,57 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     function _validateHedgeCondition(UserPosition memory userPosition, uint256 sqrtIndexPrice)
         internal
         view
-        returns (bool)
+        returns (bool, uint256 slippageTolerance)
     {
         if (userPosition.lastHedgedTime + userPosition.hedgeInterval <= block.timestamp) {
-            return true;
+            return (
+                true,
+                _calculateSlippageTolerance(
+                    userPosition.lastHedgedTime + userPosition.hedgeInterval,
+                    block.timestamp,
+                    userPosition.minSlippageTolerance,
+                    userPosition.maxSlippageTolerance
+                    )
+            );
         }
 
         // if sqrtPriceTrigger is 0, it means that the user doesn't want to use this feature
         if (userPosition.sqrtPriceTrigger == 0) {
-            return false;
+            return (false, 0);
         }
 
         uint256 upperThreshold = userPosition.lastHedgedSqrtPrice * userPosition.sqrtPriceTrigger / 1e4;
         uint256 lowerThreshold = userPosition.lastHedgedSqrtPrice * 1e4 / userPosition.sqrtPriceTrigger;
 
         if (lowerThreshold >= sqrtIndexPrice) {
-            return true;
+            return (
+                true,
+                _calculateSlippageToleranceByPrice(
+                    sqrtIndexPrice, lowerThreshold, userPosition.minSlippageTolerance, userPosition.maxSlippageTolerance
+                    )
+            );
         }
 
         if (upperThreshold <= sqrtIndexPrice) {
-            return true;
+            return (
+                true,
+                _calculateSlippageToleranceByPrice(
+                    upperThreshold, sqrtIndexPrice, userPosition.minSlippageTolerance, userPosition.maxSlippageTolerance
+                    )
+            );
         }
 
-        return false;
+        return (false, 0);
     }
 
-    function _calculateSlippageTolerance(uint256 startTime, uint256 currentTime, uint256 maxSlippageTolerance)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _calculateSlippageTolerance(
+        uint256 startTime,
+        uint256 currentTime,
+        uint256 minSlippageTolerance,
+        uint256 maxSlippageTolerance
+    ) internal pure returns (uint256) {
         if (currentTime <= startTime) {
-            return _MIN_SLIPPAGE;
+            return minSlippageTolerance;
         }
 
         uint256 elapsed = (currentTime - startTime) * 1e4 / _AUCTION_DURATION;
@@ -342,7 +364,26 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             return maxSlippageTolerance;
         }
 
-        return (_MIN_SLIPPAGE + elapsed * (maxSlippageTolerance - _MIN_SLIPPAGE) / 1e4);
+        return (minSlippageTolerance + elapsed * (maxSlippageTolerance - minSlippageTolerance) / 1e4);
+    }
+
+    function _calculateSlippageToleranceByPrice(
+        uint256 price1,
+        uint256 price2,
+        uint256 minSlippageTolerance,
+        uint256 maxSlippageTolerance
+    ) internal pure returns (uint256) {
+        if (price2 <= price1) {
+            return minSlippageTolerance;
+        }
+
+        uint256 ratio = (price2 * 1e4 / price1 - 1e4);
+
+        if (ratio > _AUCTION_RANGE) {
+            return maxSlippageTolerance;
+        }
+
+        return (minSlippageTolerance + ratio * (maxSlippageTolerance - minSlippageTolerance) / _AUCTION_RANGE);
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {

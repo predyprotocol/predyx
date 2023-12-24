@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import {FixedPointMathLib} from "@solmate/src/utils/FixedPointMathLib.sol";
+import {Constants} from "../Constants.sol";
 
 library Math {
     function abs(int256 x) internal pure returns (uint256) {
@@ -53,5 +54,9 @@ library Math {
         } else {
             return a - uint256(-b);
         }
+    }
+
+    function calSqrtPriceToPrice(uint256 sqrtPrice) internal pure returns (uint256 price) {
+        price = (sqrtPrice * sqrtPrice) >> Constants.RESOLUTION;
     }
 }

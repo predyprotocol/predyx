@@ -21,7 +21,9 @@ contract TestPerpMarketQuoter is TestLens {
 
         IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
-        PerpMarket perpMarket = new PerpMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        PerpMarket perpMarket = new PerpMarket();
+
+        perpMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         _quoter = new PerpMarketQuoter(perpMarket);
 

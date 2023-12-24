@@ -15,6 +15,7 @@ struct GammaOrder {
     int256 marginAmount;
     uint256 hedgeInterval;
     uint256 sqrtPriceTrigger;
+    uint64 minSlippageTolerance;
     uint64 maxSlippageTolerance;
     address validatorAddress;
     bytes validationData;
@@ -34,6 +35,7 @@ library GammaOrderLib {
         "int256 marginAmount,",
         "uint256 hedgeInterval,",
         "uint256 sqrtPriceTrigger,",
+        "uint64 minSlippageTolerance,",
         "uint64 maxSlippageTolerance,",
         "address validatorAddress,",
         "bytes validationData)"
@@ -62,6 +64,7 @@ library GammaOrderLib {
                 order.marginAmount,
                 order.hedgeInterval,
                 order.sqrtPriceTrigger,
+                order.minSlippageTolerance,
                 order.maxSlippageTolerance,
                 order.validatorAddress,
                 keccak256(order.validationData)

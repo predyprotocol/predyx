@@ -56,17 +56,17 @@ library ReallocationLogic {
                     settlementData.encodedData, deltaPositionBase
                 );
 
-                int256 exceedsQuote = globalData.settle(true) + deltaPositionQuote;
+                (int256 settledQuoteAmount, int256 settledBaseAmount) = globalData.finalizeLock();
+
+                int256 exceedsQuote = settledQuoteAmount + deltaPositionQuote;
 
                 if (exceedsQuote < 0) {
                     revert IPredyPool.QuoteTokenNotSettled();
                 }
 
-                if (globalData.settle(false) + deltaPositionBase != 0) {
+                if (settledBaseAmount + deltaPositionBase != 0) {
                     revert IPredyPool.BaseTokenNotSettled();
                 }
-
-                delete globalData.lockData;
 
                 if (exceedsQuote > 0) {
                     ERC20(pairStatus.quotePool.token).safeTransfer(msg.sender, uint256(exceedsQuote));

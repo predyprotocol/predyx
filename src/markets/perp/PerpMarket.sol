@@ -5,26 +5,30 @@ import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/ILendingPool.sol";
-import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseMarket.sol";
+import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
+import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
+import {Math} from "../../libraries/math/Math.sol";
 import "./PerpOrder.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 
 /**
  * @notice Perp market contract
  */
-contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
+contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     using ResolvedOrderLib for ResolvedOrder;
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
     using SafeTransferLib for ERC20;
+
+    error TPSLConditionDoesNotMatch();
 
     struct UserPosition {
         uint256 vaultId;
@@ -48,7 +52,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         bytes validationData;
     }
 
-    IPermit2 private immutable _permit2;
+    IPermit2 private _permit2;
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
@@ -71,16 +75,21 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     );
     event PerpTPSLOrderUpdated(address indexed trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
-        BaseMarket(predyPool, whitelistFiller, quoterAddress)
+    constructor() {}
+
+    function initialize(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        public
+        initializer
     {
+        __BaseMarket_init(predyPool, whitelistFiller, quoterAddress);
+
         _permit2 = IPermit2(permit2Address);
     }
 
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) onlyPredyPool {
+    ) external override(BaseHookCallbackUpgradable) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
@@ -99,7 +108,12 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
             if (callbackData.callbackSource == CallbackSource.CLOSE) {
                 emit PerpClosedByTPSLOrder(
-                    owner, tradeParams.pairId, tradeParams.tradeAmount, tradeResult.payoff, tradeResult.fee, closeValue
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeParams.tradeAmount,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    closeValue
                 );
             }
         } else if (callbackData.callbackSource == CallbackSource.TRADE) {
@@ -204,7 +218,7 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(vault.openPosition.pairId);
 
-        _validateTPSLCondition(vault.openPosition.perp.amount > 0, userPosition, sqrtPrice);
+        bool slConditionMet = _getSLCondition(vault.openPosition.perp.amount > 0, userPosition, sqrtPrice);
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
@@ -217,7 +231,14 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             settlementData
         );
 
-        SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
+        if (slConditionMet) {
+            SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
+        } else {
+            if (!_getTPCondition(vault.openPosition.perp.amount > 0, userPosition, Math.abs(tradeResult.averagePrice)))
+            {
+                revert TPSLConditionDoesNotMatch();
+            }
+        }
     }
 
     function getUserPosition(address owner, uint256 pairId)
@@ -242,20 +263,37 @@ contract PerpMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         );
     }
 
-    function _validateTPSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)
+    function _getSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)
         internal
         pure
+        returns (bool)
     {
+        uint256 priceX96 = Math.calSqrtPriceToPrice(sqrtIndexPrice);
+
+        if (userPosition.stopLossPrice == 0) {
+            return false;
+        }
+
         if (isLong) {
-            require(
-                (0 < userPosition.stopLossPrice && sqrtIndexPrice <= userPosition.stopLossPrice)
-                    || (0 < userPosition.takeProfitPrice && userPosition.takeProfitPrice <= sqrtIndexPrice)
-            );
+            return priceX96 <= userPosition.stopLossPrice;
         } else {
-            require(
-                (0 < userPosition.takeProfitPrice && sqrtIndexPrice <= userPosition.takeProfitPrice)
-                    || (0 < userPosition.stopLossPrice && userPosition.stopLossPrice <= sqrtIndexPrice)
-            );
+            return userPosition.stopLossPrice <= priceX96;
+        }
+    }
+
+    function _getTPCondition(bool isLong, UserPosition memory userPosition, uint256 averagePrice)
+        internal
+        pure
+        returns (bool)
+    {
+        if (userPosition.takeProfitPrice == 0) {
+            return false;
+        }
+
+        if (isLong) {
+            return userPosition.takeProfitPrice <= averagePrice;
+        } else {
+            return averagePrice <= userPosition.takeProfitPrice;
         }
     }
 

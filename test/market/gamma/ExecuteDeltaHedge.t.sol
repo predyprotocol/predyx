@@ -2,20 +2,26 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
+import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../../src/libraries/Constants.sol";
+import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
 
-contract TestExecLiquidationCall is TestGammaMarket {
+contract TestGammaExecuteDeltaHedge is TestGammaMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;
     uint256 fromPrivateKey2;
     address from2;
+    MockPriceFeed mockPriceFeed;
 
     function setUp() public override {
         TestGammaMarket.setUp();
 
-        registerPair(address(currency1), address(0));
+        mockPriceFeed = new MockPriceFeed();
+
+        registerPair(address(currency1), address(mockPriceFeed));
+
         fillerMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
@@ -36,17 +42,14 @@ contract TestExecLiquidationCall is TestGammaMarket {
 
         vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
-    }
 
-    // liquidate succeeds if the vault is danger
-    function testLiquidateSucceedsIfVaultIsDanger() public {
         GammaOrder memory order = GammaOrder(
             OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
-            -4 * 1e8,
-            0,
-            1e8,
+            -1000,
+            900,
+            2 * 1e6,
             12 hours,
             0,
             1000,
@@ -60,23 +63,26 @@ contract TestExecLiquidationCall is TestGammaMarket {
         fillerMarket.executeOrder(
             signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
         );
-
-        _movePrice(true, 6 * 1e16);
-
-        vm.warp(block.timestamp + 30 minutes);
-
-        uint256 beforeMargin = currency1.balanceOf(from1);
-        predyPool.execLiquidationCall(
-            1, 1e18, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
-        uint256 afterMargin = currency1.balanceOf(from1);
-
-        assertGt(afterMargin - beforeMargin, 0);
     }
 
-    // liquidate fails if the vault does not exist
-    // liquidate fails if the vault is safe
+    function testFailsExecuteDeltaHedgeByTime() public {
+        mockPriceFeed.setSqrtPrice(2 ** 96);
 
-    // liquidate succeeds if the vault is danger
-    // liquidate succeeds with insolvent vault (compensated from filler pool)
+        vm.warp(block.timestamp + 10 hours);
+
+        vm.expectRevert();
+        fillerMarket.execDeltaHedge(
+            from1, 1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+        );
+    }
+
+    function testExecuteDeltaHedgeByTime() public {
+        mockPriceFeed.setSqrtPrice(2 ** 96);
+
+        vm.warp(block.timestamp + 12 hours);
+
+        fillerMarket.execDeltaHedge(
+            from1, 1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+        );
+    }
 }

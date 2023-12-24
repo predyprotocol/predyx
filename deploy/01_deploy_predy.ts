@@ -10,12 +10,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log(`Start deploying PredyPool with ${deployer}`)
 
-  const AddPairLogic = await ethers.getContract('AddPairLogic', deployer)
-  const ReallocationLogic = await ethers.getContract('ReallocationLogic', deployer)
-  const LiquidationLogic = await ethers.getContract('LiquidationLogic', deployer)
-  const ReaderLogic = await ethers.getContract('ReaderLogic', deployer)
-  const SupplyLogic = await ethers.getContract('SupplyLogic', deployer)
-  const TradeLogic = await ethers.getContract('TradeLogic', deployer)
+  const AddPairLogic = await deployments.get('AddPairLogic')
+  const ReallocationLogic = await deployments.get('ReallocationLogic')
+  const LiquidationLogic = await deployments.get('LiquidationLogic')
+  const ReaderLogic = await deployments.get('ReaderLogic')
+  const SupplyLogic = await deployments.get('SupplyLogic')
+  const TradeLogic = await deployments.get('TradeLogic')
 
   await deploy('PredyPool', {
     from: deployer,
@@ -26,7 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       ReaderLogic: ReaderLogic.address,
       AddPairLogic: AddPairLogic.address,
       SupplyLogic: SupplyLogic.address,
-      TradeLogic: TradeLogic.address
+      TradeLogic: TradeLogic.address,
     },
     log: true,
     proxy: {
@@ -38,8 +38,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           ],
         },
       },
+      proxyContract: "EIP173Proxy",
     },
   })
 }
+
+func.tags = ['PredyPool'];
 
 export default func

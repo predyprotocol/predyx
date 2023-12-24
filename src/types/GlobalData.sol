@@ -28,6 +28,7 @@ library GlobalDataLibrary {
         if (pairId <= 0 || globalData.pairsCount <= pairId) revert IPredyPool.InvalidPairId();
     }
 
+    /// @notice Initializes lock for token settlement
     function initializeLock(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId, address caller) internal {
         if (globalData.lockData.locker != address(0)) {
             revert IPredyPool.LockedBy(globalData.lockData.locker);
@@ -37,6 +38,17 @@ library GlobalDataLibrary {
         globalData.lockData.baseReserve = ERC20(globalData.pairs[pairId].basePool.token).balanceOf(address(this));
         globalData.lockData.locker = caller;
         globalData.lockData.pairId = pairId;
+    }
+
+    /// @notice Finalizes lock
+    function finalizeLock(GlobalDataLibrary.GlobalData storage globalData)
+        internal
+        returns (int256 paidQuote, int256 paidBase)
+    {
+        paidQuote = settle(globalData, true);
+        paidBase = settle(globalData, false);
+
+        delete globalData.lockData;
     }
 
     function take(GlobalDataLibrary.GlobalData storage globalData, bool isQuoteAsset, address to, uint256 amount)

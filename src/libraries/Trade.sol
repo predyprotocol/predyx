@@ -89,20 +89,18 @@ library Trade {
             settlementData.encodedData, totalBaseAmount
         );
 
-        int256 totalQuoteAmount = globalData.settle(true);
+        (int256 settledQuoteAmount, int256 settledBaseAmount) = globalData.finalizeLock();
 
-        if (globalData.settle(false) != -totalBaseAmount) {
+        if (settledBaseAmount != -totalBaseAmount) {
             revert IPredyPool.BaseTokenNotSettled();
         }
 
-        // totalQuoteAmount must be non-zero
-        if (totalQuoteAmount * totalBaseAmount <= 0) {
+        // settledQuoteAmount must be non-zero
+        if (settledQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.QuoteTokenNotSettled();
         }
 
-        delete globalData.lockData;
-
-        return divToStable(swapParams, totalBaseAmount, totalQuoteAmount, totalQuoteAmount);
+        return divToStable(swapParams, totalBaseAmount, settledQuoteAmount, settledQuoteAmount);
     }
 
     function getSqrtPrice(address uniswapPoolAddress, bool isQuoteZero) internal view returns (uint256 sqrtPriceX96) {

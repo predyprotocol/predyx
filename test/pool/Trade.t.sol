@@ -153,7 +153,7 @@ contract TestTrade is TestPool {
         vm.expectRevert(IPredyPool.TraderNotAllowed.selector);
         tradeMarket.trade(tradeParams, settlementData);
 
-        predyPool.addWhitelistAddress(whitelistPairId, address(tradeMarket));
+        predyPool.updateWhitelistAddress(whitelistPairId, address(tradeMarket), true);
 
         tradeMarket.trade(tradeParams, settlementData);
     }

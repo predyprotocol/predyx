@@ -6,12 +6,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
-  console.log(`Start deploying predict market with ${deployer}`)
+  console.log(`Start deploying gamma market with ${deployer}`)
 
   const { deploy } = deployments
 
-  const PredyPool = await ethers.getContract('PredyPool', deployer)
-  const PredyPoolQuoter = await ethers.getContract('PredyPoolQuoter', deployer)
+  const PredyPool = await deployments.get('PredyPool')
+  const PredyPoolQuoter = await deployments.get('PredyPoolQuoter')
 
   await deploy('GammaTradeMarket', {
     from: deployer,
@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
   })
 
-  const GammaTradeMarket = await ethers.getContract('GammaTradeMarket', deployer)
+  const GammaTradeMarket = await deployments.get('GammaTradeMarket')
 
   await deploy('GammaTradeMarketQuoter', {
     from: deployer,

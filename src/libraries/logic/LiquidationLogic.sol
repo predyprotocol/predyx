@@ -150,7 +150,6 @@ library LiquidationLogic {
      * @param riskParams risk parameters
      * @return slippageTolerance slippage tolerance calculated by minMargin and vault value
      */
-
     function calculateSlippageTolerance(int256 minMargin, int256 vaultValue, Perp.AssetRiskParams memory riskParams)
         internal
         pure

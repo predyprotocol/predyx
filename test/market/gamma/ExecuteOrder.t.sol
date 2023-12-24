@@ -51,6 +51,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             12 hours,
             0,
             1000,
+            1000,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
@@ -80,6 +81,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 12 hours,
                 0,
                 1000,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, 0, 0))
             );
@@ -102,6 +104,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 12 hours,
                 0,
                 1000,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -114,16 +117,6 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         }
     }
 
-    // executeOrder succeeds for close
-
-    // executeOrder succeeds with 0 amount
-
-    // executeOrder succeeds with margin amount
-    // executeOrder fails if withdrawn margin amount is too large
-
-    // executeOrder succeeds with margin ratio
-    // executeOrder fails if margin ratio is invalid
-
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
         GammaOrder memory order = GammaOrder(
@@ -135,6 +128,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             2 * 1e6,
             12 hours,
             0,
+            1000,
             1000,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
@@ -165,6 +159,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 12 hours,
                 0,
                 1000,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -185,6 +180,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
                 12 hours,
                 0,
                 1000,
+                1000,
                 address(limitOrderValidator),
                 abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1200, 1000), 0))
             );
@@ -195,8 +191,6 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             fillerMarket.executeOrder(signedOrder, settlementData);
         }
     }
-
-    // executeOrder fails if nonce is invalid
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
@@ -209,6 +203,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             2 * 1e6,
             12 hours,
             0,
+            1000,
             1000,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(999, 1000), 0))
@@ -235,6 +230,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             12 hours,
             0,
             1000,
+            1000,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, calculateLimitPrice(1001, 1000), 0))
         );
@@ -247,9 +243,4 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
-
-    // executeOrder fails if filler pool is not enough
-    // executeOrder fails if the vault is danger
-
-    // executeOrder fails if pairId does not exist
 }

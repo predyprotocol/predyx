@@ -18,3 +18,4 @@ cache_hardhat/
 node_modules
 artifacts
 typechain
+typechain-types

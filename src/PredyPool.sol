@@ -277,10 +277,10 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      * @param pairId The id of pair
      * @param trader The address of allowed trader
      */
-    function addWhitelistAddress(uint256 pairId, address trader) external onlyPoolOwner(pairId) {
+    function updateWhitelistAddress(uint256 pairId, address trader, bool enabled) external onlyPoolOwner(pairId) {
         require(globalData.pairs[pairId].whitelistEnabled);
 
-        allowedTraders[trader][pairId] = true;
+        allowedTraders[trader][pairId] = enabled;
     }
 
     /**
@@ -331,6 +331,8 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
 
     /// @notice Gets the status of pair
     function getPairStatus(uint256 pairId) external view returns (DataType.PairStatus memory) {
+        globalData.validate(pairId);
+
         return globalData.pairs[pairId];
     }
 
