@@ -44,33 +44,33 @@ contract DirectSettlement is BaseSettlement {
     {
         if (address(_predyPool) != msg.sender) revert CallerIsNotLendingPool();
 
-        SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
+        SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
 
         if (baseAmountDelta > 0) {
-            uint256 quoteAmount = uint256(baseAmountDelta) * settlemendParams.price / Constants.Q96;
+            uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
 
             _predyPool.take(false, _filler, uint256(baseAmountDelta));
 
-            ERC20(settlemendParams.quoteTokenAddress).safeTransferFrom(_filler, address(_predyPool), quoteAmount);
+            ERC20(settlementParams.quoteTokenAddress).safeTransferFrom(_filler, address(_predyPool), quoteAmount);
         } else if (baseAmountDelta < 0) {
-            uint256 quoteAmount = uint256(-baseAmountDelta) * settlemendParams.price / Constants.Q96;
+            uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
 
             _predyPool.take(true, _filler, quoteAmount);
 
-            ERC20(settlemendParams.baseTokenAddress).safeTransferFrom(
+            ERC20(settlementParams.baseTokenAddress).safeTransferFrom(
                 _filler, address(_predyPool), uint256(-baseAmountDelta)
             );
         }
     }
 
     function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external pure override {
-        SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
+        SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
         int256 quoteAmount;
 
         if (baseAmountDelta > 0) {
-            quoteAmount = int256(uint256(baseAmountDelta) * settlemendParams.price / Constants.Q96);
+            quoteAmount = int256(uint256(baseAmountDelta) * settlementParams.price / Constants.Q96);
         } else if (baseAmountDelta < 0) {
-            quoteAmount = -int256(uint256(-baseAmountDelta) * settlemendParams.price / Constants.Q96);
+            quoteAmount = -int256(uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96);
         }
 
         _revertQuoteAmount(quoteAmount);
