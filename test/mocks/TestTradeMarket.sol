@@ -5,6 +5,7 @@ import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import "../../src/types/GlobalData.sol";
 import "../../src/interfaces/IPredyPool.sol";
 import "../../src/base/BaseHookCallback.sol";
+import "../../src/base/SettlementCallbackLib.sol";
 import "../../src/settlements/BaseSettlement.sol";
 import "../../src/libraries/logic/TradeLogic.sol";
 
@@ -20,32 +21,71 @@ contract TestTradeMarket is BaseHookCallback {
 
     constructor(IPredyPool predyPool) BaseHookCallback(predyPool) {}
 
+    function predySettlementCallback(
+        address quoteToken,
+        address baseToken,
+        bytes memory settlementData,
+        int256 baseAmountDelta
+    ) external onlyPredyPool {
+        // TODO: sender must be market
+        SettlementCallbackLib._execSettlement(_predyPool, quoteToken, baseToken, settlementData, baseAmountDelta);
+    }
+
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) {
+    ) external override(BaseHookCallback) onlyPredyPool {
         TradeAfterParams memory tradeAfterParams = abi.decode(tradeParams.extraData, (TradeAfterParams));
 
         if (tradeResult.minMargin == 0) {
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-            ILendingPool(address(_predyPool)).take(true, tradeAfterParams.trader, uint256(vault.margin));
+            _predyPool.take(true, tradeAfterParams.trader, uint256(vault.margin));
         } else {
             ERC20(tradeAfterParams.quoteTokenAddress).transfer(address(_predyPool), tradeAfterParams.marginAmountUpdate);
         }
     }
 
-    function trade(IPredyPool.TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
-        external
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
-        return _predyPool.trade(tradeParams, settlementData);
+    function trade(
+        IPredyPool.TradeParams memory tradeParams,
+        SettlementCallbackLib.SettlementParams memory settlementData
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        return _predyPool.trade(tradeParams, _getSettlementData(settlementData));
     }
 
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
+    function reallocate(uint256 pairId, SettlementCallbackLib.SettlementParams memory settlementData)
         external
-        returns (IPredyPool.TradeResult memory tradeResult)
+        returns (bool relocationOccurred)
     {
-        return _predyPool.execLiquidationCall(vaultId, closeRatio, settlementData);
+        return _predyPool.reallocate(pairId, _getSettlementData(settlementData));
+    }
+
+    function execLiquidationCall(
+        uint256 vaultId,
+        uint256 closeRatio,
+        SettlementCallbackLib.SettlementParams memory settlementData
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementData), msg.sender);
+    }
+
+    function payCallback(address token, uint256 amount, address sender) external onlyPredyPool {
+        ERC20(token).transferFrom(sender, address(_predyPool), amount);
+    }
+
+    function _getSettlementData(SettlementCallbackLib.SettlementParams memory settlementParams)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encode(
+            SettlementCallbackLib.SettlementParams(
+                msg.sender,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmount,
+                settlementParams.price,
+                settlementParams.fee
+            )
+        );
     }
 }

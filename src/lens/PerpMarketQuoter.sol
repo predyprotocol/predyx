@@ -5,6 +5,7 @@ import {PerpMarket} from "../markets/perp/PerpMarket.sol";
 import {PerpOrder} from "../markets/perp/PerpOrder.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
+import {SettlementCallbackLib} from "../base/SettlementCallbackLib.sol";
 
 /**
  * @notice Quoter contract for PerpMarket
@@ -16,11 +17,11 @@ contract PerpMarketQuoter {
         perpMarket = _perpMarket;
     }
 
-    function quoteExecuteOrder(PerpOrder memory order, ISettlement.SettlementData memory settlementData)
+    function quoteExecuteOrder(PerpOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        try perpMarket.quoteExecuteOrder(order, settlementData) {}
+        try perpMarket.quoteExecuteOrder(order, settlementParams) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

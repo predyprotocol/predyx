@@ -29,6 +29,9 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
+
+        currency0.mint(address(settlement), type(uint128).max);
+        currency1.mint(address(settlement), type(uint128).max);
     }
 
     function testExecuteOrderSucceedsForSwap() public {
@@ -48,9 +51,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        int256 quoteTokenAmount = fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), 1000, 1000)
-        );
+        int256 quoteTokenAmount = fillerMarket.executeOrder(signedOrder, _getSpotSettlementParams(1000, 1000));
 
         assertEq(quoteTokenAmount, -1000);
     }
@@ -71,10 +72,10 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 1000, 1000);
 
-        vm.expectRevert(bytes("ST"));
+        SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(1000, 1000);
+
+        vm.expectRevert(bytes("TRANSFER_FAILED"));
         fillerMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -94,8 +95,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 1000, 1000);
+        SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(1000, 1000);
 
         vm.expectRevert(SpotMarket.BaseCurrencyNotSettled.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -117,8 +117,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), 2000, 1000);
+        SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(2000, 1000);
 
         vm.expectRevert(SpotDutchOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);

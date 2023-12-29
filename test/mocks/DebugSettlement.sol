@@ -3,61 +3,42 @@ pragma solidity ^0.8.17;
 
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
-import {ILendingPool} from "../../src/interfaces/ILendingPool.sol";
 import {ISettlement} from "../../src/interfaces/ISettlement.sol";
 import {BaseSettlement} from "../../src/settlements/BaseSettlement.sol";
 
 contract DebugSettlement is BaseSettlement {
     using SafeTransferLib for ERC20;
 
-    struct SettlementParams {
-        address quoteTokenAddress;
-        address baseTokenAddress;
+    struct RouteParams {
         uint256 quoteAmount;
         uint256 baseAmount;
     }
 
-    address private immutable _filler;
-
-    constructor(ILendingPool predyPool, address filler) BaseSettlement(predyPool) {
-        _filler = filler;
-    }
-
-    function getSettlementParams(
-        address quoteTokenAddress,
-        address baseTokenAddress,
-        uint256 quoteAmount,
-        uint256 baseAmount
-    ) external view returns (ISettlement.SettlementData memory) {
-        return ISettlement.SettlementData(
-            address(this), abi.encode(SettlementParams(quoteTokenAddress, baseTokenAddress, quoteAmount, baseAmount))
-        );
-    }
-
-    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta)
+    function swapExactIn(address quoteToken, address, bytes memory data, uint256, uint256, address recipient)
         external
-        override(BaseSettlement)
+        override
+        returns (uint256 amountOut)
     {
-        if (address(_predyPool) != msg.sender) revert CallerIsNotLendingPool();
+        RouteParams memory params = abi.decode(data, (RouteParams));
 
-        SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
-
-        if (baseAmountDelta > 0) {
-            _predyPool.take(false, _filler, settlemendParams.baseAmount);
-
-            ERC20(settlemendParams.quoteTokenAddress).safeTransferFrom(
-                _filler, address(_predyPool), settlemendParams.quoteAmount
-            );
-        } else if (baseAmountDelta < 0) {
-            _predyPool.take(true, _filler, settlemendParams.quoteAmount);
-
-            ERC20(settlemendParams.baseTokenAddress).safeTransferFrom(
-                _filler, address(_predyPool), settlemendParams.baseAmount
-            );
-        }
+        ERC20(quoteToken).safeTransfer(recipient, params.quoteAmount);
     }
 
-    function quoteSettlement(bytes memory, int256) external pure override {
-        _revertQuoteAmount(0);
+    function swapExactOut(address, address baseToken, bytes memory data, uint256, uint256, address recipient)
+        external
+        override
+        returns (uint256 amountIn)
+    {
+        RouteParams memory params = abi.decode(data, (RouteParams));
+
+        ERC20(baseToken).safeTransfer(recipient, params.baseAmount);
+    }
+
+    function quoteSwapExactIn(bytes memory, uint256) external override returns (uint256 amountOut) {
+        return 0;
+    }
+
+    function quoteSwapExactOut(bytes memory, uint256) external override returns (uint256 amountIn) {
+        return 0;
     }
 }

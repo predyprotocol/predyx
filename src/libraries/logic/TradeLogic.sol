@@ -29,7 +29,7 @@ library TradeLogic {
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
-        ISettlement.SettlementData memory settlementData
+        bytes memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         DataType.PairStatus storage pairStatus = globalData.pairs[tradeParams.pairId];
 
@@ -70,7 +70,7 @@ library TradeLogic {
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
     ) internal {
-        globalData.initializeLock(tradeParams.pairId, msg.sender);
+        globalData.initializeLock(tradeParams.pairId);
 
         IHooks(msg.sender).predyTradeAfterCallback(tradeParams, tradeResult);
 

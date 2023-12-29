@@ -3,16 +3,31 @@ pragma solidity ^0.8.17;
 
 import "../interfaces/IPredyPool.sol";
 import "../base/BaseHookCallback.sol";
+import "../base/SettlementCallbackLib.sol";
 
 /**
  * @notice Quoter contract for PredyPool
  * The purpose of lens is to be able to simulate transactions without having tokens.
  */
 contract PredyPoolQuoter is BaseHookCallback {
-    address _revertSettlement;
+    constructor(IPredyPool _predyPool) BaseHookCallback(_predyPool) {}
 
-    constructor(IPredyPool _predyPool, address revertSettlement) BaseHookCallback(_predyPool) {
-        _revertSettlement = revertSettlement;
+    function predySettlementCallback(address quoteToken, address baseToken, bytes memory data, int256 baseAmountDelta)
+        external
+    {
+        if (data.length > 0) {
+            SettlementCallbackLib._execSettlement(_predyPool, quoteToken, baseToken, data, baseAmountDelta);
+        } else {
+            _revertBaseAmountDelta(baseAmountDelta);
+        }
+    }
+
+    function _revertBaseAmountDelta(int256 baseAmountDelta) internal pure {
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, baseAmountDelta)
+            revert(ptr, 32)
+        }
     }
 
     function predyTradeAfterCallback(IPredyPool.TradeParams memory, IPredyPool.TradeResult memory tradeResult)
@@ -28,12 +43,14 @@ contract PredyPoolQuoter is BaseHookCallback {
         }
     }
 
+    function payCallback(address quoteToken, uint256 amount, address sender) external onlyPredyPool {}
+
     /**
      * @notice Quotes trade
      * @param tradeParams The trade details
      * @param settlementData The route of settlement created by filler
      */
-    function quoteTrade(IPredyPool.TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
+    function quoteTrade(IPredyPool.TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -47,7 +64,7 @@ contract PredyPoolQuoter is BaseHookCallback {
         external
         returns (int256 baseAmountDelta)
     {
-        try _predyPool.trade(tradeParams, ISettlement.SettlementData(_revertSettlement, "")) {}
+        try _predyPool.trade(tradeParams, "") {}
         catch (bytes memory reason) {
             return _parseRevertReasonAsBaseAmountDelta(reason);
         }

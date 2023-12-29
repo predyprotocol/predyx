@@ -38,7 +38,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        settlement = new UniswapSettlement(predyPool, swapRouter, quoterV2, address(this));
+        settlement = uniswapSettlement;
 
         fillerMarket = new PerpMarket();
         fillerMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));

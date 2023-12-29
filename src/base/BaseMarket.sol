@@ -5,6 +5,7 @@ import {Owned} from "@solmate/src/auth/Owned.sol";
 import "./BaseHookCallback.sol";
 import {PredyPoolQuoter} from "../lens/PredyPoolQuoter.sol";
 import "../interfaces/IFillerMarket.sol";
+import "./SettlementCallbackLib.sol";
 
 abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
     address public whitelistFiller;
@@ -20,6 +21,50 @@ abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
         whitelistFiller = _whitelistFiller;
 
         _quoter = PredyPoolQuoter(quoterAddress);
+    }
+
+    function predySettlementCallback(
+        address quoteToken,
+        address baseToken,
+        bytes memory settlementData,
+        int256 baseAmountDelta
+    ) external onlyPredyPool {
+        // TODO: sender must be market
+        SettlementCallbackLib._execSettlement(_predyPool, quoteToken, baseToken, settlementData, baseAmountDelta);
+    }
+
+    function payCallback(address quoteToken, uint256 amount, address sender) external onlyPredyPool {}
+
+    function reallocate(uint256 pairId, SettlementCallbackLib.SettlementParams memory settlementParams)
+        external
+        returns (bool relocationOccurred)
+    {
+        return _predyPool.reallocate(pairId, _getSettlementData(settlementParams));
+    }
+
+    function execLiquidationCall(
+        uint256 vaultId,
+        uint256 closeRatio,
+        SettlementCallbackLib.SettlementParams memory settlementParams
+    ) external returns (IPredyPool.TradeResult memory) {
+        return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementParams), msg.sender);
+    }
+
+    function _getSettlementData(SettlementCallbackLib.SettlementParams memory settlementParams)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encode(
+            SettlementCallbackLib.SettlementParams(
+                msg.sender,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmount,
+                settlementParams.price,
+                settlementParams.fee
+            )
+        );
     }
 
     /**

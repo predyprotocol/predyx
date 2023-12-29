@@ -12,7 +12,8 @@ import "../../src/PredyPool.sol";
 import "../../src/libraries/InterestRateModel.sol";
 import "../mocks/MockERC20.sol";
 import "../mocks/TestTradeMarket.sol";
-import "../../src/settlements/RevertSettlement.sol";
+import "../../src/settlements/UniswapSettlement.sol";
+import "../mocks/DebugSettlement2.sol";
 import "../../src/lens/PredyPoolQuoter.sol";
 
 contract TestPool is Test {
@@ -28,6 +29,9 @@ contract TestPool is Test {
     address uniswapFactory;
 
     PredyPoolQuoter _predyPoolQuoter;
+
+    UniswapSettlement uniswapSettlement;
+    DebugSettlement2 debugSettlement;
 
     function setUp() public virtual {
         currency0 = new MockERC20("currency0", "currency0", 18);
@@ -65,9 +69,22 @@ contract TestPool is Test {
         vm.warp(block.timestamp + 30 minutes);
         _movePrice(false, 100);
 
-        RevertSettlement revertSettlement = new RevertSettlement(predyPool);
+        _predyPoolQuoter = new PredyPoolQuoter(predyPool);
 
-        _predyPoolQuoter = new PredyPoolQuoter(predyPool, address(revertSettlement));
+        address swapRouter = deployCode(
+            "../node_modules/@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol:SwapRouter",
+            abi.encode(uniswapFactory, address(currency0))
+        );
+        address quoterV2 = deployCode(
+            "../node_modules/@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol:QuoterV2",
+            abi.encode(uniswapFactory, address(currency0))
+        );
+
+        uniswapSettlement = new UniswapSettlement(swapRouter, quoterV2);
+
+        debugSettlement = new DebugSettlement2();
+        currency0.mint(address(debugSettlement), type(uint128).max);
+        currency1.mint(address(debugSettlement), type(uint128).max);
     }
 
     /**
@@ -131,5 +148,30 @@ contract TestPool is Test {
         returns (TestTradeMarket.TradeAfterParams memory)
     {
         return TestTradeMarket.TradeAfterParams(address(this), address(currency1), updateMarginAmount);
+    }
+
+    function _getSettlementData(uint256 price) internal view returns (SettlementCallbackLib.SettlementParams memory) {
+        return SettlementCallbackLib.SettlementParams(address(0), address(0), bytes(""), 0, price, 0);
+    }
+
+    function _getDebugSettlementData(uint256 price, uint256 maxQuoteAmount)
+        internal
+        view
+        returns (SettlementCallbackLib.SettlementParams memory)
+    {
+        return SettlementCallbackLib.SettlementParams(
+            address(0), address(debugSettlement), abi.encode(price), maxQuoteAmount, 0, 0
+        );
+    }
+
+    function _getUniSettlementData(uint256 maxQuoteAmount)
+        internal
+        view
+        returns (SettlementCallbackLib.SettlementParams memory)
+    {
+        bytes memory path = abi.encodePacked(address(currency0), uint24(500), address(currency1));
+
+        return
+            SettlementCallbackLib.SettlementParams(address(0), address(uniswapSettlement), path, maxQuoteAmount, 0, 0);
     }
 }

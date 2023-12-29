@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import "../interfaces/IPredyPool.sol";
+import {IHooks} from "../interfaces/IHooks.sol";
 import "../libraries/DataType.sol";
 import "./LockData.sol";
 
@@ -29,15 +30,31 @@ library GlobalDataLibrary {
     }
 
     /// @notice Initializes lock for token settlement
-    function initializeLock(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId, address caller) internal {
+    function initializeLock(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId) internal {
         if (globalData.lockData.locker != address(0)) {
             revert IPredyPool.LockedBy(globalData.lockData.locker);
         }
 
         globalData.lockData.quoteReserve = ERC20(globalData.pairs[pairId].quotePool.token).balanceOf(address(this));
         globalData.lockData.baseReserve = ERC20(globalData.pairs[pairId].basePool.token).balanceOf(address(this));
-        globalData.lockData.locker = caller;
+        globalData.lockData.locker = msg.sender;
         globalData.lockData.pairId = pairId;
+    }
+
+    function callSettlementCallback(
+        GlobalDataLibrary.GlobalData storage globalData,
+        bytes memory settlementData,
+        int256 deltaBaseAmount
+    ) internal {
+        uint256 pairId = globalData.lockData.pairId;
+
+        IHooks(msg.sender).predySettlementCallback(
+            // TODO: msg.sender
+            globalData.pairs[pairId].quotePool.token,
+            globalData.pairs[pairId].basePool.token,
+            settlementData,
+            deltaBaseAmount
+        );
     }
 
     /// @notice Finalizes lock

@@ -3,14 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import "../../src/lens/SpotMarketQuoter.sol";
-import "../../src/settlements/RevertSettlement.sol";
 import "../../src/markets/validators/LimitOrderValidator.sol";
+import "../../src/markets/spot/SpotMarket.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import "../../src/settlements/UniswapSettlement.sol";
 import "../../src/markets/spot/SpotExclusiveLimitOrderValidator.sol";
 
 contract TestSpotMarketQuoter is TestLens {
     SpotMarketQuoter _quoter;
+    SpotMarket spotMarket;
 
     SpotExclusiveLimitOrderValidator spotExclusiveLimitOrderValidator;
 
@@ -19,7 +20,11 @@ contract TestSpotMarketQuoter is TestLens {
     function setUp() public override {
         TestLens.setUp();
 
-        _quoter = new SpotMarketQuoter();
+        IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
+
+        spotMarket = new SpotMarket(address(permit2));
+
+        _quoter = new SpotMarketQuoter(spotMarket);
         spotExclusiveLimitOrderValidator = new SpotExclusiveLimitOrderValidator();
 
         from = vm.addr(1);
@@ -36,12 +41,8 @@ contract TestSpotMarketQuoter is TestLens {
             abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1000))
         );
 
-        ISettlement.SettlementData memory settlementData = uniswapSettlement.getSettlementParams(
-            abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-            0,
-            address(currency1),
-            address(currency0),
-            0
+        SpotMarket.SettlementParams memory settlementData = SpotMarket.SettlementParams(
+            address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0, 0
         );
 
         vm.expectRevert(SpotExclusiveLimitOrderValidator.PriceGreaterThanLimit.selector);
@@ -59,12 +60,8 @@ contract TestSpotMarketQuoter is TestLens {
             abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1002))
         );
 
-        ISettlement.SettlementData memory settlementData = uniswapSettlement.getSettlementParams(
-            abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-            0,
-            address(currency1),
-            address(currency0),
-            0
+        SpotMarket.SettlementParams memory settlementData = SpotMarket.SettlementParams(
+            address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0, 0
         );
 
         assertEq(_quoter.quoteExecuteOrder(order, settlementData), -1002);

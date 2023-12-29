@@ -57,26 +57,16 @@ contract TestExecLiquidationCall is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(from1);
-        predyPool.execLiquidationCall(
-            1, 1e18, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        fillerMarket.execLiquidationCall(1, 1e18, _getSettlementData(Constants.Q96));
         uint256 afterMargin = currency1.balanceOf(from1);
 
         assertGt(afterMargin - beforeMargin, 0);
     }
-
-    // liquidate fails if the vault does not exist
-    // liquidate fails if the vault is safe
-
-    // liquidate succeeds if the vault is danger
-    // liquidate succeeds with insolvent vault (compensated from filler pool)
 }

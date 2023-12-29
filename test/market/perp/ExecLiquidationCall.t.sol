@@ -55,18 +55,14 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
-        );
+        fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(from1);
-        predyPool.execLiquidationCall(
-            1, 1e18, settlement.getSettlementParams(normalSwapRoute, 5 * 1e8, address(currency1), address(currency0), 0)
-        );
+        fillerMarket.execLiquidationCall(1, 1e18, _getUniSettlementData(5 * 1e8));
         uint256 afterMargin = currency1.balanceOf(from1);
 
         assertGt(afterMargin - beforeMargin, 0);

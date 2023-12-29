@@ -6,7 +6,6 @@ import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../interfaces/IPredyPool.sol";
-import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
 import "../../base/BaseMarket.sol";
@@ -105,14 +104,14 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
             if (tradeResult.minMargin == 0) {
                 DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
-                ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(vault.margin));
+                _predyPool.take(true, callbackData.trader, uint256(vault.margin));
             } else {
                 int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
                 if (marginAmountUpdate > 0) {
                     quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
                 } else if (marginAmountUpdate < 0) {
-                    ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
+                    _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
                 }
             }
         }
@@ -121,9 +120,9 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     /**
      * @notice Verifies signature of the order and executes trade
      * @param order The order signed by trader
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      */
-    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function executeOrder(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -157,7 +156,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                     )
                 )
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
 
         if (tradeResult.minMargin > 0) {
@@ -195,15 +194,15 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
      * @notice Executes delta hedging
      * @param owner owner address
      * @param pairId The id of pair
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function execDeltaHedge(address owner, uint256 pairId, ISettlement.SettlementData memory settlementData)
-        external
-        nonReentrant
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
+    function execDeltaHedge(
+        address owner,
+        uint256 pairId,
+        SettlementCallbackLib.SettlementParams memory settlementParams
+    ) external nonReentrant returns (IPredyPool.TradeResult memory tradeResult) {
         UserPosition storage userPosition = userPositions[owner][pairId];
 
         require(userPosition.vaultId > 0);
@@ -231,7 +230,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 0,
                 abi.encode(CallbackData(CallbackSource.TRADE, owner, 0, address(0), bytes("")))
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
 
         SlippageLib.checkPrice(sqrtPrice, tradeResult, slippageTorelance, 0);
@@ -242,9 +241,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(GammaOrder memory gammaOrder, ISettlement.SettlementData memory settlementData)
-        external
-    {
+    function quoteExecuteOrder(
+        GammaOrder memory gammaOrder,
+        SettlementCallbackLib.SettlementParams memory settlementParams
+    ) external {
         _predyPool.trade(
             IPredyPool.TradeParams(
                 gammaOrder.pairId,
@@ -261,7 +261,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                     )
                 )
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
     }
 

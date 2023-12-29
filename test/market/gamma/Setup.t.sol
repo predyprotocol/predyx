@@ -6,7 +6,6 @@ import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
-import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
@@ -16,7 +15,6 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
-    DirectSettlement settlement;
     GammaTradeMarket fillerMarket;
     IPermit2 permit2;
     LimitOrderValidator limitOrderValidator;
@@ -29,8 +27,6 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        settlement = new DirectSettlement(predyPool, address(this));
-
         fillerMarket = new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         currency0.approve(address(permit2), type(uint256).max);
@@ -39,8 +35,8 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
         currency0.approve(address(fillerMarket), type(uint256).max);
         currency1.approve(address(fillerMarket), type(uint256).max);
 
-        currency0.approve(address(settlement), type(uint256).max);
-        currency1.approve(address(settlement), type(uint256).max);
+        // currency0.approve(address(settlement), type(uint256).max);
+        // currency1.approve(address(settlement), type(uint256).max);
 
         limitOrderValidator = new LimitOrderValidator();
     }

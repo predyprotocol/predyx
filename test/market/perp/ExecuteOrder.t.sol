@@ -60,8 +60,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            ISettlement.SettlementData memory settlementData =
-                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
+            SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
 
             vm.startPrank(from1);
             vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
@@ -95,10 +94,8 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
             vm.startPrank(from1);
-            IPredyPool.TradeResult memory tradeResult2 = fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 2000, address(currency1), address(currency0), 0)
-            );
+            IPredyPool.TradeResult memory tradeResult2 =
+                fillerMarket.executeOrder(signedOrder, _getUniSettlementData(2000));
             vm.stopPrank();
 
             assertEq(tradeResult2.payoff.perpEntryUpdate, -998);
@@ -127,10 +124,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
-            );
+            fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0));
         }
 
         {
@@ -150,10 +144,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
-            );
+            fillerMarket.executeOrder(signedOrder, _getUniSettlementData(1200 * 1e4));
         }
     }
 
@@ -176,10 +167,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
-            );
+            fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0));
         }
 
         {
@@ -199,10 +187,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
-            );
+            fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0));
 
             DataType.Vault memory vault = predyPool.getVault(1);
 
@@ -234,8 +219,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(1500);
 
         vm.expectRevert();
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -243,8 +227,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(1500);
 
         {
             PerpOrder memory order = PerpOrder(
@@ -309,8 +292,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 1500, address(currency1), address(currency0), 0);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(1500);
 
         vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -334,8 +316,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
@@ -364,10 +345,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 0, address(currency1), address(currency0), 0)
-            );
+            fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0));
         }
 
         {
@@ -387,10 +365,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(
-                signedOrder,
-                settlement.getSettlementParams(normalSwapRoute, 1200 * 1e4, address(currency1), address(currency0), 0)
-            );
+            fillerMarket.executeOrder(signedOrder, _getUniSettlementData(1200 * 1e4));
         }
 
         (, uint256 takeProfitPrice, uint256 stopLossPrice, uint64 slippageTolerance, uint8 leverage) =

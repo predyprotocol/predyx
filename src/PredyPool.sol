@@ -8,7 +8,6 @@ import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPredyPool} from "./interfaces/IPredyPool.sol";
-import {ILendingPool} from "./interfaces/ILendingPool.sol";
 import {IHooks} from "./interfaces/IHooks.sol";
 import {ISettlement} from "./interfaces/ISettlement.sol";
 import {Perp} from "./libraries/Perp.sol";
@@ -26,7 +25,7 @@ import {ReaderLogic} from "./libraries/logic/ReaderLogic.sol";
 import {LockDataLibrary, GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /// @notice Holds the state for all pairs and vaults
-contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initializable, ReentrancyGuard {
+contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, ReentrancyGuard {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
     using VaultLib for GlobalDataLibrary.GlobalData;
@@ -230,7 +229,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      * @param settlementData byte data for settlement contract.
      * @return relocationOccurred Whether relocation occurred.
      */
-    function reallocate(uint256 pairId, ISettlement.SettlementData memory settlementData)
+    function reallocate(uint256 pairId, bytes memory settlementData)
         external
         nonReentrant
         returns (bool relocationOccurred)
@@ -244,7 +243,7 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      * @param settlementData byte data for settlement contract.
      * @return tradeResult The result of the trade.
      */
-    function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
+    function trade(TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult)
     {
@@ -290,12 +289,12 @@ contract PredyPool is IPredyPool, ILendingPool, IUniswapV3MintCallback, Initiali
      * @param settlementData SettlementData struct for trade settlement.
      * @return tradeResult TradeResult struct with the result of the liquidation.
      */
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData, address sender)
         external
         nonReentrant
         returns (TradeResult memory tradeResult)
     {
-        return LiquidationLogic.liquidate(vaultId, closeRatio, globalData, settlementData);
+        return LiquidationLogic.liquidate(vaultId, closeRatio, globalData, settlementData, sender);
     }
 
     /**

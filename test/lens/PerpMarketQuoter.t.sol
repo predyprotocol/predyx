@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import "../../src/lens/PredyPoolQuoter.sol";
 import "../../src/lens/PerpMarketQuoter.sol";
-import "../../src/settlements/RevertSettlement.sol";
 import "../../src/markets/validators/LimitOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
-import "../../src/settlements/UniswapSettlement.sol";
+import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 
 contract TestPerpMarketQuoter is TestLens {
     PerpMarketQuoter _quoter;
@@ -49,13 +48,7 @@ contract TestPerpMarketQuoter is TestLens {
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
-        ISettlement.SettlementData memory settlementData = uniswapSettlement.getSettlementParams(
-            abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-            0,
-            address(currency1),
-            address(currency0),
-            0
-        );
+        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
 
         IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrder(order, settlementData);
 

@@ -10,17 +10,20 @@ import {ISpotOrderValidator} from "../interfaces/IOrderValidator.sol";
  * @notice Quoter contract for SpotMarket
  */
 contract SpotMarketQuoter {
-    constructor() {}
+    SpotMarket spotMarket;
 
-    function quoteExecuteOrder(SpotOrder memory order, ISettlement.SettlementData memory settlementData)
+    constructor(SpotMarket _spotMarket) {
+        spotMarket = _spotMarket;
+    }
+
+    function quoteExecuteOrder(SpotOrder memory order, SpotMarket.SettlementParams memory settlementParams)
         external
         returns (int256 quoteTokenAmount)
     {
         int256 baseTokenAmount = order.baseTokenAmount;
 
-        try ISettlement(settlementData.settlementContractAddress).quoteSettlement(
-            settlementData.encodedData, -baseTokenAmount
-        ) {} catch (bytes memory reason) {
+        try spotMarket.quoteSettlement(order.quoteToken, order.baseToken, settlementParams, -baseTokenAmount) {}
+        catch (bytes memory reason) {
             quoteTokenAmount = _parseRevertReason(reason);
         }
 

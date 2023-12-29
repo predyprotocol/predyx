@@ -7,7 +7,6 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../../interfaces/IPredyPool.sol";
-import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IOrderValidator.sol";
 import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
 import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
@@ -18,6 +17,7 @@ import {Bps} from "../../libraries/math/Bps.sol";
 import {Math} from "../../libraries/math/Math.sol";
 import "./PerpOrder.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
+import {SettlementCallbackLib} from "../../base/SettlementCallbackLib.sol";
 
 /**
  * @notice Perp market contract
@@ -104,7 +104,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
 
             uint256 closeValue = uint256(vault.margin);
 
-            ILendingPool(address(_predyPool)).take(true, callbackData.trader, closeValue);
+            _predyPool.take(true, callbackData.trader, closeValue);
 
             if (callbackData.callbackSource == CallbackSource.CLOSE) {
                 emit PerpClosedByTPSLOrder(
@@ -122,7 +122,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
             if (marginAmountUpdate > 0) {
                 quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
             } else if (marginAmountUpdate < 0) {
-                ILendingPool(address(_predyPool)).take(true, callbackData.trader, uint256(-marginAmountUpdate));
+                _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
         }
     }
@@ -130,9 +130,9 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     /**
      * @notice Verifies signature of the order and executes trade
      * @param order The order signed by trader
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      */
-    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function executeOrder(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -164,7 +164,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
                     )
                 )
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
 
         if (tradeResult.minMargin > 0) {
@@ -201,11 +201,11 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
      * @notice Closes a position if TakeProfit/StopLoss condition is met.
      * @param owner owner address
      * @param pairId The id of pair
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function close(address owner, uint256 pairId, ISettlement.SettlementData memory settlementData)
+    function close(address owner, uint256 pairId, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -228,7 +228,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
                 -vault.openPosition.sqrtPerp.amount,
                 abi.encode(CallbackData(CallbackSource.CLOSE, owner, 0, address(0), bytes("")))
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
 
         if (slConditionMet) {
@@ -298,7 +298,10 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(PerpOrder memory perpOrder, ISettlement.SettlementData memory settlementData) external {
+    function quoteExecuteOrder(
+        PerpOrder memory perpOrder,
+        SettlementCallbackLib.SettlementParams memory settlementParams
+    ) external {
         _predyPool.trade(
             IPredyPool.TradeParams(
                 perpOrder.pairId,
@@ -315,7 +318,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
                     )
                 )
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
     }
 

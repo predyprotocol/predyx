@@ -10,7 +10,6 @@ import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PerpMarket} from "../../../src/markets/perp/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
-import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {PerpOrder, PerpOrderLib} from "../../../src/markets/perp/PerpOrder.sol";
 import "../../../src/libraries/Constants.sol";
@@ -25,7 +24,7 @@ interface USDC {
         external;
 }
 
-contract TestPerpMarket is Test, SigUtils, OrderValidatorUtils {
+contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
     using PerpOrderLib for PerpOrder;
 
     uint256 internal _arbitrumFork;
@@ -39,7 +38,6 @@ contract TestPerpMarket is Test, SigUtils, OrderValidatorUtils {
     USDC internal _usdc = USDC(0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8);
     ERC20 internal _weth = ERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
 
-    DirectSettlement settlement;
     PerpMarket perpMarket;
     PredyPool _predyPool;
     LimitOrderValidator limitOrderValidator;
@@ -65,12 +63,10 @@ contract TestPerpMarket is Test, SigUtils, OrderValidatorUtils {
 
         _predyPool = new PredyPool();
         _predyPool.initialize(address(_uniswapFactory));
-        RevertSettlement revertSettlement = new RevertSettlement(_predyPool);
-        PredyPoolQuoter predyPoolQuoter = new PredyPoolQuoter(_predyPool, address(revertSettlement));
+
+        PredyPoolQuoter predyPoolQuoter = new PredyPoolQuoter(_predyPool);
 
         DOMAIN_SEPARATOR = _permit2.DOMAIN_SEPARATOR();
-
-        settlement = new DirectSettlement(_predyPool, address(this));
 
         pairId = registerPair(address(_usdc), address(0));
 
@@ -84,8 +80,8 @@ contract TestPerpMarket is Test, SigUtils, OrderValidatorUtils {
         _usdc.approve(address(_predyPool), type(uint256).max);
         _usdc.approve(address(perpMarket), type(uint256).max);
 
-        _weth.approve(address(settlement), type(uint256).max);
-        _usdc.approve(address(settlement), type(uint256).max);
+        // _weth.approve(address(settlement), type(uint256).max);
+        // _usdc.approve(address(settlement), type(uint256).max);
 
         _predyPool.supply(1, true, 5000 * 1e6);
         _predyPool.supply(1, false, 1e18);
@@ -127,5 +123,9 @@ contract TestPerpMarket is Test, SigUtils, OrderValidatorUtils {
         );
 
         signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
+    }
+
+    function _getSettlementData(uint256 price) internal view returns (SettlementCallbackLib.SettlementParams memory) {
+        return SettlementCallbackLib.SettlementParams(address(0), address(0), bytes(""), 0, price, 0);
     }
 }

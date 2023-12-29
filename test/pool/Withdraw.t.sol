@@ -2,14 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-import "../../src/settlements/DirectSettlement.sol";
 import "../mocks/TestTradeMarket.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
 
 contract TestPoolWithdraw is TestPool {
     TestTradeMarket tradeMarket;
     address supplyTokenAddress;
-    DirectSettlement directSettlement;
 
     event TokenWithdrawn(address indexed account, uint256 pairId, bool isStable, uint256 finalWithdrawnAmount);
 
@@ -24,15 +22,13 @@ contract TestPoolWithdraw is TestPool {
 
         tradeMarket = new TestTradeMarket(predyPool);
 
-        directSettlement = new DirectSettlement(predyPool, address(this));
-
         currency1.transfer(address(tradeMarket), 1e8);
 
         currency0.approve(address(predyPool), type(uint256).max);
         currency1.approve(address(predyPool), type(uint256).max);
 
-        currency0.approve(address(directSettlement), 1e8);
-        currency1.approve(address(directSettlement), 1e8);
+        currency0.approve(address(tradeMarket), 1e8);
+        currency1.approve(address(tradeMarket), 1e8);
     }
 
     // supply succeeds
@@ -65,7 +61,7 @@ contract TestPoolWithdraw is TestPool {
 
         tradeMarket.trade(
             IPredyPool.TradeParams(1, 0, -10000, 9000, abi.encode(_getTradeAfterParams(1e6))),
-            directSettlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
+            _getSettlementData(Constants.Q96)
         );
 
         if (amount >= 998562) {

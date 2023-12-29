@@ -8,7 +8,7 @@ import "../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
-import "../../src/settlements/UniswapSettlement.sol";
+import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 
 contract TestGammaTradeMarketQuoter is TestLens {
     GammaTradeMarketQuoter _quoter;
@@ -54,13 +54,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
             )
         );
 
-        ISettlement.SettlementData memory settlementData = uniswapSettlement.getSettlementParams(
-            abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-            0,
-            address(currency1),
-            address(currency0),
-            0
-        );
+        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
 
         IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrder(order, settlementData);
 

@@ -1,26 +1,32 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.0;
 
-import "../interfaces/ILendingPool.sol";
 import "../interfaces/ISettlement.sol";
 
 abstract contract BaseSettlement is ISettlement {
-    ILendingPool immutable _predyPool;
-
     error CallerIsNotLendingPool();
 
-    constructor(ILendingPool predyPool) {
-        _predyPool = predyPool;
-    }
+    constructor() {}
 
-    function predySettlementCallback(bytes memory settlementData, int256 baseAmountDelta) external virtual;
-    function quoteSettlement(bytes memory settlementData, int256 baseAmountDelta) external virtual;
+    function swapExactIn(
+        address quoteToken,
+        address baseToken,
+        bytes memory data,
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        address recipient
+    ) external virtual returns (uint256 amountOut);
 
-    function _revertQuoteAmount(int256 quoteAmount) internal pure {
-        assembly {
-            let ptr := mload(0x40)
-            mstore(ptr, quoteAmount)
-            revert(ptr, 32)
-        }
-    }
+    function swapExactOut(
+        address quoteToken,
+        address baseToken,
+        bytes memory data,
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        address recipient
+    ) external virtual returns (uint256 amountIn);
+
+    function quoteSwapExactIn(bytes memory data, uint256 amountIn) external virtual returns (uint256 amountOut);
+
+    function quoteSwapExactOut(bytes memory data, uint256 amountOut) external virtual returns (uint256 amountIn);
 }

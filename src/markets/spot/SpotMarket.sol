@@ -3,12 +3,14 @@ pragma solidity ^0.8.17;
 
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
-import {ILendingPool} from "../../interfaces/ILendingPool.sol";
 import {ISpotOrderValidator} from "../../interfaces/IOrderValidator.sol";
 import {Permit2Lib} from "../../libraries/orders/Permit2Lib.sol";
+import {Constants} from "../../libraries/Constants.sol";
+import {Math} from "../../libraries/math/Math.sol";
 import {ResolvedOrderLib, ResolvedOrder} from "../../libraries/orders/ResolvedOrder.sol";
 import {SpotOrderLib, SpotOrder} from "./SpotOrder.sol";
 
@@ -16,19 +18,18 @@ import {SpotOrderLib, SpotOrder} from "./SpotOrder.sol";
  * @notice Spot market contract
  * A trader can swap tokens.
  */
-contract SpotMarket is IFillerMarket, ILendingPool {
+contract SpotMarket is IFillerMarket {
     using ResolvedOrderLib for ResolvedOrder;
     using SpotOrderLib for SpotOrder;
     using Permit2Lib for ResolvedOrder;
-
-    error LockedBy(address);
+    using SafeTransferLib for ERC20;
+    using Math for uint256;
 
     error RequiredQuoteAmountExceedsMax();
 
     error BaseCurrencyNotSettled();
 
     struct LockData {
-        address locker;
         address quoteToken;
         address baseToken;
     }
@@ -47,13 +48,6 @@ contract SpotMarket is IFillerMarket, ILendingPool {
 
     LockData private lockData;
 
-    modifier onlyByLocker() {
-        address locker = lockData.locker;
-
-        if (msg.sender != locker) revert LockedBy(locker);
-        _;
-    }
-
     constructor(address permit2Address) {
         _permit2 = IPermit2(permit2Address);
     }
@@ -61,9 +55,9 @@ contract SpotMarket is IFillerMarket, ILendingPool {
     /**
      * @notice Verifies signature of the order and open new predict position
      * @param order The order signed by trader
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      */
-    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function executeOrder(SignedOrder memory order, SettlementParams memory settlementParams)
         external
         returns (int256 quoteTokenAmount)
     {
@@ -74,7 +68,7 @@ contract SpotMarket is IFillerMarket, ILendingPool {
 
         int256 baseTokenAmount = spotOrder.baseTokenAmount;
 
-        quoteTokenAmount = _swap(spotOrder, settlementData, baseTokenAmount);
+        quoteTokenAmount = _swap(spotOrder, settlementParams, baseTokenAmount);
 
         ISpotOrderValidator(spotOrder.validatorAddress).validate(
             spotOrder, baseTokenAmount, quoteTokenAmount, msg.sender
@@ -109,41 +103,170 @@ contract SpotMarket is IFillerMarket, ILendingPool {
         );
     }
 
-    /**
-     * @notice Takes tokens
-     * @dev Only locker can call this function
-     */
-    function take(bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
-        if (isQuoteAsset) {
-            TransferHelper.safeTransfer(lockData.quoteToken, to, amount);
-        } else {
-            TransferHelper.safeTransfer(lockData.baseToken, to, amount);
-        }
-    }
-
-    function _swap(SpotOrder memory spotOrder, ISettlement.SettlementData memory settlementData, int256 totalBaseAmount)
+    function _swap(SpotOrder memory spotOrder, SettlementParams memory settlementParams, int256 totalBaseAmount)
         internal
         returns (int256)
     {
-        uint256 quoteReserve = IERC20(spotOrder.quoteToken).balanceOf(address(this));
-        uint256 baseReserve = IERC20(spotOrder.baseToken).balanceOf(address(this));
+        uint256 quoteReserve = ERC20(spotOrder.quoteToken).balanceOf(address(this));
+        uint256 baseReserve = ERC20(spotOrder.baseToken).balanceOf(address(this));
 
-        lockData.locker = settlementData.settlementContractAddress;
         lockData.quoteToken = spotOrder.quoteToken;
         lockData.baseToken = spotOrder.baseToken;
 
-        ISettlement(settlementData.settlementContractAddress).predySettlementCallback(
-            settlementData.encodedData, -totalBaseAmount
-        );
+        _execSettlement(spotOrder.quoteToken, spotOrder.baseToken, settlementParams, -totalBaseAmount);
 
-        uint256 afterQuoteReserve = IERC20(spotOrder.quoteToken).balanceOf(address(this));
-        uint256 afterBaseReserve = IERC20(spotOrder.baseToken).balanceOf(address(this));
+        uint256 afterQuoteReserve = ERC20(spotOrder.quoteToken).balanceOf(address(this));
+        uint256 afterBaseReserve = ERC20(spotOrder.baseToken).balanceOf(address(this));
 
         if (totalBaseAmount + int256(baseReserve) != int256(afterBaseReserve)) {
             revert BaseCurrencyNotSettled();
         }
 
         return int256(afterQuoteReserve) - int256(quoteReserve);
+    }
+
+    struct SettlementParams {
+        address contractAddress;
+        bytes encodedData;
+        uint256 maxQuoteAmount;
+        uint256 price;
+        int256 fee;
+    }
+
+    function _execSettlement(
+        address quoteToken,
+        address baseToken,
+        SettlementParams memory settlementParams,
+        int256 baseAmountDelta
+    ) internal {
+        // TODO: sender must be market
+
+        if (baseAmountDelta > 0) {
+            if (settlementParams.contractAddress == address(0)) {
+                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                ERC20(baseToken).safeTransfer(msg.sender, uint256(baseAmountDelta));
+
+                ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmount);
+
+                return;
+            }
+
+            ERC20(baseToken).safeTransfer(settlementParams.contractAddress, uint256(baseAmountDelta));
+
+            uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
+                quoteToken,
+                baseToken,
+                settlementParams.encodedData,
+                // input amount
+                uint256(baseAmountDelta),
+                // min amount to receive
+                0,
+                // receiver
+                address(this)
+            );
+
+            if (settlementParams.price == 0) {
+                ERC20(quoteToken).safeTransfer(msg.sender, uint256(settlementParams.fee));
+            } else {
+                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                if (quoteAmount > quoteAmountFromUni) {
+                    ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmount - quoteAmountFromUni);
+                } else if (quoteAmountFromUni > quoteAmount) {
+                    ERC20(quoteToken).safeTransfer(msg.sender, quoteAmountFromUni - quoteAmount);
+                }
+            }
+        } else if (baseAmountDelta < 0) {
+            if (settlementParams.contractAddress == address(0)) {
+                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount);
+
+                ERC20(baseToken).safeTransferFrom(msg.sender, address(this), uint256(-baseAmountDelta));
+
+                return;
+            }
+
+            ERC20(quoteToken).safeTransfer(settlementParams.contractAddress, settlementParams.maxQuoteAmount);
+
+            uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).swapExactOut(
+                quoteToken,
+                baseToken,
+                settlementParams.encodedData,
+                uint256(-baseAmountDelta),
+                settlementParams.maxQuoteAmount,
+                address(this)
+            );
+
+            if (settlementParams.price > 0) {
+                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                if (quoteAmount > quoteAmountToUni) {
+                    ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount - quoteAmountToUni);
+                } else if (quoteAmountToUni > quoteAmount) {
+                    ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmountToUni - quoteAmount);
+                }
+            }
+        }
+    }
+
+    function quoteSettlement(
+        address quoteToken,
+        address baseToken,
+        SettlementParams memory settlementParams,
+        int256 baseAmountDelta
+    ) external {
+        _revertQuoteAmount(_quoteSettlement(quoteToken, baseToken, settlementParams, baseAmountDelta));
+    }
+
+    function _quoteSettlement(
+        address quoteToken,
+        address baseToken,
+        SettlementParams memory settlementParams,
+        int256 baseAmountDelta
+    ) internal returns (int256) {
+        // TODO: sender must be market
+
+        if (baseAmountDelta > 0) {
+            if (settlementParams.contractAddress == address(0)) {
+                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                return int256(quoteAmount);
+            }
+
+            uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).quoteSwapExactIn(
+                settlementParams.encodedData, uint256(baseAmountDelta)
+            );
+
+            if (settlementParams.price == 0) {
+                return int256(quoteAmountFromUni.addDelta(-settlementParams.fee));
+            } else {
+                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                return int256(quoteAmount);
+            }
+        } else if (baseAmountDelta < 0) {
+            if (settlementParams.contractAddress == address(0)) {
+                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                return -int256(quoteAmount);
+            }
+
+            ERC20(quoteToken).safeTransfer(settlementParams.contractAddress, settlementParams.maxQuoteAmount);
+
+            uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).quoteSwapExactOut(
+                settlementParams.encodedData, uint256(-baseAmountDelta)
+            );
+
+            if (settlementParams.price == 0) {
+                return -int256(quoteAmountToUni.addDelta(settlementParams.fee));
+            } else {
+                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
+
+                return -int256(quoteAmount);
+            }
+        }
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {
@@ -157,5 +280,13 @@ contract SpotMarket is IFillerMarket, ILendingPool {
             SpotOrderLib.PERMIT2_ORDER_TYPE,
             order.sig
         );
+    }
+
+    function _revertQuoteAmount(int256 quoteAmount) internal pure {
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, quoteAmount)
+            revert(ptr, 32)
+        }
     }
 }

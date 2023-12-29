@@ -60,29 +60,25 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
     }
 
-    function testFailsExecuteDeltaHedgeByTime() public {
+    function testCannotExecuteDeltaHedgeByTime() public {
         mockPriceFeed.setSqrtPrice(2 ** 96);
 
         vm.warp(block.timestamp + 10 hours);
 
-        vm.expectRevert();
-        fillerMarket.execDeltaHedge(
-            from1, 1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        SettlementCallbackLib.SettlementParams memory settlementParams = _getSettlementData(Constants.Q96);
+
+        vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
+        fillerMarket.execDeltaHedge(from1, 1, settlementParams);
     }
 
-    function testExecuteDeltaHedgeByTime() public {
+    function testSucceedsExecuteDeltaHedgeByTime() public {
         mockPriceFeed.setSqrtPrice(2 ** 96);
 
         vm.warp(block.timestamp + 12 hours);
 
-        fillerMarket.execDeltaHedge(
-            from1, 1, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        fillerMarket.execDeltaHedge(from1, 1, _getSettlementData(Constants.Q96));
     }
 }
