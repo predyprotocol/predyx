@@ -19,18 +19,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [Permit2]
   })
 
+  const SpotMarket = await deployments.get('SpotMarket')
+
   await deploy('SpotMarketQuoter', {
     from: deployer,
     log: true,
-    args: []
-  })
-
-  const SpotMarket = await deployments.get('SpotMarket')
-
-  await deploy('UniswapSettlement', {
-    from: deployer,
-    log: true,
-    args: [SpotMarket.address, SwapRouter02Address, QuoterV2Address, Filler]
+    args: [SpotMarket.address]
   })
 }
 

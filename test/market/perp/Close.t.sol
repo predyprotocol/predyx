@@ -20,7 +20,7 @@ contract TestGammaClose is TestPerpMarket {
         mockPriceFeed = new MockPriceFeed();
 
         registerPair(address(currency1), address(mockPriceFeed));
-        fillerMarket.updateQuoteTokenMap(1);
+        perpMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -45,7 +45,7 @@ contract TestGammaClose is TestPerpMarket {
         // currency1.approve(address(directSettlement), type(uint256).max);
 
         PerpOrder memory order1 = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             1000,
@@ -61,7 +61,7 @@ contract TestGammaClose is TestPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder1 = _createSignedOrder(order1, fromPrivateKey1);
 
         PerpOrder memory order2 = PerpOrder(
-            OrderInfo(address(fillerMarket), from2, 1, block.timestamp + 100),
+            OrderInfo(address(perpMarket), from2, 1, block.timestamp + 100),
             1,
             address(currency1),
             1000,
@@ -76,9 +76,9 @@ contract TestGammaClose is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder2 = _createSignedOrder(order2, fromPrivateKey2);
 
-        fillerMarket.executeOrder(signedOrder1, _getSettlementData(Constants.Q96));
+        perpMarket.executeOrder(signedOrder1, _getSettlementData(Constants.Q96));
 
-        fillerMarket.executeOrder(signedOrder2, _getSettlementData(Constants.Q96));
+        perpMarket.executeOrder(signedOrder2, _getSettlementData(Constants.Q96));
     }
 
     function testCloseFails() public {
@@ -87,7 +87,7 @@ contract TestGammaClose is TestPerpMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert();
-        fillerMarket.close(from1, 1, settlementData);
+        perpMarket.close(from1, 1, settlementData);
     }
 
     function testCloseFailsIfTPNotSet() public {
@@ -96,7 +96,7 @@ contract TestGammaClose is TestPerpMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
 
         vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
-        fillerMarket.close(from2, 1, settlementData);
+        perpMarket.close(from2, 1, settlementData);
     }
 
     function testCloseFailsIfSLNotSet() public {
@@ -105,7 +105,7 @@ contract TestGammaClose is TestPerpMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
 
         vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
-        fillerMarket.close(from2, 1, settlementData);
+        perpMarket.close(from2, 1, settlementData);
     }
 
     function testCloseFailsIfTPSLConditionNotMet() public {
@@ -114,14 +114,14 @@ contract TestGammaClose is TestPerpMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
-        fillerMarket.close(from1, 1, settlementData);
+        perpMarket.close(from1, 1, settlementData);
     }
 
     function testCloseSucceedsWithTP() public {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
-        IPredyPool.TradeResult memory tradeResult = fillerMarket.close(from1, 1, settlementData);
+        IPredyPool.TradeResult memory tradeResult = perpMarket.close(from1, 1, settlementData);
         uint256 afterBalance = currency1.balanceOf(from1);
 
         assertGe(uint256(tradeResult.averagePrice), 101 * Constants.Q96 / 100);
@@ -136,7 +136,7 @@ contract TestGammaClose is TestPerpMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
-        fillerMarket.close(from1, 1, settlementData);
+        perpMarket.close(from1, 1, settlementData);
         uint256 afterBalance = currency1.balanceOf(from1);
 
         // owner gets close value

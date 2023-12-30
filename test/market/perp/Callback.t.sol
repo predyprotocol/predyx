@@ -15,6 +15,6 @@ contract TestPerpMarketCallback is TestPerpMarket {
         IPredyPool.TradeResult memory tradeResult
     ) public {
         vm.expectRevert(BaseHookCallback.CallerIsNotPredyPool.selector);
-        fillerMarket.predyTradeAfterCallback(tradeParams, tradeResult);
+        perpMarket.predyTradeAfterCallback(tradeParams, tradeResult);
     }
 }

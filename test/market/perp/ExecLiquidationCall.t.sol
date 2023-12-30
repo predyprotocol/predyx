@@ -15,7 +15,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
         TestPerpMarket.setUp();
 
         registerPair(address(currency1), address(0));
-        fillerMarket.updateQuoteTokenMap(1);
+        perpMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -40,7 +40,7 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceedsIfVaultIsDanger() public {
         PerpOrder memory order = PerpOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             -4 * 1e8,
@@ -55,14 +55,14 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0));
+        perpMarket.executeOrder(signedOrder, _getUniSettlementData(0));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(from1);
-        fillerMarket.execLiquidationCall(1, 1e18, _getUniSettlementData(5 * 1e8));
+        perpMarket.execLiquidationCall(1, 1e18, _getUniSettlementData(5 * 1e8));
         uint256 afterMargin = currency1.balanceOf(from1);
 
         assertGt(afterMargin - beforeMargin, 0);

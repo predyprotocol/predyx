@@ -17,7 +17,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
     using PerpOrderLib for PerpOrder;
 
     UniswapSettlement settlement;
-    PerpMarket fillerMarket;
+    PerpMarket perpMarket;
     IPermit2 permit2;
     LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
@@ -40,14 +40,14 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         settlement = uniswapSettlement;
 
-        fillerMarket = new PerpMarket();
-        fillerMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        perpMarket = new PerpMarket();
+        perpMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
 
-        currency0.approve(address(fillerMarket), type(uint256).max);
-        currency1.approve(address(fillerMarket), type(uint256).max);
+        currency0.approve(address(perpMarket), type(uint256).max);
+        currency1.approve(address(perpMarket), type(uint256).max);
 
         limitOrderValidator = new LimitOrderValidator();
     }
@@ -62,7 +62,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
         bytes memory sig = getPermitSignature(
             fromPrivateKey,
             _toPermit(marketOrder),
-            address(fillerMarket),
+            address(perpMarket),
             PerpOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
