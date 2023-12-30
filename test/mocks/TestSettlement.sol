@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../src/settlements/BaseSettlement.sol";
+import "../../src/base/BaseHookCallback.sol";
 import {IPredyPool} from "../../src/interfaces/IPredyPool.sol";
 
-contract TestSettlementCurrencyNotSettled is BaseSettlement {
+contract TestSettlementCurrencyNotSettled is BaseHookCallback {
     struct SettlementParams {
         address baseTokenAddress;
         address settleTokenAddress;
@@ -13,9 +13,9 @@ contract TestSettlementCurrencyNotSettled is BaseSettlement {
         int256 settleAmount;
     }
 
-    constructor(ILendingPool predyPool) BaseSettlement(predyPool) {}
+    constructor(IPredyPool predyPool) BaseHookCallback(predyPool) {}
 
-    function predySettlementCallback(bytes memory settlementData, int256) external override(BaseSettlement) {
+    function predySettlementCallback(address, address, bytes memory settlementData, int256) external {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         if (settlemendParams.takeAmount >= 0) {
@@ -35,23 +35,31 @@ contract TestSettlementCurrencyNotSettled is BaseSettlement {
         }
     }
 
-    function quoteSettlement(bytes memory, int256) external pure override {
-        _revertQuoteAmount(0);
+    function predyTradeAfterCallback(
+        IPredyPool.TradeParams memory tradeParams,
+        IPredyPool.TradeResult memory tradeResult
+    ) external override(BaseHookCallback) {}
+
+    function trade(IPredyPool.TradeParams memory tradeParams, bytes memory data)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
+        return _predyPool.trade(tradeParams, data);
     }
 }
 
-contract TestSettlementReentrant is BaseSettlement {
+contract TestSettlementReentrant is BaseHookCallback {
     struct SettlementParams {
         address settleTokenAddress;
         uint256 takeAmount;
         uint256 settleAmount;
         IPredyPool.TradeParams tradeParams;
-        ISettlement.SettlementData settlementData;
+        bytes settlementData;
     }
 
-    constructor(ILendingPool predyPool) BaseSettlement(predyPool) {}
+    constructor(IPredyPool predyPool) BaseHookCallback(predyPool) {}
 
-    function predySettlementCallback(bytes memory settlementData, int256) external override(BaseSettlement) {
+    function predySettlementCallback(address, address, bytes memory settlementData, int256) external {
         SettlementParams memory settlemendParams = abi.decode(settlementData, (SettlementParams));
 
         _predyPool.take(false, address(this), settlemendParams.takeAmount);
@@ -61,7 +69,15 @@ contract TestSettlementReentrant is BaseSettlement {
         IPredyPool(address(_predyPool)).trade(settlemendParams.tradeParams, settlemendParams.settlementData);
     }
 
-    function quoteSettlement(bytes memory, int256) external pure override {
-        _revertQuoteAmount(0);
+    function predyTradeAfterCallback(
+        IPredyPool.TradeParams memory tradeParams,
+        IPredyPool.TradeResult memory tradeResult
+    ) external override(BaseHookCallback) {}
+
+    function trade(IPredyPool.TradeParams memory tradeParams, bytes memory data)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
+        return _predyPool.trade(tradeParams, data);
     }
 }

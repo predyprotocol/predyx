@@ -3,12 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import "../mocks/TestTradeMarket.sol";
-import "../../src/settlements/DirectSettlement.sol";
 import {SlippageLib} from "../../src/libraries/SlippageLib.sol";
 
 contract TestExecLiquidationCall is TestPool {
     TestTradeMarket _tradeMarket;
-    DirectSettlement _settlement;
     address filler;
 
     function setUp() public override {
@@ -22,19 +20,18 @@ contract TestExecLiquidationCall is TestPool {
         _tradeMarket = new TestTradeMarket(predyPool);
 
         filler = vm.addr(5);
-        _settlement = new DirectSettlement(predyPool, filler);
 
         currency0.transfer(address(_tradeMarket), 1e10);
         currency1.transfer(address(_tradeMarket), 1e10);
 
-        currency0.approve(address(_settlement), 1e10);
-        currency1.approve(address(_settlement), 1e10);
+        currency0.approve(address(_tradeMarket), 1e10);
+        currency1.approve(address(_tradeMarket), 1e10);
 
         currency0.mint(filler, 1e10);
         currency1.mint(filler, 1e10);
         vm.startPrank(filler);
-        currency0.approve(address(_settlement), 1e10);
-        currency1.approve(address(_settlement), 1e10);
+        currency0.approve(address(_tradeMarket), 1e10);
+        currency1.approve(address(_tradeMarket), 1e10);
         vm.stopPrank();
     }
 
@@ -46,10 +43,6 @@ contract TestExecLiquidationCall is TestPool {
     function checkMarginGtZero(uint256 vaultId) internal {
         DataType.Vault memory vault = predyPool.getVault(vaultId);
         assertGt(vault.margin, 0);
-    }
-
-    function _getSettlementData(uint256 price) internal view returns (ISettlement.SettlementData memory) {
-        return _settlement.getSettlementParams(address(currency1), address(currency0), price);
     }
 
     // liquidate succeeds if the vault is danger
@@ -88,7 +81,7 @@ contract TestExecLiquidationCall is TestPool {
         vm.warp(block.timestamp + 30 minutes);
 
         {
-            ISettlement.SettlementData memory settlementData = _getSettlementData(2 * Constants.Q96);
+            SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(2 * Constants.Q96);
 
             vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
             _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
@@ -111,7 +104,7 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 10 minutes);
 
-        predyPool.execLiquidationCall(2, 1e18, _getSettlementData(Constants.Q96 * 9000 / 10000));
+        _tradeMarket.execLiquidationCall(2, 1e18, _getSettlementData(Constants.Q96 * 9000 / 10000));
 
         checkMarginEqZero(2);
     }
@@ -131,11 +124,19 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 29 minutes);
 
-        uint256 beforeMargin = currency1.balanceOf(address(this));
-        predyPool.execLiquidationCall(1, 1e18, _getSettlementData(Constants.Q96 * 12300 / 10000));
-        uint256 afterMargin = currency1.balanceOf(address(this));
+        // check insolvency
+        IPredyPool.VaultStatus memory vaultStatus = _predyPoolQuoter.quoteVaultStatus(1);
+        assertLt(vaultStatus.vaultValue, vaultStatus.minMargin);
+        assertLt(vaultStatus.vaultValue, 0);
 
-        assertGt(beforeMargin - afterMargin, 0);
+        SettlementCallbackLib.SettlementParams memory settlementParams =
+            _getDebugSettlementData(Constants.Q96 * 12300 / 10000, 6 * 1e8);
+
+        vm.expectRevert(bytes("TRANSFER_FROM_FAILED"));
+        _tradeMarket.execLiquidationCall(1, 1e18, settlementParams);
+
+        _tradeMarket.execLiquidationCall(1, 1e18, _getDebugSettlementData(Constants.Q96 * 10300 / 10000, 6 * 1e8));
+
         checkMarginEqZero(1);
     }
 
@@ -144,8 +145,7 @@ contract TestExecLiquidationCall is TestPool {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, -4 * 1e8, 0, abi.encode(_getTradeAfterParams(1e8)));
 
-        ISettlement.SettlementData memory settlementData =
-            _settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         _tradeMarket.trade(tradeParams, settlementData);
 
@@ -164,7 +164,7 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 30 minutes);
 
-        ISettlement.SettlementData memory settlementData = _getSettlementData(Constants.Q96 * 11000 / 10000);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 11000 / 10000);
 
         _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
 

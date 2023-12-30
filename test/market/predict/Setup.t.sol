@@ -6,7 +6,6 @@ import "../../pool/Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PredictMarket} from "../../../src/markets/predict/PredictMarket.sol";
-import "../../../src/settlements/DirectSettlement.sol";
 import "../../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {PredictOrder, PredictOrderLib} from "../../../src/markets/predict/PredictOrder.sol";
 import {PredictCloseOrder, PredictCloseOrderLib} from "../../../src/markets/predict/PredictCloseOrder.sol";
@@ -18,7 +17,6 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
     using PredictOrderLib for PredictOrder;
     using PredictCloseOrderLib for PredictCloseOrder;
 
-    DirectSettlement settlement;
     PredictMarket fillerMarket;
     IPermit2 permit2;
     GeneralDutchOrderValidator dutchOrderValidator;
@@ -31,8 +29,6 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        settlement = new DirectSettlement(predyPool, address(this));
-
         fillerMarket = new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         currency0.approve(address(permit2), type(uint256).max);
@@ -40,9 +36,6 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         currency0.approve(address(fillerMarket), type(uint256).max);
         currency1.approve(address(fillerMarket), type(uint256).max);
-
-        currency0.approve(address(settlement), type(uint256).max);
-        currency1.approve(address(settlement), type(uint256).max);
 
         dutchOrderValidator = new GeneralDutchOrderValidator();
     }

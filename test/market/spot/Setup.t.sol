@@ -33,7 +33,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         fillerMarket = new SpotMarket(address(permit2));
 
-        settlement = new DebugSettlement(fillerMarket, address(this));
+        settlement = new DebugSettlement();
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
@@ -64,5 +64,14 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
         );
 
         signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
+    }
+
+    function _getSpotSettlementParams(uint256 quoteAmount, uint256 baseAmount)
+        internal
+        returns (SpotMarket.SettlementParams memory)
+    {
+        return SpotMarket.SettlementParams(
+            address(settlement), abi.encode(DebugSettlement.RouteParams(quoteAmount, baseAmount)), quoteAmount, 0, 0
+        );
     }
 }

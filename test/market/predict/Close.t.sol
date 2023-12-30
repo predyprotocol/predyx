@@ -48,9 +48,7 @@ contract TestPredictClose is TestPredictMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
     }
 
     function testCloseSucceeds() public {
@@ -67,8 +65,7 @@ contract TestPredictClose is TestPredictMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        ISettlement.SettlementData memory settlementData =
-            settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96);
+        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.close(signedOrder, settlementData);

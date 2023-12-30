@@ -39,7 +39,7 @@ library LiquidationLogic {
         uint256 vaultId,
         uint256 closeRatio,
         GlobalDataLibrary.GlobalData storage globalData,
-        ISettlement.SettlementData memory settlementData
+        bytes memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         require(closeRatio > 0);
         DataType.Vault storage vault = globalData.vaults[vaultId];

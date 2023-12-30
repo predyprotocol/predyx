@@ -24,11 +24,10 @@ library ReallocationLogic {
         int256 deltaPositionQuote
     );
 
-    function reallocate(
-        GlobalDataLibrary.GlobalData storage globalData,
-        uint256 pairId,
-        ISettlement.SettlementData memory settlementData
-    ) external returns (bool isRangeChanged) {
+    function reallocate(GlobalDataLibrary.GlobalData storage globalData, uint256 pairId, bytes memory settlementData)
+        external
+        returns (bool isRangeChanged)
+    {
         // Checks the pair exists
         globalData.validate(pairId);
 
@@ -50,11 +49,9 @@ library ReallocationLogic {
                 Perp.reallocate(pairStatus, pairStatus.sqrtAssetStatus);
 
             if (deltaPositionBase != 0) {
-                globalData.initializeLock(pairId, settlementData.settlementContractAddress);
+                globalData.initializeLock(pairId);
 
-                ISettlement(settlementData.settlementContractAddress).predySettlementCallback(
-                    settlementData.encodedData, deltaPositionBase
-                );
+                globalData.callSettlementCallback(settlementData, deltaPositionBase);
 
                 (int256 settledQuoteAmount, int256 settledBaseAmount) = globalData.finalizeLock();
 

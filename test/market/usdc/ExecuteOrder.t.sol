@@ -5,11 +5,11 @@ import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 
-contract TestPerpMarketExecuteOrder is TestPerpMarket {
+contract TestPerpMarketExecuteOrder is TestUSDCPerpMarket {
     address _fillerAddress;
 
     function setUp() public override {
-        TestPerpMarket.setUp();
+        TestUSDCPerpMarket.setUp();
 
         _fillerAddress = address(this);
     }
@@ -48,9 +48,8 @@ contract TestPerpMarketExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, _fromPrivateKey);
 
-        IPredyPool.TradeResult memory tradeResult = perpMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(_usdc), address(_weth), Constants.Q96 * 1600 / 10000)
-        );
+        IPredyPool.TradeResult memory tradeResult =
+            perpMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96 * 1600 / 10000));
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 159);
         assertEq(tradeResult.payoff.perpPayoff, 0);

@@ -7,7 +7,6 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../interfaces/IPredyPool.sol";
-import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
 import "../../base/BaseMarket.sol";
@@ -19,6 +18,7 @@ import {PredictOrderLib, PredictOrder} from "./PredictOrder.sol";
 import {PredictCloseOrderLib, PredictCloseOrder} from "./PredictCloseOrder.sol";
 import "../../libraries/math/Math.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
+import {SettlementCallbackLib} from "../../base/SettlementCallbackLib.sol";
 
 /**
  * @notice Predict market contract
@@ -108,7 +108,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
 
             uint256 closeValue = uint256(vault.margin);
 
-            ILendingPool(address(_predyPool)).take(true, userPositions[tradeParams.vaultId].owner, closeValue);
+            _predyPool.take(true, userPositions[tradeParams.vaultId].owner, closeValue);
 
             emit PredictPositionClosed(tradeParams.vaultId, closeValue, tradeResult.payoff, tradeResult.fee);
         }
@@ -117,10 +117,10 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     /**
      * @notice Verifies signature of the order and open new predict position
      * @param order The order signed by trader
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      */
-    function executeOrder(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function executeOrder(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -144,7 +144,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                 predictOrder.tradeAmountSqrt,
                 abi.encode(CallbackData(CallbackSource.OPEN, predictOrder.marginAmount, address(0), bytes("")))
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
 
         _saveUserPosition(tradeResult.vaultId, predictOrder.info.trader, block.timestamp + predictOrder.duration);
@@ -171,10 +171,10 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     /**
      * @notice Closes a predict position before expiration
      * @param order signed orfer
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      */
-    function close(SignedOrder memory order, ISettlement.SettlementData memory settlementData)
+    function close(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -200,7 +200,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
             abi.encode(CallbackData(CallbackSource.CLOSE, 0, address(0), bytes("")))
         );
 
-        tradeResult = _predyPool.trade(tradeParams, settlementData);
+        tradeResult = _predyPool.trade(tradeParams, _getSettlementData(settlementParams));
 
         IOrderValidator(closeOrder.validatorAddress).validate(
             tradeParams.tradeAmount, tradeParams.tradeAmountSqrt, closeOrder.validationData, tradeResult
@@ -210,11 +210,11 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     /**
      * @notice Closes a predict position after expiration
      * @param positionId The id of position
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function closeAfterExpiration(uint256 positionId, ISettlement.SettlementData memory settlementData)
+    function closeAfterExpiration(uint256 positionId, SettlementCallbackLib.SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -240,7 +240,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                 -vault.openPosition.sqrtPerp.amount,
                 abi.encode(CallbackData(CallbackSource.CLOSE, 0, address(0), bytes("")))
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
 
         SlippageLib.checkPrice(
@@ -252,9 +252,10 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(PredictOrder memory predictOrder, ISettlement.SettlementData memory settlementData)
-        external
-    {
+    function quoteExecuteOrder(
+        PredictOrder memory predictOrder,
+        SettlementCallbackLib.SettlementParams memory settlementParams
+    ) external {
         _predyPool.trade(
             IPredyPool.TradeParams(
                 predictOrder.pairId,
@@ -265,7 +266,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
                     CallbackData(CallbackSource.QUOTE, 0, predictOrder.validatorAddress, predictOrder.validationData)
                 )
             ),
-            settlementData
+            _getSettlementData(settlementParams)
         );
     }
 

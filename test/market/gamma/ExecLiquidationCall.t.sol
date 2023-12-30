@@ -16,7 +16,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
         TestGammaMarket.setUp();
 
         registerPair(address(currency1), address(0));
-        fillerMarket.updateQuoteTokenMap(1);
+        gammaTradeMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -41,7 +41,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceedsIfVaultIsDanger() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             -4 * 1e8,
@@ -57,26 +57,16 @@ contract TestExecLiquidationCall is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(from1);
-        predyPool.execLiquidationCall(
-            1, 1e18, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        gammaTradeMarket.execLiquidationCall(1, 1e18, _getSettlementData(Constants.Q96));
         uint256 afterMargin = currency1.balanceOf(from1);
 
         assertGt(afterMargin - beforeMargin, 0);
     }
-
-    // liquidate fails if the vault does not exist
-    // liquidate fails if the vault is safe
-
-    // liquidate succeeds if the vault is danger
-    // liquidate succeeds with insolvent vault (compensated from filler pool)
 }

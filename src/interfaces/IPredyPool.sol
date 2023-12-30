@@ -74,16 +74,20 @@ interface IPredyPool {
         DataType.FeeAmount FeeAmount;
     }
 
-    function trade(TradeParams memory tradeParams, ISettlement.SettlementData memory settlementData)
+    function trade(TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult);
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, ISettlement.SettlementData memory settlementData)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult);
+
+    function reallocate(uint256 pairId, bytes memory settlementData) external returns (bool relocationOccurred);
 
     function updateRecepient(uint256 vaultId, address recipient) external;
 
     function createVault(uint256 pairId) external returns (uint256);
+
+    function take(bool isQuoteAsset, address to, uint256 amount) external;
 
     function getSqrtPrice(uint256 pairId) external view returns (uint160);
 

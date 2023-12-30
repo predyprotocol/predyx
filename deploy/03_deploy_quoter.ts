@@ -10,12 +10,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments
 
   const PredyPool = await deployments.get('PredyPool')
-  const RevertSettlement = await deployments.get('RevertSettlement')
 
   await deploy('PredyPoolQuoter', {
     from: deployer,
     log: true,
-    args: [PredyPool.address, RevertSettlement.address]
+    args: [PredyPool.address]
   })
 }
 

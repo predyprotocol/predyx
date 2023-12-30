@@ -11,8 +11,8 @@ contract TestGammaMarketUpdateWhitelistFiller is TestGammaMarket {
     function testUpdateWhitelistFiller() public {
         address newWhitelistFiller = vm.addr(0x1234);
 
-        fillerMarket.updateWhitelistFiller(newWhitelistFiller);
+        gammaTradeMarket.updateWhitelistFiller(newWhitelistFiller);
 
-        assertEq(fillerMarket.whitelistFiller(), newWhitelistFiller, "whitelist filler not updated");
+        assertEq(gammaTradeMarket.whitelistFiller(), newWhitelistFiller, "whitelist filler not updated");
     }
 }

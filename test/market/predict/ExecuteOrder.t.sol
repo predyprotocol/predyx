@@ -59,9 +59,8 @@ contract TestPredictExecuteOrder is TestPredictMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IPredyPool.TradeResult memory tradeResult = fillerMarket.executeOrder(
-            signedOrder, settlement.getSettlementParams(address(currency1), address(currency0), Constants.Q96)
-        );
+        IPredyPool.TradeResult memory tradeResult =
+            fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
         assertEq(tradeResult.payoff.sqrtEntryUpdate, -1800);

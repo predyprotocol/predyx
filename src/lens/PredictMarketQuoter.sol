@@ -5,6 +5,7 @@ import {PredictMarket} from "../markets/predict/PredictMarket.sol";
 import {PredictOrder} from "../markets/predict/PredictOrder.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
+import {SettlementCallbackLib} from "../base/SettlementCallbackLib.sol";
 
 /**
  * @notice Quoter contract for PredictMarket
@@ -16,11 +17,11 @@ contract PredictMarketQuoter {
         predictMarket = _predictMarket;
     }
 
-    function quoteExecuteOrder(PredictOrder memory order, ISettlement.SettlementData memory settlementData)
-        external
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
-        try predictMarket.quoteExecuteOrder(order, settlementData) {}
+    function quoteExecuteOrder(
+        PredictOrder memory order,
+        SettlementCallbackLib.SettlementParams memory settlementParams
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        try predictMarket.quoteExecuteOrder(order, settlementParams) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }
