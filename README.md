@@ -35,18 +35,22 @@ sequenceDiagram
 autonumber
   Market->>PredyPool: trade(tradeParams, settlementData)
   activate PredyPool
-  PredyPool->>UniswapSettlement: predySettlementCallback(data, baseAmount)
-  activate UniswapSettlement
-  UniswapSettlement->>PredyPool: take(to, baseAmount)
+  PredyPool->>Market: predySettlementCallback(data, baseAmount)
+  activate Market
+  Market->>PredyPool: take(to, baseAmount)
   activate PredyPool
-  PredyPool-->>UniswapSettlement: 
+  PredyPool-->>Market: 
   deactivate PredyPool
+  Market->>UniswapSettlement: swapExactIn(data, baseAmount)
+  activate UniswapSettlement
   UniswapSettlement ->> SwapRouter: exactInput(baseAmount)
   SwapRouter -->> UniswapSettlement: quoteAmountOut
   UniswapSettlement ->> USDC: transfer(to=PredyPool, quoteAmountOut)
   USDC -->> UniswapSettlement: 
-  UniswapSettlement-->>PredyPool: 
+  UniswapSettlement-->>Market: 
   deactivate UniswapSettlement
+  Market -->> PredyPool: 
+  deactivate Market
   PredyPool->>Market: predyTradeAfterCallback(tradeParams, tradeResult)
   activate Market
   Market-->>PredyPool: 
@@ -98,7 +102,7 @@ autonumber
   activate Permit2
   Permit2 -->> SpotMarket: 
   deactivate Permit2
-  SpotMarket ->> Settlement: predySettlementCallback(settlementData, baseTokenAmount)
+  SpotMarket ->> Settlement: swapExactIn(settlementData, baseTokenAmount)
   activate Settlement
   Settlement -->> SpotMarket: 
   deactivate Settlement
