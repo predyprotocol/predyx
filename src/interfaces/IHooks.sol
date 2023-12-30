@@ -15,6 +15,4 @@ interface IHooks {
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
     ) external;
-
-    function payCallback(address token, uint256 amount, address sender) external;
 }

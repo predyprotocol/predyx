@@ -124,11 +124,19 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 29 minutes);
 
-        uint256 beforeMargin = currency1.balanceOf(address(this));
-        _tradeMarket.execLiquidationCall(1, 1e18, _getDebugSettlementData(Constants.Q96 * 12300 / 10000, 6 * 1e8));
-        uint256 afterMargin = currency1.balanceOf(address(this));
+        // check insolvency
+        IPredyPool.VaultStatus memory vaultStatus = _predyPoolQuoter.quoteVaultStatus(1);
+        assertLt(vaultStatus.vaultValue, vaultStatus.minMargin);
+        assertLt(vaultStatus.vaultValue, 0);
 
-        assertGt(beforeMargin, afterMargin);
+        SettlementCallbackLib.SettlementParams memory settlementParams =
+            _getDebugSettlementData(Constants.Q96 * 12300 / 10000, 6 * 1e8);
+
+        vm.expectRevert(bytes("TRANSFER_FROM_FAILED"));
+        _tradeMarket.execLiquidationCall(1, 1e18, settlementParams);
+
+        _tradeMarket.execLiquidationCall(1, 1e18, _getDebugSettlementData(Constants.Q96 * 10300 / 10000, 6 * 1e8));
+
         checkMarginEqZero(1);
     }
 

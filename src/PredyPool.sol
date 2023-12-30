@@ -289,12 +289,12 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
      * @param settlementData SettlementData struct for trade settlement.
      * @return tradeResult TradeResult struct with the result of the liquidation.
      */
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData, address sender)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
         external
         nonReentrant
         returns (TradeResult memory tradeResult)
     {
-        return LiquidationLogic.liquidate(vaultId, closeRatio, globalData, settlementData, sender);
+        return LiquidationLogic.liquidate(vaultId, closeRatio, globalData, settlementData);
     }
 
     /**

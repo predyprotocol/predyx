@@ -65,7 +65,7 @@ contract TestTradeMarket is BaseHookCallback {
         uint256 closeRatio,
         SettlementCallbackLib.SettlementParams memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
-        return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementData), msg.sender);
+        return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementData));
     }
 
     function payCallback(address token, uint256 amount, address sender) external onlyPredyPool {

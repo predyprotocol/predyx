@@ -77,7 +77,7 @@ interface IPredyPool {
     function trade(TradeParams memory tradeParams, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult);
-    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData, address sender)
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, bytes memory settlementData)
         external
         returns (TradeResult memory tradeResult);
 

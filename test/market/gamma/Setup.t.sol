@@ -15,7 +15,7 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
-    GammaTradeMarket fillerMarket;
+    GammaTradeMarket gammaTradeMarket;
     IPermit2 permit2;
     LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
@@ -27,16 +27,13 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        fillerMarket = new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        gammaTradeMarket = new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
 
-        currency0.approve(address(fillerMarket), type(uint256).max);
-        currency1.approve(address(fillerMarket), type(uint256).max);
-
-        // currency0.approve(address(settlement), type(uint256).max);
-        // currency1.approve(address(settlement), type(uint256).max);
+        currency0.approve(address(gammaTradeMarket), type(uint256).max);
+        currency1.approve(address(gammaTradeMarket), type(uint256).max);
 
         limitOrderValidator = new LimitOrderValidator();
     }
@@ -51,7 +48,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
         bytes memory sig = getPermitSignature(
             fromPrivateKey,
             _toPermit(marketOrder),
-            address(fillerMarket),
+            address(gammaTradeMarket),
             GammaOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR

@@ -39,8 +39,7 @@ library LiquidationLogic {
         uint256 vaultId,
         uint256 closeRatio,
         GlobalDataLibrary.GlobalData storage globalData,
-        bytes memory settlementData,
-        address sender
+        bytes memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         require(closeRatio > 0);
         DataType.Vault storage vault = globalData.vaults[vaultId];
@@ -99,12 +98,7 @@ library LiquidationLogic {
 
                 // To prevent the liquidator from unfairly profiting through arbitrage trades in the AMM and passing losses onto the protocol,
                 // any losses that cannot be covered by the vault must be compensated by the liquidator
-                // ERC20(pairStatus.quotePool.token).safeTransferFrom(msg.sender, address(this), uint256(-remainingMargin));
-                uint256 beforeBalance = ERC20(pairStatus.quotePool.token).balanceOf(address(this));
-                IHooks(msg.sender).payCallback(pairStatus.quotePool.token, uint256(-remainingMargin), sender);
-                uint256 afterBalance = ERC20(pairStatus.quotePool.token).balanceOf(address(this));
-
-                require(afterBalance - beforeBalance == uint256(-remainingMargin));
+                ERC20(pairStatus.quotePool.token).safeTransferFrom(msg.sender, address(this), uint256(-remainingMargin));
             }
         }
 

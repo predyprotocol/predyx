@@ -17,7 +17,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         TestGammaMarket.setUp();
 
         registerPair(address(currency1), address(0));
-        fillerMarket.updateQuoteTokenMap(1);
+        gammaTradeMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -42,7 +42,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
     // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             -1000,
@@ -59,7 +59,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
         IPredyPool.TradeResult memory tradeResult =
-            fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
+            gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
         assertEq(tradeResult.payoff.sqrtEntryUpdate, -1800);
@@ -71,7 +71,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
     function testExecuteOrderSucceedsWithNetting() public {
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+                OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
                 1,
                 address(currency1),
                 -1000 * 1e4,
@@ -87,12 +87,12 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
+            gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
         }
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from1, 1, block.timestamp + 100),
+                OrderInfo(address(gammaTradeMarket), from1, 1, block.timestamp + 100),
                 1,
                 address(currency1),
                 1000 * 1e4,
@@ -108,14 +108,14 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
+            gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
         }
     }
 
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, 1),
+            OrderInfo(address(gammaTradeMarket), from1, 0, 1),
             1,
             address(currency1),
             1000,
@@ -134,7 +134,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert();
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        gammaTradeMarket.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if signature is invalid
@@ -143,7 +143,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from1, 0, block.timestamp),
+                OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp),
                 1,
                 address(currency1),
                 1000,
@@ -159,12 +159,12 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            fillerMarket.executeOrder(signedOrder, settlementData);
+            gammaTradeMarket.executeOrder(signedOrder, settlementData);
         }
 
         {
             GammaOrder memory order = GammaOrder(
-                OrderInfo(address(fillerMarket), from2, 0, block.timestamp),
+                OrderInfo(address(gammaTradeMarket), from2, 0, block.timestamp),
                 1,
                 address(currency1),
                 1000,
@@ -181,14 +181,14 @@ contract TestGammaExecuteOrder is TestGammaMarket {
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
 
             vm.expectRevert();
-            fillerMarket.executeOrder(signedOrder, settlementData);
+            gammaTradeMarket.executeOrder(signedOrder, settlementData);
         }
     }
 
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             1000,
@@ -207,13 +207,13 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        gammaTradeMarket.executeOrder(signedOrder, settlementData);
     }
 
     // executeOrder fails if price is less than limit
     function testExecuteOrderFails_IfPriceIsLessThanLimit() public {
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             -1000,
@@ -232,6 +232,6 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        gammaTradeMarket.executeOrder(signedOrder, settlementData);
     }
 }

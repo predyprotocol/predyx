@@ -36,7 +36,7 @@ contract DebugSettlement2 is BaseSettlement {
         amountIn = amountOut * price / Constants.Q96;
 
         ERC20(baseToken).safeTransfer(recipient, amountOut);
-        console.log(maxAmountIn, amountIn);
+
         ERC20(quoteToken).safeTransfer(recipient, maxAmountIn - amountIn);
     }
 

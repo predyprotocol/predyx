@@ -22,7 +22,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         registerPair(address(currency1), address(mockPriceFeed));
 
-        fillerMarket.updateQuoteTokenMap(1);
+        gammaTradeMarket.updateQuoteTokenMap(1);
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
@@ -44,7 +44,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         currency1.approve(address(permit2), type(uint256).max);
 
         GammaOrder memory order = GammaOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             -1000,
@@ -60,7 +60,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
+        gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
     }
 
     function testCannotExecuteDeltaHedgeByTime() public {
@@ -71,7 +71,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         SettlementCallbackLib.SettlementParams memory settlementParams = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
-        fillerMarket.execDeltaHedge(from1, 1, settlementParams);
+        gammaTradeMarket.execDeltaHedge(from1, 1, settlementParams);
     }
 
     function testSucceedsExecuteDeltaHedgeByTime() public {
@@ -79,6 +79,6 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         vm.warp(block.timestamp + 12 hours);
 
-        fillerMarket.execDeltaHedge(from1, 1, _getSettlementData(Constants.Q96));
+        gammaTradeMarket.execDeltaHedge(from1, 1, _getSettlementData(Constants.Q96));
     }
 }

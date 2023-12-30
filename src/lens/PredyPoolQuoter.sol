@@ -43,8 +43,6 @@ contract PredyPoolQuoter is BaseHookCallback {
         }
     }
 
-    function payCallback(address quoteToken, uint256 amount, address sender) external onlyPredyPool {}
-
     /**
      * @notice Quotes trade
      * @param tradeParams The trade details

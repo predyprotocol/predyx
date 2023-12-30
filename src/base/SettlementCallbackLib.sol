@@ -7,7 +7,6 @@ import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {Constants} from "../libraries/Constants.sol";
 import {Math} from "../libraries/math/Math.sol";
-import "forge-std/console.sol";
 
 library SettlementCallbackLib {
     using SafeTransferLib for ERC20;
