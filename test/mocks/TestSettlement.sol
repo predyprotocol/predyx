@@ -40,8 +40,6 @@ contract TestSettlementCurrencyNotSettled is BaseHookCallback {
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseHookCallback) {}
 
-    function payCallback(address quoteToken, uint256 amount, address sender) external onlyPredyPool {}
-
     function trade(IPredyPool.TradeParams memory tradeParams, bytes memory data)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -75,8 +73,6 @@ contract TestSettlementReentrant is BaseHookCallback {
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
     ) external override(BaseHookCallback) {}
-
-    function payCallback(address quoteToken, uint256 amount, address sender) external onlyPredyPool {}
 
     function trade(IPredyPool.TradeParams memory tradeParams, bytes memory data)
         external

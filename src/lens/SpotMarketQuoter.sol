@@ -22,7 +22,7 @@ contract SpotMarketQuoter {
     {
         int256 baseTokenAmount = order.baseTokenAmount;
 
-        try spotMarket.quoteSettlement(order.quoteToken, order.baseToken, settlementParams, -baseTokenAmount) {}
+        try spotMarket.quoteSettlement(settlementParams, -baseTokenAmount) {}
         catch (bytes memory reason) {
             quoteTokenAmount = _parseRevertReason(reason);
         }

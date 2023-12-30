@@ -139,8 +139,6 @@ contract SpotMarket is IFillerMarket {
         SettlementParams memory settlementParams,
         int256 baseAmountDelta
     ) internal {
-        // TODO: sender must be market
-
         if (baseAmountDelta > 0) {
             if (settlementParams.contractAddress == address(0)) {
                 uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
@@ -211,23 +209,14 @@ contract SpotMarket is IFillerMarket {
         }
     }
 
-    function quoteSettlement(
-        address quoteToken,
-        address baseToken,
-        SettlementParams memory settlementParams,
-        int256 baseAmountDelta
-    ) external {
-        _revertQuoteAmount(_quoteSettlement(quoteToken, baseToken, settlementParams, baseAmountDelta));
+    function quoteSettlement(SettlementParams memory settlementParams, int256 baseAmountDelta) external {
+        _revertQuoteAmount(_quoteSettlement(settlementParams, baseAmountDelta));
     }
 
-    function _quoteSettlement(
-        address quoteToken,
-        address baseToken,
-        SettlementParams memory settlementParams,
-        int256 baseAmountDelta
-    ) internal returns (int256) {
-        // TODO: sender must be market
-
+    function _quoteSettlement(SettlementParams memory settlementParams, int256 baseAmountDelta)
+        internal
+        returns (int256)
+    {
         if (baseAmountDelta > 0) {
             if (settlementParams.contractAddress == address(0)) {
                 uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
@@ -252,8 +241,6 @@ contract SpotMarket is IFillerMarket {
 
                 return -int256(quoteAmount);
             }
-
-            ERC20(quoteToken).safeTransfer(settlementParams.contractAddress, settlementParams.maxQuoteAmount);
 
             uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).quoteSwapExactOut(
                 settlementParams.encodedData, uint256(-baseAmountDelta)

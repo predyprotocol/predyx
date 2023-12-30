@@ -21,14 +21,13 @@ library SettlementCallbackLib {
         int256 fee;
     }
 
-    function _execSettlement(
+    function execSettlement(
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,
         bytes memory settlementData,
         int256 baseAmountDelta
     ) internal {
-        // TODO: sender must be market
         SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
 
         if (settlementParams.fee < 0) {

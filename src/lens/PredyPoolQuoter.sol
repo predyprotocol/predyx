@@ -16,7 +16,7 @@ contract PredyPoolQuoter is BaseHookCallback {
         external
     {
         if (data.length > 0) {
-            SettlementCallbackLib._execSettlement(_predyPool, quoteToken, baseToken, data, baseAmountDelta);
+            SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, data, baseAmountDelta);
         } else {
             _revertBaseAmountDelta(baseAmountDelta);
         }

@@ -49,7 +49,6 @@ library GlobalDataLibrary {
         uint256 pairId = globalData.lockData.pairId;
 
         IHooks(msg.sender).predySettlementCallback(
-            // TODO: msg.sender
             globalData.pairs[pairId].quotePool.token,
             globalData.pairs[pairId].basePool.token,
             settlementData,
