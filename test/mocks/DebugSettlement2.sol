@@ -4,11 +4,9 @@ pragma solidity ^0.8.17;
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ISettlement} from "../../src/interfaces/ISettlement.sol";
-import {BaseSettlement} from "../../src/settlements/BaseSettlement.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
-import "forge-std/console.sol";
 
-contract DebugSettlement2 is BaseSettlement {
+contract DebugSettlement2 is ISettlement {
     using SafeTransferLib for ERC20;
 
     function swapExactIn(address quoteToken, address, bytes memory data, uint256 amountIn, uint256, address recipient)

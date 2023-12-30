@@ -4,9 +4,8 @@ pragma solidity ^0.8.17;
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ISettlement} from "../../src/interfaces/ISettlement.sol";
-import {BaseSettlement} from "../../src/settlements/BaseSettlement.sol";
 
-contract DebugSettlement is BaseSettlement {
+contract DebugSettlement is ISettlement {
     using SafeTransferLib for ERC20;
 
     struct RouteParams {

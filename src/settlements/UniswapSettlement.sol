@@ -5,9 +5,9 @@ import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IQuoterV2} from "@uniswap/v3-periphery/contracts/interfaces/IQuoterV2.sol";
-import "./BaseSettlement.sol";
+import "../interfaces/ISettlement.sol";
 
-contract UniswapSettlement is BaseSettlement {
+contract UniswapSettlement is ISettlement {
     using SafeTransferLib for ERC20;
 
     ISwapRouter private immutable _swapRouter;

@@ -6,7 +6,6 @@ import "../../src/types/GlobalData.sol";
 import "../../src/interfaces/IPredyPool.sol";
 import "../../src/base/BaseHookCallback.sol";
 import "../../src/base/SettlementCallbackLib.sol";
-import "../../src/settlements/BaseSettlement.sol";
 import "../../src/libraries/logic/TradeLogic.sol";
 
 /**
