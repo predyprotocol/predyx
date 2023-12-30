@@ -17,11 +17,12 @@ contract PerpMarketQuoter {
         perpMarket = _perpMarket;
     }
 
-    function quoteExecuteOrder(PerpOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
-        external
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
-        try perpMarket.quoteExecuteOrder(order, settlementParams) {}
+    function quoteExecuteOrder(
+        PerpOrder memory order,
+        SettlementCallbackLib.SettlementParams memory settlementParams,
+        address filler
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        try perpMarket.quoteExecuteOrder(order, settlementParams, filler) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

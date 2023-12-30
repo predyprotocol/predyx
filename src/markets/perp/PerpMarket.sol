@@ -300,7 +300,8 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     /// @notice Estimate transaction results and return with revert message
     function quoteExecuteOrder(
         PerpOrder memory perpOrder,
-        SettlementCallbackLib.SettlementParams memory settlementParams
+        SettlementCallbackLib.SettlementParams memory settlementParams,
+        address filler
     ) external {
         _predyPool.trade(
             IPredyPool.TradeParams(
@@ -318,7 +319,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
                     )
                 )
             ),
-            _getSettlementData(settlementParams)
+            _getSettlementData(settlementParams, filler)
         );
     }
 

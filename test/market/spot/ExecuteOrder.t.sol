@@ -10,24 +10,16 @@ import {SpotOrder} from "../../../src/markets/spot/SpotOrder.sol";
 contract TestPerpExecuteOrder is TestSpotMarket {
     uint256 private fromPrivateKey1;
     address private from1;
-    uint256 private fromPrivateKey2;
-    address private from2;
 
     function setUp() public override {
         TestSpotMarket.setUp();
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
-        fromPrivateKey2 = 0x1235678;
-        from2 = vm.addr(fromPrivateKey2);
 
         currency1.mint(from1, type(uint128).max);
-        currency1.mint(from2, type(uint128).max);
 
         vm.prank(from1);
-        currency1.approve(address(permit2), type(uint256).max);
-
-        vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
 
         currency0.mint(address(settlement), type(uint128).max);

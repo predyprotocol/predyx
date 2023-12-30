@@ -237,7 +237,7 @@ contract SpotMarket is IFillerMarket {
             }
         } else if (baseAmountDelta < 0) {
             if (settlementParams.contractAddress == address(0)) {
-                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
 
                 return -int256(quoteAmount);
             }

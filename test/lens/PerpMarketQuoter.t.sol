@@ -31,9 +31,61 @@ contract TestPerpMarketQuoter is TestLens {
         predyPool.createVault(1);
 
         limitOrderValidator = new LimitOrderValidator();
+
+        currency0.approve(address(perpMarket), type(uint256).max);
+        currency1.approve(address(perpMarket), type(uint256).max);
     }
 
-    function testQuoteExecuteOrder() public {
+    function testQuoteExecuteOrderWithLong() public {
+        PerpOrder memory order = PerpOrder(
+            OrderInfo(address(0), from, 0, block.timestamp + 100),
+            1,
+            address(currency1),
+            1000,
+            2 * 1e6,
+            0,
+            0,
+            0,
+            2,
+            address(limitOrderValidator),
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+        );
+
+        // with settlement contract
+        {
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(1200), address(this));
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, -1002);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
+
+        // with price
+        {
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, Constants.Q96), address(this));
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, -1000);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
+
+        // with direct
+        {
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getSettlementData(Constants.Q96), address(this));
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, -1000);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
+    }
+
+    function testQuoteExecuteOrderWithShort() public {
         PerpOrder memory order = PerpOrder(
             OrderInfo(address(0), from, 0, block.timestamp + 100),
             1,
@@ -48,13 +100,37 @@ contract TestPerpMarketQuoter is TestLens {
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
+        // with settlement contract
+        {
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(0), address(this));
 
-        IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrder(order, settlementData);
+            assertEq(tradeResult.payoff.perpEntryUpdate, 998);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 998);
-        assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
-        assertEq(tradeResult.payoff.perpPayoff, 0);
-        assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        // with price
+        {
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(0, Constants.Q96), address(this));
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
+
+        // with direct
+        {
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getSettlementData(Constants.Q96), address(this));
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        }
     }
 }

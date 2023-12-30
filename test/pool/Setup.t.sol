@@ -150,7 +150,7 @@ contract TestPool is Test {
         return TestTradeMarket.TradeAfterParams(address(this), address(currency1), updateMarginAmount);
     }
 
-    function _getSettlementData(uint256 price) internal view returns (SettlementCallbackLib.SettlementParams memory) {
+    function _getSettlementData(uint256 price) internal pure returns (SettlementCallbackLib.SettlementParams memory) {
         return SettlementCallbackLib.SettlementParams(address(0), address(0), bytes(""), 0, price, 0);
     }
 
@@ -169,9 +169,18 @@ contract TestPool is Test {
         view
         returns (SettlementCallbackLib.SettlementParams memory)
     {
+        return _getUniSettlementData(maxQuoteAmount, 0);
+    }
+
+    function _getUniSettlementData(uint256 maxQuoteAmount, uint256 price)
+        internal
+        view
+        returns (SettlementCallbackLib.SettlementParams memory)
+    {
         bytes memory path = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        return
-            SettlementCallbackLib.SettlementParams(address(0), address(uniswapSettlement), path, maxQuoteAmount, 0, 0);
+        return SettlementCallbackLib.SettlementParams(
+            address(0), address(uniswapSettlement), path, maxQuoteAmount, price, 0
+        );
     }
 }
