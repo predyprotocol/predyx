@@ -39,7 +39,7 @@ contract TestSpotMarketQuoter is TestLens {
             abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1000))
         );
 
-        SpotMarket.SettlementParams memory settlementData = SpotMarket.SettlementParams(
+        SpotMarket.SettlementParams memory settlementData = IFillerMarket.SettlementParams(
             address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0, 0
         );
 
@@ -59,55 +59,19 @@ contract TestSpotMarketQuoter is TestLens {
         );
 
         // with settlement contract
-        assertEq(
-            _quoter.quoteExecuteOrder(
-                order,
-                SpotMarket.SettlementParams(
-                    address(uniswapSettlement),
-                    abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-                    0,
-                    0,
-                    0
-                )
-            ),
-            -1002
-        );
+        assertEq(_quoter.quoteExecuteOrder(order, _getUniSettlementData(0)), -1002);
 
         // with fee
-        assertEq(
-            _quoter.quoteExecuteOrder(
-                order,
-                SpotMarket.SettlementParams(
-                    address(uniswapSettlement),
-                    abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-                    0,
-                    0,
-                    10
-                )
-            ),
-            -1012
-        );
+        assertEq(_quoter.quoteExecuteOrder(order, _getUniSettlementData(0, 0, 10)), -1012);
 
         // with direct
         assertEq(
-            _quoter.quoteExecuteOrder(order, SpotMarket.SettlementParams(address(0), bytes(""), 0, Constants.Q96, 0)),
+            _quoter.quoteExecuteOrder(order, IFillerMarket.SettlementParams(address(0), bytes(""), 0, Constants.Q96, 0)),
             -1000
         );
 
         // with price
-        assertEq(
-            _quoter.quoteExecuteOrder(
-                order,
-                SpotMarket.SettlementParams(
-                    address(uniswapSettlement),
-                    abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-                    0,
-                    Constants.Q96,
-                    0
-                )
-            ),
-            -1000
-        );
+        assertEq(_quoter.quoteExecuteOrder(order, _getUniSettlementData(0, Constants.Q96, 0)), -1000);
     }
 
     function testQuoteExecuteOrderSucceedsWithSelling() public {
@@ -122,54 +86,20 @@ contract TestSpotMarketQuoter is TestLens {
         );
 
         // with settlement contract
-        assertEq(
-            _quoter.quoteExecuteOrder(
-                order,
-                SpotMarket.SettlementParams(
-                    address(uniswapSettlement),
-                    abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-                    1200,
-                    0,
-                    0
-                )
-            ),
-            998
-        );
+        assertEq(_quoter.quoteExecuteOrder(order, _getUniSettlementData(1200)), 998);
 
         // with fee
-        assertEq(
-            _quoter.quoteExecuteOrder(
-                order,
-                SpotMarket.SettlementParams(
-                    address(uniswapSettlement),
-                    abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-                    1200,
-                    0,
-                    10
-                )
-            ),
-            988
-        );
+        assertEq(_quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, 0, 10)), 988);
 
         // with direct
         assertEq(
-            _quoter.quoteExecuteOrder(order, SpotMarket.SettlementParams(address(0), bytes(""), 1200, Constants.Q96, 0)),
+            _quoter.quoteExecuteOrder(
+                order, IFillerMarket.SettlementParams(address(0), bytes(""), 1200, Constants.Q96, 0)
+            ),
             1000
         );
 
         // with price
-        assertEq(
-            _quoter.quoteExecuteOrder(
-                order,
-                SpotMarket.SettlementParams(
-                    address(uniswapSettlement),
-                    abi.encodePacked(address(currency0), uint24(500), address(currency1)),
-                    1200,
-                    Constants.Q96,
-                    0
-                )
-            ),
-            1000
-        );
+        assertEq(_quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, Constants.Q96, 0)), 1000);
     }
 }

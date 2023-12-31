@@ -70,9 +70,7 @@ contract SpotMarket is IFillerMarket {
 
         quoteTokenAmount = _swap(spotOrder, settlementParams, baseTokenAmount);
 
-        ISpotOrderValidator(spotOrder.validatorAddress).validate(
-            spotOrder, baseTokenAmount, quoteTokenAmount, msg.sender
-        );
+        ISpotOrderValidator(spotOrder.validatorAddress).validate(spotOrder, quoteTokenAmount, msg.sender);
 
         if (quoteTokenAmount > 0) {
             TransferHelper.safeTransfer(spotOrder.quoteToken, spotOrder.info.trader, uint256(quoteTokenAmount));
@@ -125,14 +123,6 @@ contract SpotMarket is IFillerMarket {
         return int256(afterQuoteReserve) - int256(quoteReserve);
     }
 
-    struct SettlementParams {
-        address contractAddress;
-        bytes encodedData;
-        uint256 maxQuoteAmount;
-        uint256 price;
-        int256 fee;
-    }
-
     function _execSettlement(
         address quoteToken,
         address baseToken,
@@ -153,15 +143,7 @@ contract SpotMarket is IFillerMarket {
             ERC20(baseToken).safeTransfer(settlementParams.contractAddress, uint256(baseAmountDelta));
 
             uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
-                quoteToken,
-                baseToken,
-                settlementParams.encodedData,
-                // input amount
-                uint256(baseAmountDelta),
-                // min amount to receive
-                0,
-                // receiver
-                address(this)
+                quoteToken, baseToken, settlementParams.encodedData, uint256(baseAmountDelta), 0, address(this)
             );
 
             if (settlementParams.price == 0) {
@@ -177,7 +159,7 @@ contract SpotMarket is IFillerMarket {
             }
         } else if (baseAmountDelta < 0) {
             if (settlementParams.contractAddress == address(0)) {
-                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
+                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
 
                 ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount);
 
@@ -197,7 +179,9 @@ contract SpotMarket is IFillerMarket {
                 address(this)
             );
 
-            if (settlementParams.price > 0) {
+            if (settlementParams.price == 0) {
+                ERC20(quoteToken).safeTransfer(msg.sender, uint256(settlementParams.fee));
+            } else {
                 uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
 
                 if (quoteAmount > quoteAmountToUni) {
@@ -253,6 +237,8 @@ contract SpotMarket is IFillerMarket {
 
                 return -int256(quoteAmount);
             }
+        } else {
+            return 0;
         }
     }
 

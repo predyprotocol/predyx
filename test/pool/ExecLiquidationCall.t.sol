@@ -81,7 +81,7 @@ contract TestExecLiquidationCall is TestPool {
         vm.warp(block.timestamp + 30 minutes);
 
         {
-            SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(2 * Constants.Q96);
+            IFillerMarket.SettlementParams memory settlementData = _getSettlementData(2 * Constants.Q96);
 
             vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
             _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
@@ -129,7 +129,7 @@ contract TestExecLiquidationCall is TestPool {
         assertLt(vaultStatus.vaultValue, vaultStatus.minMargin);
         assertLt(vaultStatus.vaultValue, 0);
 
-        SettlementCallbackLib.SettlementParams memory settlementParams =
+        IFillerMarket.SettlementParams memory settlementParams =
             _getDebugSettlementData(Constants.Q96 * 12300 / 10000, 6 * 1e8);
 
         vm.expectRevert(bytes("TRANSFER_FROM_FAILED"));
@@ -145,7 +145,7 @@ contract TestExecLiquidationCall is TestPool {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, -4 * 1e8, 0, abi.encode(_getTradeAfterParams(1e8)));
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         _tradeMarket.trade(tradeParams, settlementData);
 
@@ -164,7 +164,7 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 30 minutes);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 11000 / 10000);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 11000 / 10000);
 
         _tradeMarket.execLiquidationCall(1, 1e18, settlementData);
 

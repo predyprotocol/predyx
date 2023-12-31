@@ -5,6 +5,7 @@ import {SpotMarket} from "../markets/spot/SpotMarket.sol";
 import {SpotOrder} from "../markets/spot/SpotOrder.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {ISpotOrderValidator} from "../interfaces/IOrderValidator.sol";
+import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
 
 /**
  * @notice Quoter contract for SpotMarket
@@ -16,7 +17,7 @@ contract SpotMarketQuoter {
         spotMarket = _spotMarket;
     }
 
-    function quoteExecuteOrder(SpotOrder memory order, SpotMarket.SettlementParams memory settlementParams)
+    function quoteExecuteOrder(SpotOrder memory order, IFillerMarket.SettlementParams memory settlementParams)
         external
         returns (int256 quoteTokenAmount)
     {
@@ -28,7 +29,7 @@ contract SpotMarketQuoter {
         }
 
         if (order.validatorAddress != address(0)) {
-            ISpotOrderValidator(order.validatorAddress).validate(order, baseTokenAmount, quoteTokenAmount, msg.sender);
+            ISpotOrderValidator(order.validatorAddress).validate(order, quoteTokenAmount, msg.sender);
         }
     }
 

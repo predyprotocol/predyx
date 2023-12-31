@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "../interfaces/IPredyPool.sol";
+import "../interfaces/IFillerMarket.sol";
 import "../base/BaseHookCallback.sol";
 import "../base/SettlementCallbackLib.sol";
 
@@ -46,13 +47,13 @@ contract PredyPoolQuoter is BaseHookCallback {
     /**
      * @notice Quotes trade
      * @param tradeParams The trade details
-     * @param settlementData The route of settlement created by filler
+     * @param settlementParams The route of settlement created by filler
      */
-    function quoteTrade(IPredyPool.TradeParams memory tradeParams, bytes memory settlementData)
-        external
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
-        try _predyPool.trade(tradeParams, settlementData) {}
+    function quoteTrade(
+        IPredyPool.TradeParams memory tradeParams,
+        IFillerMarket.SettlementParams memory settlementParams
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        try _predyPool.trade(tradeParams, _getSettlementData(settlementParams, msg.sender)) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReasonAsTradeResult(reason);
         }
@@ -134,5 +135,22 @@ contract PredyPoolQuoter is BaseHookCallback {
         } else {
             return abi.decode(reason, (IPredyPool.VaultStatus));
         }
+    }
+
+    function _getSettlementData(IFillerMarket.SettlementParams memory settlementParams, address filler)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encode(
+            SettlementCallbackLib.SettlementParams(
+                filler,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmount,
+                settlementParams.price,
+                settlementParams.fee
+            )
+        );
     }
 }

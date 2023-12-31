@@ -120,7 +120,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
      * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      */
-    function executeOrder(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function executeOrder(SignedOrder memory order, SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -174,7 +174,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
      * @param settlementParams The route of settlement created by filler
      * @return tradeResult The result of trade
      */
-    function close(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function close(SignedOrder memory order, SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -214,7 +214,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function closeAfterExpiration(uint256 positionId, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function closeAfterExpiration(uint256 positionId, SettlementParams memory settlementParams)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -252,10 +252,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(
-        PredictOrder memory predictOrder,
-        SettlementCallbackLib.SettlementParams memory settlementParams
-    ) external {
+    function quoteExecuteOrder(PredictOrder memory predictOrder, SettlementParams memory settlementParams) external {
         _predyPool.trade(
             IPredyPool.TradeParams(
                 predictOrder.pairId,

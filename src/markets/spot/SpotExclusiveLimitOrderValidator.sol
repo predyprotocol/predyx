@@ -18,10 +18,7 @@ contract SpotExclusiveLimitOrderValidator {
 
     error PriceLessThanLimit();
 
-    function validate(SpotOrder memory spotOrder, int256 baseTokenAmount, int256 quoteTokenAmount, address filler)
-        external
-        pure
-    {
+    function validate(SpotOrder memory spotOrder, int256 quoteTokenAmount, address filler) external pure {
         SpotExclusiveLimitOrderValidationData memory validationData =
             abi.decode(spotOrder.validationData, (SpotExclusiveLimitOrderValidationData));
 

@@ -6,7 +6,6 @@ import "../../src/lens/PredyPoolQuoter.sol";
 import "../../src/lens/PerpMarketQuoter.sol";
 import "../../src/markets/validators/LimitOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
-import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 
 contract TestPerpMarketQuoter is TestLens {
     PerpMarketQuoter _quoter;
@@ -65,7 +64,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with price
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, Constants.Q96), address(this));
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, Constants.Q96, 0), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, -1000);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
@@ -114,7 +113,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with price
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrder(order, _getUniSettlementData(0, Constants.Q96), address(this));
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(0, Constants.Q96, 0), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);

@@ -65,7 +65,7 @@ contract TestPredictClose is TestPredictMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.close(signedOrder, settlementData);

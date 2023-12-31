@@ -8,7 +8,6 @@ import "../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
-import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 
 contract TestGammaTradeMarketQuoter is TestLens {
     GammaTradeMarketQuoter _quoter;
@@ -54,7 +53,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
             )
         );
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
 
         IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrder(order, settlementData);
 

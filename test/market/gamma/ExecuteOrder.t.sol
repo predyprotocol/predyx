@@ -131,7 +131,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert();
         gammaTradeMarket.executeOrder(signedOrder, settlementData);
@@ -139,7 +139,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         {
             GammaOrder memory order = GammaOrder(
@@ -204,7 +204,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         gammaTradeMarket.executeOrder(signedOrder, settlementData);
@@ -229,7 +229,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         gammaTradeMarket.executeOrder(signedOrder, settlementData);

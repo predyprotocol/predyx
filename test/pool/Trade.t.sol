@@ -130,7 +130,7 @@ contract TestTrade is TestPool {
 
         bytes memory extraData = abi.encode(_getTradeAfterParams(0));
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(IPredyPool.CallerIsNotVaultOwner.selector);
         tradeMarket2.trade(IPredyPool.TradeParams(1, tradeResult.vaultId, 99 * 1e4, 0, extraData), settlementData);
@@ -140,7 +140,7 @@ contract TestTrade is TestPool {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(whitelistPairId, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e6)));
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(IPredyPool.TraderNotAllowed.selector);
         tradeMarket.trade(tradeParams, settlementData);
@@ -155,7 +155,7 @@ contract TestTrade is TestPool {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(100, 0, -900, 1000, abi.encode(_getTradeAfterParams(1e6)));
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(IPredyPool.InvalidPairId.selector);
         tradeMarket.trade(tradeParams, settlementData);
@@ -168,7 +168,7 @@ contract TestTrade is TestPool {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, 1e8, 0, abi.encode(_getTradeAfterParams(marginAmount)));
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         if (marginAmount < 16658333) {
             vm.expectRevert(PositionCalculator.NotSafe.selector);
@@ -184,7 +184,7 @@ contract TestTrade is TestPool {
 
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, int256(tradeAmount), 0, abi.encode(_getTradeAfterParams(1e10)));
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         if (tradeAmount > 100000000) {
             vm.expectRevert(bytes("S0"));
@@ -203,7 +203,7 @@ contract TestTrade is TestPool {
 
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, 10000, -int256(borrowAmount), abi.encode(_getTradeAfterParams(1e8)));
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         if (borrowAmount > 10000) {
             vm.expectRevert(Perp.NoCFMMLiquidityError.selector);
@@ -229,7 +229,7 @@ contract TestTrade is TestPool {
             IPredyPool.TradeParams memory tradeParams =
                 IPredyPool.TradeParams(1, 0, 400, -500, abi.encode(_getTradeAfterParams(1e6)));
 
-            SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+            IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
             vm.expectRevert(Perp.OutOfRangeError.selector);
             tradeMarket.trade(tradeParams, settlementData);

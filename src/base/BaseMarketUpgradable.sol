@@ -42,7 +42,7 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementData, baseAmountDelta);
     }
 
-    function reallocate(uint256 pairId, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function reallocate(uint256 pairId, IFillerMarket.SettlementParams memory settlementParams)
         external
         returns (bool relocationOccurred)
     {
@@ -52,12 +52,12 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
     function execLiquidationCall(
         uint256 vaultId,
         uint256 closeRatio,
-        SettlementCallbackLib.SettlementParams memory settlementParams
+        IFillerMarket.SettlementParams memory settlementParams
     ) external returns (IPredyPool.TradeResult memory) {
         return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementParams));
     }
 
-    function _getSettlementData(SettlementCallbackLib.SettlementParams memory settlementParams)
+    function _getSettlementData(IFillerMarket.SettlementParams memory settlementParams)
         internal
         view
         returns (bytes memory)
@@ -65,7 +65,7 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         return _getSettlementData(settlementParams, msg.sender);
     }
 
-    function _getSettlementData(SettlementCallbackLib.SettlementParams memory settlementParams, address filler)
+    function _getSettlementData(IFillerMarket.SettlementParams memory settlementParams, address filler)
         internal
         pure
         returns (bytes memory)

@@ -21,10 +21,7 @@ contract SpotDutchOrderValidator {
 
     error PriceLessThanLimit();
 
-    function validate(SpotOrder memory spotOrder, int256 baseTokenAmount, int256 quoteTokenAmount, address)
-        external
-        view
-    {
+    function validate(SpotOrder memory spotOrder, int256 quoteTokenAmount, address) external view {
         SpotDutchOrderValidationData memory validationData =
             abi.decode(spotOrder.validationData, (SpotDutchOrderValidationData));
 
@@ -33,7 +30,7 @@ contract SpotDutchOrderValidator {
         );
 
         if (spotOrder.baseTokenAmount != 0) {
-            uint256 tradePrice = Math.abs(quoteTokenAmount) * Constants.Q96 / Math.abs(baseTokenAmount);
+            uint256 tradePrice = Math.abs(quoteTokenAmount) * Constants.Q96 / Math.abs(spotOrder.baseTokenAmount);
 
             if (spotOrder.baseTokenAmount > 0 && decayedPrice < tradePrice) {
                 revert PriceGreaterThanLimit();

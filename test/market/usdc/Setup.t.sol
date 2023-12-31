@@ -125,7 +125,7 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
         signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
     }
 
-    function _getSettlementData(uint256 price) internal view returns (SettlementCallbackLib.SettlementParams memory) {
-        return SettlementCallbackLib.SettlementParams(address(0), address(0), bytes(""), 0, price, 0);
+    function _getSettlementData(uint256 price) internal view returns (IFillerMarket.SettlementParams memory) {
+        return IFillerMarket.SettlementParams(address(0), bytes(""), 0, price, 0);
     }
 }

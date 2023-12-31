@@ -84,7 +84,7 @@ contract TestGammaClose is TestPerpMarket {
     function testCloseFails() public {
         mockPriceFeed.setSqrtPrice(2 ** 96);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert();
         perpMarket.close(from1, 1, settlementData);
@@ -93,7 +93,7 @@ contract TestGammaClose is TestPerpMarket {
     function testCloseFailsIfTPNotSet() public {
         mockPriceFeed.setSqrtPrice(1011 * Constants.Q96 / 1000);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
 
         vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
         perpMarket.close(from2, 1, settlementData);
@@ -102,7 +102,7 @@ contract TestGammaClose is TestPerpMarket {
     function testCloseFailsIfSLNotSet() public {
         mockPriceFeed.setSqrtPrice(987 * Constants.Q96 / 1000);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
 
         vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
         perpMarket.close(from2, 1, settlementData);
@@ -111,14 +111,14 @@ contract TestGammaClose is TestPerpMarket {
     function testCloseFailsIfTPSLConditionNotMet() public {
         mockPriceFeed.setSqrtPrice(Constants.Q96);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
         perpMarket.close(from1, 1, settlementData);
     }
 
     function testCloseSucceedsWithTP() public {
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         IPredyPool.TradeResult memory tradeResult = perpMarket.close(from1, 1, settlementData);
@@ -133,7 +133,7 @@ contract TestGammaClose is TestPerpMarket {
     function testCloseSucceedsWithSL() public {
         mockPriceFeed.setSqrtPrice(987 * Constants.Q96 / 1000);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         perpMarket.close(from1, 1, settlementData);

@@ -122,7 +122,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
      * @param order The order signed by trader
      * @param settlementParams The route of settlement created by filler
      */
-    function executeOrder(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function executeOrder(SignedOrder memory order, SettlementParams memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -198,11 +198,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function execDeltaHedge(
-        address owner,
-        uint256 pairId,
-        SettlementCallbackLib.SettlementParams memory settlementParams
-    ) external nonReentrant returns (IPredyPool.TradeResult memory tradeResult) {
+    function execDeltaHedge(address owner, uint256 pairId, SettlementParams memory settlementParams)
+        external
+        nonReentrant
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
         UserPosition storage userPosition = userPositions[owner][pairId];
 
         require(userPosition.vaultId > 0);
@@ -241,10 +241,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(
-        GammaOrder memory gammaOrder,
-        SettlementCallbackLib.SettlementParams memory settlementParams
-    ) external {
+    function quoteExecuteOrder(GammaOrder memory gammaOrder, SettlementParams memory settlementParams) external {
         _predyPool.trade(
             IPredyPool.TradeParams(
                 gammaOrder.pairId,

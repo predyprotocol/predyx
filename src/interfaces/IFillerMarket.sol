@@ -10,4 +10,12 @@ interface IFillerMarket {
         bytes order;
         bytes sig;
     }
+
+    struct SettlementParams {
+        address contractAddress;
+        bytes encodedData;
+        uint256 maxQuoteAmount;
+        uint256 price;
+        int256 fee;
+    }
 }

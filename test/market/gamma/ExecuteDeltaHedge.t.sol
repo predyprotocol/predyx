@@ -68,7 +68,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         vm.warp(block.timestamp + 10 hours);
 
-        SettlementCallbackLib.SettlementParams memory settlementParams = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementParams = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
         gammaTradeMarket.execDeltaHedge(from1, 1, settlementParams);

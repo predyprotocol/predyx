@@ -17,7 +17,11 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
 
+        currency0.mint(from1, type(uint128).max);
         currency1.mint(from1, type(uint128).max);
+
+        vm.prank(from1);
+        currency0.approve(address(permit2), type(uint256).max);
 
         vm.prank(from1);
         currency1.approve(address(permit2), type(uint256).max);
@@ -113,5 +117,49 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         vm.expectRevert(SpotDutchOrderValidator.PriceGreaterThanLimit.selector);
         fillerMarket.executeOrder(signedOrder, settlementData);
+    }
+
+    function testExecuteOrderSucceedsForBuying() public {
+        SpotOrder memory order = SpotOrder(
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            address(currency1),
+            address(currency0),
+            1000,
+            1100,
+            address(_spotExclusiveLimitOrderValidator),
+            abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1012))
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        uint256 snapshot = vm.snapshot();
+
+        assertEq(fillerMarket.executeOrder(signedOrder, _getUniSettlementData(1100, 0, 10)), -1012);
+
+        vm.revertTo(snapshot);
+
+        assertEq(fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), -1000);
+    }
+
+    function testExecuteOrderSucceedsForSelling() public {
+        SpotOrder memory order = SpotOrder(
+            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            address(currency1),
+            address(currency0),
+            -1000,
+            1100,
+            address(_spotExclusiveLimitOrderValidator),
+            abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 988))
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        uint256 snapshot = vm.snapshot();
+
+        assertEq(fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0, 0, 10)), 988);
+
+        vm.revertTo(snapshot);
+
+        assertEq(fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), 1000);
     }
 }

@@ -132,7 +132,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
      * @param order The order signed by trader
      * @param settlementParams The route of settlement created by filler
      */
-    function executeOrder(SignedOrder memory order, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function executeOrder(SignedOrder memory order, SettlementParams memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -205,7 +205,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
      * @return tradeResult The result of trade
      * @dev Anyone can call this function
      */
-    function close(address owner, uint256 pairId, SettlementCallbackLib.SettlementParams memory settlementParams)
+    function close(address owner, uint256 pairId, SettlementParams memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -298,11 +298,9 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(
-        PerpOrder memory perpOrder,
-        SettlementCallbackLib.SettlementParams memory settlementParams,
-        address filler
-    ) external {
+    function quoteExecuteOrder(PerpOrder memory perpOrder, SettlementParams memory settlementParams, address filler)
+        external
+    {
         _predyPool.trade(
             IPredyPool.TradeParams(
                 perpOrder.pairId,

@@ -8,7 +8,6 @@ import "../../src/markets/predict/PredictMarket.sol";
 import "../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
-import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 
 contract TestPredictMarketQuoter is TestLens {
     PredictMarketQuoter _quoter;
@@ -51,7 +50,7 @@ contract TestPredictMarketQuoter is TestLens {
             )
         );
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
 
         IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrder(order, settlementData);
 

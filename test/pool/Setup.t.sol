@@ -15,6 +15,7 @@ import "../mocks/TestTradeMarket.sol";
 import "../../src/settlements/UniswapSettlement.sol";
 import "../mocks/DebugSettlement2.sol";
 import "../../src/lens/PredyPoolQuoter.sol";
+import "../../src/interfaces/IFillerMarket.sol";
 
 contract TestPool is Test {
     PredyPool predyPool;
@@ -150,37 +151,33 @@ contract TestPool is Test {
         return TestTradeMarket.TradeAfterParams(address(this), address(currency1), updateMarginAmount);
     }
 
-    function _getSettlementData(uint256 price) internal pure returns (SettlementCallbackLib.SettlementParams memory) {
-        return SettlementCallbackLib.SettlementParams(address(0), address(0), bytes(""), 0, price, 0);
+    function _getSettlementData(uint256 price) internal pure returns (IFillerMarket.SettlementParams memory) {
+        return IFillerMarket.SettlementParams(address(0), bytes(""), 0, price, 0);
     }
 
     function _getDebugSettlementData(uint256 price, uint256 maxQuoteAmount)
         internal
         view
-        returns (SettlementCallbackLib.SettlementParams memory)
+        returns (IFillerMarket.SettlementParams memory)
     {
-        return SettlementCallbackLib.SettlementParams(
-            address(0), address(debugSettlement), abi.encode(price), maxQuoteAmount, 0, 0
-        );
+        return IFillerMarket.SettlementParams(address(debugSettlement), abi.encode(price), maxQuoteAmount, 0, 0);
     }
 
     function _getUniSettlementData(uint256 maxQuoteAmount)
         internal
         view
-        returns (SettlementCallbackLib.SettlementParams memory)
+        returns (IFillerMarket.SettlementParams memory)
     {
-        return _getUniSettlementData(maxQuoteAmount, 0);
+        return _getUniSettlementData(maxQuoteAmount, 0, 0);
     }
 
-    function _getUniSettlementData(uint256 maxQuoteAmount, uint256 price)
+    function _getUniSettlementData(uint256 maxQuoteAmount, uint256 price, int256 fee)
         internal
         view
-        returns (SettlementCallbackLib.SettlementParams memory)
+        returns (IFillerMarket.SettlementParams memory)
     {
         bytes memory path = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        return SettlementCallbackLib.SettlementParams(
-            address(0), address(uniswapSettlement), path, maxQuoteAmount, price, 0
-        );
+        return IFillerMarket.SettlementParams(address(uniswapSettlement), path, maxQuoteAmount, price, fee);
     }
 }

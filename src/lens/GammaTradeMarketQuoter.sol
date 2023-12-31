@@ -5,7 +5,7 @@ import {GammaTradeMarket} from "../markets/gamma/GammaTradeMarket.sol";
 import {GammaOrder} from "../markets/gamma/GammaOrder.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
-import {SettlementCallbackLib} from "../base/SettlementCallbackLib.sol";
+import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
 
 /**
  * @notice Quoter contract for GammaTradeMarket
@@ -17,7 +17,7 @@ contract GammaTradeMarketQuoter {
         gammaTradeMarket = _gammaTradeMarket;
     }
 
-    function quoteExecuteOrder(GammaOrder memory order, SettlementCallbackLib.SettlementParams memory settlementData)
+    function quoteExecuteOrder(GammaOrder memory order, IFillerMarket.SettlementParams memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {

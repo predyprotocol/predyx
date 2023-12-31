@@ -14,7 +14,5 @@ interface IOrderValidator {
 }
 
 interface ISpotOrderValidator {
-    function validate(SpotOrder memory spotOrder, int256 baseTokenAmount, int256 quoteTokenAmount, address filler)
-        external
-        pure;
+    function validate(SpotOrder memory spotOrder, int256 quoteTokenAmount, address filler) external pure;
 }

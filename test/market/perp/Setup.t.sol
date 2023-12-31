@@ -25,15 +25,6 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
     function setUp() public virtual override(TestPool) {
         TestPool.setUp();
 
-        address swapRouter = deployCode(
-            "../node_modules/@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol:SwapRouter",
-            abi.encode(uniswapFactory, address(currency0))
-        );
-        address quoterV2 = deployCode(
-            "../node_modules/@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol:QuoterV2",
-            abi.encode(uniswapFactory, address(currency0))
-        );
-
         permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();

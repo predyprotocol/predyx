@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
-import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 
 contract TestPredyPoolQuoter is TestLens {
     function setUp() public override {
@@ -32,9 +31,9 @@ contract TestPredyPoolQuoter is TestLens {
         IPredyPool.TradeParams memory tradeParams =
             IPredyPool.TradeParams(1, 0, -1000, 900, abi.encode(_getTradeAfterParams(1e6)));
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
 
-        IPredyPool.TradeResult memory tradeResult = _predyPoolQuoter.quoteTrade(tradeParams, abi.encode(settlementData));
+        IPredyPool.TradeResult memory tradeResult = _predyPoolQuoter.quoteTrade(tradeParams, settlementData);
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 980);
         assertEq(tradeResult.payoff.sqrtEntryUpdate, -1782);

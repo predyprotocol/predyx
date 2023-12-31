@@ -34,14 +34,14 @@ library SettlementCallbackLib {
             ERC20(quoteToken).safeTransferFrom(settlementParams.sender, address(this), uint256(-settlementParams.fee));
         }
 
-        _execSettlementInternal(predyPool, quoteToken, baseToken, settlementParams, baseAmountDelta);
+        execSettlementInternal(predyPool, quoteToken, baseToken, settlementParams, baseAmountDelta);
 
         if (settlementParams.fee > 0) {
             ERC20(quoteToken).safeTransfer(settlementParams.sender, uint256(settlementParams.fee));
         }
     }
 
-    function _execSettlementInternal(
+    function execSettlementInternal(
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,

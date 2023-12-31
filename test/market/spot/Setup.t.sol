@@ -10,6 +10,7 @@ import {
     SpotDutchOrderValidationData,
     SpotDutchOrderValidator
 } from "../../../src/markets/spot/SpotDutchOrderValidator.sol";
+import "../../../src/markets/spot/SpotExclusiveLimitOrderValidator.sol";
 import {SpotOrder, SpotOrderLib} from "../../../src/markets/spot/SpotOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -22,6 +23,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
     SpotMarket fillerMarket;
     IPermit2 permit2;
     SpotDutchOrderValidator dutchOrderValidator;
+    SpotExclusiveLimitOrderValidator _spotExclusiveLimitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public virtual override(TestPool) {
@@ -45,6 +47,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
         currency1.approve(address(settlement), type(uint256).max);
 
         dutchOrderValidator = new SpotDutchOrderValidator();
+        _spotExclusiveLimitOrderValidator = new SpotExclusiveLimitOrderValidator();
     }
 
     function _createSignedOrder(SpotOrder memory marketOrder, uint256 fromPrivateKey)
@@ -70,7 +73,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
         internal
         returns (SpotMarket.SettlementParams memory)
     {
-        return SpotMarket.SettlementParams(
+        return IFillerMarket.SettlementParams(
             address(settlement), abi.encode(DebugSettlement.RouteParams(quoteAmount, baseAmount)), quoteAmount, 0, 0
         );
     }

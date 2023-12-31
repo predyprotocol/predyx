@@ -27,7 +27,7 @@ contract LimitOrderValidator {
         int256 tradeAmountSqrt,
         bytes memory validationData,
         IPredyPool.TradeResult memory tradeResult
-    ) external view {
+    ) external pure {
         LimitOrderValidationData memory validationParams = abi.decode(validationData, (LimitOrderValidationData));
 
         if (validationParams.triggerPrice > 0) {

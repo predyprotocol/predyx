@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import "../../src/types/GlobalData.sol";
 import "../../src/interfaces/IPredyPool.sol";
+import "../../src/interfaces/IFillerMarket.sol";
 import "../../src/base/BaseHookCallback.sol";
 import "../../src/base/SettlementCallbackLib.sol";
 import "../../src/libraries/logic/TradeLogic.sol";
@@ -11,7 +12,7 @@ import "../../src/libraries/logic/TradeLogic.sol";
 /**
  * @notice A mock market contract for trade tests
  */
-contract TestTradeMarket is BaseHookCallback {
+contract TestTradeMarket is BaseHookCallback, IFillerMarket {
     struct TradeAfterParams {
         address trader;
         address quoteTokenAddress;
@@ -44,25 +45,24 @@ contract TestTradeMarket is BaseHookCallback {
         }
     }
 
-    function trade(
-        IPredyPool.TradeParams memory tradeParams,
-        SettlementCallbackLib.SettlementParams memory settlementData
-    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+    function trade(IPredyPool.TradeParams memory tradeParams, SettlementParams memory settlementData)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
         return _predyPool.trade(tradeParams, _getSettlementData(settlementData));
     }
 
-    function reallocate(uint256 pairId, SettlementCallbackLib.SettlementParams memory settlementData)
+    function reallocate(uint256 pairId, SettlementParams memory settlementData)
         external
         returns (bool relocationOccurred)
     {
         return _predyPool.reallocate(pairId, _getSettlementData(settlementData));
     }
 
-    function execLiquidationCall(
-        uint256 vaultId,
-        uint256 closeRatio,
-        SettlementCallbackLib.SettlementParams memory settlementData
-    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+    function execLiquidationCall(uint256 vaultId, uint256 closeRatio, SettlementParams memory settlementData)
+        external
+        returns (IPredyPool.TradeResult memory tradeResult)
+    {
         return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementData));
     }
 
@@ -70,11 +70,7 @@ contract TestTradeMarket is BaseHookCallback {
         ERC20(token).transferFrom(sender, address(_predyPool), amount);
     }
 
-    function _getSettlementData(SettlementCallbackLib.SettlementParams memory settlementParams)
-        internal
-        view
-        returns (bytes memory)
-    {
+    function _getSettlementData(SettlementParams memory settlementParams) internal view returns (bytes memory) {
         return abi.encode(
             SettlementCallbackLib.SettlementParams(
                 msg.sender,

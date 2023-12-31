@@ -60,7 +60,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
+            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
 
             vm.startPrank(from1);
             vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
@@ -219,7 +219,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(1500);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(1500);
 
         vm.expectRevert();
         perpMarket.executeOrder(signedOrder, settlementData);
@@ -227,7 +227,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
     // executeOrder fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(1500);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(1500);
 
         {
             PerpOrder memory order = PerpOrder(
@@ -292,7 +292,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(1500);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(1500);
 
         vm.expectRevert(LimitOrderValidator.PriceGreaterThanLimit.selector);
         perpMarket.executeOrder(signedOrder, settlementData);
@@ -316,7 +316,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
         perpMarket.executeOrder(signedOrder, settlementData);

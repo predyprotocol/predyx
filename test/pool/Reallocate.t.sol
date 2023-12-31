@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import {TestPool} from "./Setup.t.sol";
 import {TestTradeMarket} from "../mocks/TestTradeMarket.sol";
-import {SettlementCallbackLib} from "../../src/base/SettlementCallbackLib.sol";
 import {IPredyPool} from "../../src/interfaces/IPredyPool.sol";
+import {IFillerMarket} from "../../src/interfaces/IFillerMarket.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
 
 contract TestReallocate is TestPool {
@@ -38,7 +38,7 @@ contract TestReallocate is TestPool {
     }
 
     function testReallocateFailsByInvalidPairId() public {
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(IPredyPool.InvalidPairId.selector);
         tradeMarket.reallocate(0, settlementData);
@@ -77,7 +77,7 @@ contract TestReallocate is TestPool {
 
         {
             // fails if quote token amount is not enough
-            SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+            IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
             vm.expectRevert(IPredyPool.QuoteTokenNotSettled.selector);
             tradeMarket.reallocate(1, settlementData);

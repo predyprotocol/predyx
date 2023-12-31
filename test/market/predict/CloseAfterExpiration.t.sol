@@ -52,7 +52,7 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
     }
 
     function testCloseFails() public {
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(PredictMarket.CloseBeforeExpiration.selector);
         fillerMarket.closeAfterExpiration(1, settlementData);
@@ -61,7 +61,7 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
     function testCloseSucceeds() public {
         vm.warp(block.timestamp + 10 minutes);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         uint256 beforeBalance = currency1.balanceOf(from1);
         fillerMarket.closeAfterExpiration(1, settlementData);
@@ -74,7 +74,7 @@ contract TestPredictCloseAfterExpiration is TestPredictMarket {
     function testCloseFailsAfterClosed() public {
         vm.warp(block.timestamp + 10 minutes);
 
-        SettlementCallbackLib.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         fillerMarket.closeAfterExpiration(1, settlementData);
 
