@@ -121,7 +121,7 @@ library Trade {
         swapResult.amountSqrtPerp = amountStable * swapParams.amountSqrtPerp / amountUnderlying;
         swapResult.fee = totalAmountStable - swapResult.amountPerp - swapResult.amountSqrtPerp;
 
-        swapResult.averagePrice = totalAmountStable * int256(Constants.Q96) / int256(Math.abs(amountUnderlying));
+        swapResult.averagePrice = amountStable * int256(Constants.Q96) / int256(Math.abs(amountUnderlying));
     }
 
     function settleUserBalanceAndFee(

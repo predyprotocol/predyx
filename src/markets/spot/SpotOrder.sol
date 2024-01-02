@@ -25,7 +25,8 @@ library SpotOrderLib {
         "address baseToken,",
         "int256 baseTokenAmount,",
         "uint256 quoteTokenAmount,",
-        "address validatorAddress," "bytes validationData)"
+        "address validatorAddress,",
+        "bytes validationData)"
     );
 
     bytes internal constant ORDER_TYPE = abi.encodePacked(SPOT_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);

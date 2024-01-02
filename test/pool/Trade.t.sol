@@ -57,7 +57,6 @@ contract TestTrade is TestPool {
         assertEq(vault.margin, 1e6);
     }
 
-    // trade succeeds for open
     // trade succeeds for close
     function testTradeSucceedsForClose() public {
         tradeMarket.trade(
@@ -72,6 +71,25 @@ contract TestTrade is TestPool {
 
         assertEq(tradeResult.payoff.perpPayoff, 0);
         assertEq(tradeResult.payoff.sqrtPayoff, 0);
+    }
+
+    function testTradeSucceedsWithNetZero() public {
+        _movePrice(true, 4 * 1e16);
+
+        IPredyPool.TradeParams memory tradeParams =
+            IPredyPool.TradeParams(1, 0, -960, 1000, abi.encode(_getTradeAfterParams(2 * 1e6)));
+
+        IPredyPool.TradeResult memory tradeResult = tradeMarket.trade(tradeParams, _getSettlementData(Constants.Q96));
+
+        assertEq(tradeResult.payoff.perpEntryUpdate, 1041);
+        assertEq(tradeResult.payoff.sqrtEntryUpdate, -2083);
+        assertEq(tradeResult.payoff.perpPayoff, 0);
+        assertEq(tradeResult.payoff.sqrtPayoff, 0);
+        assertEq(tradeResult.averagePrice, 85968058283706963578677050285);
+
+        DataType.Vault memory vault = predyPool.getVault(1);
+
+        assertEq(vault.margin, 2 * 1e6);
     }
 
     // trade succeeds with zero amount
