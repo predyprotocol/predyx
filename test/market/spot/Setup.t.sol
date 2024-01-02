@@ -20,7 +20,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
     using SpotOrderLib for SpotOrder;
 
     DebugSettlement settlement;
-    SpotMarket fillerMarket;
+    SpotMarket spotMarket;
     IPermit2 permit2;
     SpotDutchOrderValidator dutchOrderValidator;
     SpotExclusiveLimitOrderValidator _spotExclusiveLimitOrderValidator;
@@ -33,15 +33,15 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        fillerMarket = new SpotMarket(address(permit2));
+        spotMarket = new SpotMarket(address(permit2));
 
         settlement = new DebugSettlement();
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
 
-        currency0.approve(address(fillerMarket), type(uint256).max);
-        currency1.approve(address(fillerMarket), type(uint256).max);
+        currency0.approve(address(spotMarket), type(uint256).max);
+        currency1.approve(address(spotMarket), type(uint256).max);
 
         currency0.approve(address(settlement), type(uint256).max);
         currency1.approve(address(settlement), type(uint256).max);
@@ -60,7 +60,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
         bytes memory sig = getPermitSignature(
             fromPrivateKey,
             _toPermit(marketOrder),
-            address(fillerMarket),
+            address(spotMarket),
             SpotOrderLib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
@@ -71,6 +71,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
     function _getSpotSettlementParams(uint256 quoteAmount, uint256 baseAmount)
         internal
+        view
         returns (SpotMarket.SettlementParams memory)
     {
         return IFillerMarket.SettlementParams(

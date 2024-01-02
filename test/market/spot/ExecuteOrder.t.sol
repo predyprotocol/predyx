@@ -30,9 +30,18 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         currency1.mint(address(settlement), type(uint128).max);
     }
 
+    function _checkBalances() internal {
+        assertEq(currency0.balanceOf(address(spotMarket)), 0);
+        assertEq(currency1.balanceOf(address(spotMarket)), 0);
+    }
+
+    function invariantSpotMarket() external {
+        _checkBalances();
+    }
+
     function testExecuteOrderSucceedsForSwap() public {
         SpotOrder memory order = SpotOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
             address(currency1),
             address(currency0),
             1000,
@@ -47,14 +56,16 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        int256 quoteTokenAmount = fillerMarket.executeOrder(signedOrder, _getSpotSettlementParams(1000, 1000));
+        int256 quoteTokenAmount = spotMarket.executeOrder(signedOrder, _getSpotSettlementParams(1000, 1000));
 
         assertEq(quoteTokenAmount, -1000);
+
+        _checkBalances();
     }
 
     function testExecuteOrderFailsIfExceedMax() public {
         SpotOrder memory order = SpotOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
             address(currency1),
             address(currency0),
             1000,
@@ -72,12 +83,12 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(1000, 1000);
 
         vm.expectRevert(bytes("TRANSFER_FAILED"));
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        spotMarket.executeOrder(signedOrder, settlementData);
     }
 
     function testExecuteOrderFailsIfBaseCurrencyNotSettled() public {
         SpotOrder memory order = SpotOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
             address(currency1),
             address(currency0),
             999,
@@ -94,12 +105,12 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(1000, 1000);
 
         vm.expectRevert(SpotMarket.BaseCurrencyNotSettled.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        spotMarket.executeOrder(signedOrder, settlementData);
     }
 
     function testExecuteOrderFailsByValidation() public {
         SpotOrder memory order = SpotOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
             address(currency1),
             address(currency0),
             1000,
@@ -116,12 +127,12 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(2000, 1000);
 
         vm.expectRevert(SpotDutchOrderValidator.PriceGreaterThanLimit.selector);
-        fillerMarket.executeOrder(signedOrder, settlementData);
+        spotMarket.executeOrder(signedOrder, settlementData);
     }
 
     function testExecuteOrderSucceedsForBuying() public {
         SpotOrder memory order = SpotOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
             address(currency1),
             address(currency0),
             1000,
@@ -134,16 +145,24 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         uint256 snapshot = vm.snapshot();
 
-        assertEq(fillerMarket.executeOrder(signedOrder, _getUniSettlementData(1100, 0, 10)), -1012);
+        assertEq(spotMarket.executeOrder(signedOrder, _getUniSettlementData(1100, 0, 10)), -1012);
+
+        _checkBalances();
 
         vm.revertTo(snapshot);
 
-        assertEq(fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), -1000);
+        assertEq(spotMarket.executeOrder(signedOrder, _getUniSettlementData(1100, Constants.Q96, 10)), -1000);
+
+        _checkBalances();
+
+        vm.revertTo(snapshot);
+
+        assertEq(spotMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), -1000);
     }
 
     function testExecuteOrderSucceedsForSelling() public {
         SpotOrder memory order = SpotOrder(
-            OrderInfo(address(fillerMarket), from1, 0, block.timestamp + 100),
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
             address(currency1),
             address(currency0),
             -1000,
@@ -156,10 +175,10 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         uint256 snapshot = vm.snapshot();
 
-        assertEq(fillerMarket.executeOrder(signedOrder, _getUniSettlementData(0, 0, 10)), 988);
+        assertEq(spotMarket.executeOrder(signedOrder, _getUniSettlementData(0, 0, 10)), 988);
 
         vm.revertTo(snapshot);
 
-        assertEq(fillerMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), 1000);
+        assertEq(spotMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), 1000);
     }
 }

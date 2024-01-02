@@ -143,7 +143,12 @@ contract SpotMarket is IFillerMarket {
             ERC20(baseToken).safeTransfer(settlementParams.contractAddress, uint256(baseAmountDelta));
 
             uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
-                quoteToken, baseToken, settlementParams.encodedData, uint256(baseAmountDelta), 0, address(this)
+                quoteToken,
+                baseToken,
+                settlementParams.encodedData,
+                uint256(baseAmountDelta),
+                settlementParams.maxQuoteAmount,
+                address(this)
             );
 
             if (settlementParams.price == 0) {
