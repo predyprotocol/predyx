@@ -24,9 +24,12 @@ library SettlementCallbackLib {
     }
 
     function validateSettlementParams(SettlementParams memory settlementParams) internal pure {
+        // zero address indicates DirectFill, so price must be set
         if (settlementParams.contractAddress == address(0) && settlementParams.price == 0) {
             revert InvalidSettlementParams();
         }
+
+        // if price is set, fee must be zero
         if (settlementParams.price > 0 && settlementParams.fee != 0) {
             revert InvalidSettlementParams();
         }
@@ -76,6 +79,7 @@ library SettlementCallbackLib {
         uint256 sellAmount
     ) internal {
         if (settlementParams.contractAddress == address(0)) {
+            // direct fill
             uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
 
             predyPool.take(false, settlementParams.sender, sellAmount);
@@ -121,6 +125,7 @@ library SettlementCallbackLib {
         uint256 buyAmount
     ) internal {
         if (settlementParams.contractAddress == address(0)) {
+            // direct fill
             uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
 
             predyPool.take(true, settlementParams.sender, quoteAmount);
