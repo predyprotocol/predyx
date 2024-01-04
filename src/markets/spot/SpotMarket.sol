@@ -130,65 +130,88 @@ contract SpotMarket is IFillerMarket {
         int256 baseAmountDelta
     ) internal {
         if (baseAmountDelta > 0) {
-            if (settlementParams.contractAddress == address(0)) {
-                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
-
-                ERC20(baseToken).safeTransfer(msg.sender, uint256(baseAmountDelta));
-
-                ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmount);
-
-                return;
-            }
-
-            ERC20(baseToken).safeTransfer(settlementParams.contractAddress, uint256(baseAmountDelta));
-
-            uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
-                quoteToken, baseToken, settlementParams.encodedData, uint256(baseAmountDelta), 0, address(this)
-            );
-
-            if (settlementParams.price == 0) {
-                ERC20(quoteToken).safeTransfer(msg.sender, uint256(settlementParams.fee));
-            } else {
-                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
-
-                if (quoteAmount > quoteAmountFromUni) {
-                    ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmount - quoteAmountFromUni);
-                } else if (quoteAmountFromUni > quoteAmount) {
-                    ERC20(quoteToken).safeTransfer(msg.sender, quoteAmountFromUni - quoteAmount);
-                }
-            }
+            _execSell(quoteToken, baseToken, settlementParams, uint256(baseAmountDelta));
         } else if (baseAmountDelta < 0) {
-            if (settlementParams.contractAddress == address(0)) {
-                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
+            _execBuy(quoteToken, baseToken, settlementParams, uint256(-baseAmountDelta));
+        }
+    }
 
-                ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount);
+    function _execSell(
+        address quoteToken,
+        address baseToken,
+        SettlementParams memory settlementParams,
+        uint256 sellAmount
+    ) internal {
+        if (settlementParams.contractAddress == address(0)) {
+            uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
 
-                ERC20(baseToken).safeTransferFrom(msg.sender, address(this), uint256(-baseAmountDelta));
+            ERC20(baseToken).safeTransfer(msg.sender, sellAmount);
 
-                return;
+            ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmount);
+
+            return;
+        }
+
+        ERC20(baseToken).safeTransfer(settlementParams.contractAddress, sellAmount);
+
+        uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
+            quoteToken,
+            baseToken,
+            settlementParams.encodedData,
+            sellAmount,
+            settlementParams.maxQuoteAmount,
+            address(this)
+        );
+
+        if (settlementParams.price == 0) {
+            ERC20(quoteToken).safeTransfer(msg.sender, uint256(settlementParams.fee));
+        } else {
+            uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
+
+            if (quoteAmount > quoteAmountFromUni) {
+                ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmount - quoteAmountFromUni);
+            } else if (quoteAmountFromUni > quoteAmount) {
+                ERC20(quoteToken).safeTransfer(msg.sender, quoteAmountFromUni - quoteAmount);
             }
+        }
+    }
 
-            ERC20(quoteToken).safeTransfer(settlementParams.contractAddress, settlementParams.maxQuoteAmount);
+    function _execBuy(
+        address quoteToken,
+        address baseToken,
+        SettlementParams memory settlementParams,
+        uint256 buyAmount
+    ) internal {
+        if (settlementParams.contractAddress == address(0)) {
+            uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
 
-            uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).swapExactOut(
-                quoteToken,
-                baseToken,
-                settlementParams.encodedData,
-                uint256(-baseAmountDelta),
-                settlementParams.maxQuoteAmount,
-                address(this)
-            );
+            ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount);
 
-            if (settlementParams.price == 0) {
-                ERC20(quoteToken).safeTransfer(msg.sender, uint256(settlementParams.fee));
-            } else {
-                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), buyAmount);
 
-                if (quoteAmount > quoteAmountToUni) {
-                    ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount - quoteAmountToUni);
-                } else if (quoteAmountToUni > quoteAmount) {
-                    ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmountToUni - quoteAmount);
-                }
+            return;
+        }
+
+        ERC20(quoteToken).safeTransfer(settlementParams.contractAddress, settlementParams.maxQuoteAmount);
+
+        uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).swapExactOut(
+            quoteToken,
+            baseToken,
+            settlementParams.encodedData,
+            buyAmount,
+            settlementParams.maxQuoteAmount,
+            address(this)
+        );
+
+        if (settlementParams.price == 0) {
+            ERC20(quoteToken).safeTransfer(msg.sender, uint256(settlementParams.fee));
+        } else {
+            uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
+
+            if (quoteAmount > quoteAmountToUni) {
+                ERC20(quoteToken).safeTransfer(msg.sender, quoteAmount - quoteAmountToUni);
+            } else if (quoteAmountToUni > quoteAmount) {
+                ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), quoteAmountToUni - quoteAmount);
             }
         }
     }
@@ -202,43 +225,49 @@ contract SpotMarket is IFillerMarket {
         returns (int256)
     {
         if (baseAmountDelta > 0) {
-            if (settlementParams.contractAddress == address(0)) {
-                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
-
-                return int256(quoteAmount);
-            }
-
-            uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).quoteSwapExactIn(
-                settlementParams.encodedData, uint256(baseAmountDelta)
-            );
-
-            if (settlementParams.price == 0) {
-                return int256(quoteAmountFromUni.addDelta(-settlementParams.fee));
-            } else {
-                uint256 quoteAmount = uint256(baseAmountDelta) * settlementParams.price / Constants.Q96;
-
-                return int256(quoteAmount);
-            }
+            return _quoteSell(settlementParams, uint256(baseAmountDelta));
         } else if (baseAmountDelta < 0) {
-            if (settlementParams.contractAddress == address(0)) {
-                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
-
-                return -int256(quoteAmount);
-            }
-
-            uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).quoteSwapExactOut(
-                settlementParams.encodedData, uint256(-baseAmountDelta)
-            );
-
-            if (settlementParams.price == 0) {
-                return -int256(quoteAmountToUni.addDelta(settlementParams.fee));
-            } else {
-                uint256 quoteAmount = uint256(-baseAmountDelta) * settlementParams.price / Constants.Q96;
-
-                return -int256(quoteAmount);
-            }
+            return _quoteBuy(settlementParams, uint256(-baseAmountDelta));
         } else {
             return 0;
+        }
+    }
+
+    function _quoteSell(SettlementParams memory settlementParams, uint256 sellAmount) internal returns (int256) {
+        if (settlementParams.contractAddress == address(0)) {
+            uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
+
+            return int256(quoteAmount);
+        }
+
+        uint256 quoteAmountFromUni =
+            ISettlement(settlementParams.contractAddress).quoteSwapExactIn(settlementParams.encodedData, sellAmount);
+
+        if (settlementParams.price == 0) {
+            return int256(quoteAmountFromUni.addDelta(-settlementParams.fee));
+        } else {
+            uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
+
+            return int256(quoteAmount);
+        }
+    }
+
+    function _quoteBuy(SettlementParams memory settlementParams, uint256 buyAmount) internal returns (int256) {
+        if (settlementParams.contractAddress == address(0)) {
+            uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
+
+            return -int256(quoteAmount);
+        }
+
+        uint256 quoteAmountToUni =
+            ISettlement(settlementParams.contractAddress).quoteSwapExactOut(settlementParams.encodedData, buyAmount);
+
+        if (settlementParams.price == 0) {
+            return -int256(quoteAmountToUni.addDelta(settlementParams.fee));
+        } else {
+            uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
+
+            return -int256(quoteAmount);
         }
     }
 

@@ -33,11 +33,11 @@ contract DebugSettlement is ISettlement {
         ERC20(baseToken).safeTransfer(recipient, params.baseAmount);
     }
 
-    function quoteSwapExactIn(bytes memory, uint256) external override returns (uint256 amountOut) {
+    function quoteSwapExactIn(bytes memory, uint256) external pure override returns (uint256) {
         return 0;
     }
 
-    function quoteSwapExactOut(bytes memory, uint256) external override returns (uint256 amountIn) {
+    function quoteSwapExactOut(bytes memory, uint256) external pure override returns (uint256) {
         return 0;
     }
 }
