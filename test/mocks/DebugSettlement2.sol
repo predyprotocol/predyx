@@ -9,15 +9,19 @@ import {Constants} from "../../src/libraries/Constants.sol";
 contract DebugSettlement2 is ISettlement {
     using SafeTransferLib for ERC20;
 
-    function swapExactIn(address quoteToken, address, bytes memory data, uint256 amountIn, uint256, address recipient)
-        external
-        override
-        returns (uint256 amountOut)
-    {
+    function swapExactIn(
+        address quoteToken,
+        address baseToken,
+        bytes memory data,
+        uint256 amountIn,
+        uint256,
+        address recipient
+    ) external override returns (uint256 amountOut) {
         uint256 price = abi.decode(data, (uint256));
 
         amountOut = amountIn * price / Constants.Q96;
 
+        ERC20(baseToken).safeTransferFrom(msg.sender, address(this), amountIn);
         ERC20(quoteToken).safeTransfer(recipient, amountOut);
     }
 
@@ -35,7 +39,7 @@ contract DebugSettlement2 is ISettlement {
 
         ERC20(baseToken).safeTransfer(recipient, amountOut);
 
-        ERC20(quoteToken).safeTransfer(recipient, maxAmountIn - amountIn);
+        ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), amountIn);
     }
 
     function quoteSwapExactIn(bytes memory, uint256) external override returns (uint256) {

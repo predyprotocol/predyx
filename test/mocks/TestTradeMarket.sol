@@ -66,10 +66,6 @@ contract TestTradeMarket is BaseHookCallback, IFillerMarket {
         return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementData));
     }
 
-    function payCallback(address token, uint256 amount, address sender) external onlyPredyPool {
-        ERC20(token).transferFrom(sender, address(_predyPool), amount);
-    }
-
     function _getSettlementData(SettlementParams memory settlementParams) internal view returns (bytes memory) {
         return abi.encode(
             SettlementCallbackLib.SettlementParams(

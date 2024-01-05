@@ -27,6 +27,7 @@ contract UniswapSettlement is ISettlement {
         uint256 amountOutMinimum,
         address recipient
     ) external override returns (uint256 amountOut) {
+        ERC20(baseToken).safeTransferFrom(msg.sender, address(this), amountIn);
         ERC20(baseToken).approve(address(_swapRouter), amountIn);
 
         amountOut = _swapRouter.exactInput(
@@ -42,6 +43,7 @@ contract UniswapSettlement is ISettlement {
         uint256 amountInMaximum,
         address recipient
     ) external override returns (uint256 amountIn) {
+        ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), amountInMaximum);
         ERC20(quoteToken).approve(address(_swapRouter), amountInMaximum);
 
         amountIn = _swapRouter.exactOutput(

@@ -13,28 +13,12 @@ library SettlementCallbackLib {
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
-    error InvalidSettlementParams();
-
     struct SettlementParams {
         address sender;
         uint256 price;
         int256 fee;
         IFillerMarket.SettlementParamsItem[] items;
     }
-
-    /*
-    function validateSettlementParams(IFillerMarket.SettlementParams memory settlementParams) internal pure {
-        // zero address indicates DirectFill, so price must be set
-        if (settlementParams.contractAddress == address(0) && price == 0) {
-            revert InvalidSettlementParams();
-        }
-
-        // if price is set, fee must be zero
-        if (price > 0 && fee != 0) {
-            revert InvalidSettlementParams();
-        }
-    }
-    */
 
     function execSettlement(
         IPredyPool predyPool,
@@ -128,7 +112,8 @@ library SettlementCallbackLib {
             return;
         }
 
-        predyPool.take(false, settlementParamsItem.contractAddress, sellAmount);
+        predyPool.take(false, address(this), sellAmount);
+        ERC20(baseToken).approve(address(settlementParamsItem.contractAddress), sellAmount);
 
         uint256 quoteAmountFromUni = ISettlement(settlementParamsItem.contractAddress).swapExactIn(
             quoteToken,
@@ -174,7 +159,8 @@ library SettlementCallbackLib {
             return;
         }
 
-        predyPool.take(true, settlementParamsItem.contractAddress, settlementParamsItem.maxQuoteAmount);
+        predyPool.take(true, address(this), settlementParamsItem.maxQuoteAmount);
+        ERC20(quoteToken).approve(address(settlementParamsItem.contractAddress), settlementParamsItem.maxQuoteAmount);
 
         uint256 quoteAmountToUni = ISettlement(settlementParamsItem.contractAddress).swapExactOut(
             quoteToken,
