@@ -85,8 +85,13 @@ contract TestPerpMarketQuoter is TestLens {
 
         // with price and fee
         {
-            vm.expectRevert(SettlementCallbackLib.InvalidSettlementParams.selector);
-            _quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, Constants.Q96, 10), address(this));
+            IPredyPool.TradeResult memory tradeResult =
+                _quoter.quoteExecuteOrder(order, _getUniSettlementData(1200, Constants.Q96, 10), address(this));
+
+            assertEq(tradeResult.payoff.perpEntryUpdate, -1010);
+            assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+            assertEq(tradeResult.payoff.perpPayoff, 0);
+            assertEq(tradeResult.payoff.sqrtPayoff, 0);
         }
 
         // with direct

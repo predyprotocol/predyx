@@ -74,8 +74,12 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
         view
         returns (SpotMarket.SettlementParams memory)
     {
-        return IFillerMarket.SettlementParams(
-            address(settlement), abi.encode(DebugSettlement.RouteParams(quoteAmount, baseAmount)), quoteAmount, 0, 0
+        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
+
+        items[0] = IFillerMarket.SettlementParamsItem(
+            address(settlement), abi.encode(DebugSettlement.RouteParams(quoteAmount, baseAmount)), quoteAmount, 0
         );
+
+        return IFillerMarket.SettlementParams(0, 0, items);
     }
 }
