@@ -13,24 +13,36 @@ contract DebugSettlement is ISettlement {
         uint256 baseAmount;
     }
 
-    function swapExactIn(address quoteToken, address, bytes memory data, uint256, uint256, address recipient)
-        external
-        override
-        returns (uint256 amountOut)
-    {
+    function swapExactIn(
+        address quoteToken,
+        address baseToken,
+        bytes memory data,
+        uint256 amountIn,
+        uint256,
+        address recipient
+    ) external override returns (uint256 amountOut) {
         RouteParams memory params = abi.decode(data, (RouteParams));
 
+        ERC20(baseToken).safeTransferFrom(msg.sender, address(this), amountIn);
         ERC20(quoteToken).safeTransfer(recipient, params.quoteAmount);
+
+        amountOut = params.quoteAmount;
     }
 
-    function swapExactOut(address, address baseToken, bytes memory data, uint256, uint256, address recipient)
-        external
-        override
-        returns (uint256 amountIn)
-    {
+    function swapExactOut(
+        address quoteToken,
+        address baseToken,
+        bytes memory data,
+        uint256,
+        uint256 maxAmountIn,
+        address recipient
+    ) external override returns (uint256 amountIn) {
         RouteParams memory params = abi.decode(data, (RouteParams));
 
+        ERC20(quoteToken).safeTransferFrom(msg.sender, address(this), maxAmountIn);
         ERC20(baseToken).safeTransfer(recipient, params.baseAmount);
+
+        amountIn = maxAmountIn;
     }
 
     function quoteSwapExactIn(bytes memory, uint256) external pure override returns (uint256) {

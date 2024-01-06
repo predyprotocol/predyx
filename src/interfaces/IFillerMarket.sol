@@ -12,10 +12,15 @@ interface IFillerMarket {
     }
 
     struct SettlementParams {
+        uint256 price;
+        int256 fee;
+        SettlementParamsItem[] items;
+    }
+
+    struct SettlementParamsItem {
         address contractAddress;
         bytes encodedData;
         uint256 maxQuoteAmount;
-        uint256 price;
-        int256 fee;
+        uint256 partialBaseAmount;
     }
 }

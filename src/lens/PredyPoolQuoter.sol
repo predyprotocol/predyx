@@ -144,12 +144,7 @@ contract PredyPoolQuoter is BaseHookCallback {
     {
         return abi.encode(
             SettlementCallbackLib.SettlementParams(
-                filler,
-                settlementParams.contractAddress,
-                settlementParams.encodedData,
-                settlementParams.maxQuoteAmount,
-                settlementParams.price,
-                settlementParams.fee
+                filler, settlementParams.price, settlementParams.fee, settlementParams.items
             )
         );
     }

@@ -7,32 +7,17 @@ import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {Constants} from "../libraries/Constants.sol";
 import {Math} from "../libraries/math/Math.sol";
+import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
 
 library SettlementCallbackLib {
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
-    error InvalidSettlementParams();
-
     struct SettlementParams {
         address sender;
-        address contractAddress;
-        bytes encodedData;
-        uint256 maxQuoteAmount;
         uint256 price;
         int256 fee;
-    }
-
-    function validateSettlementParams(SettlementParams memory settlementParams) internal pure {
-        // zero address indicates DirectFill, so price must be set
-        if (settlementParams.contractAddress == address(0) && settlementParams.price == 0) {
-            revert InvalidSettlementParams();
-        }
-
-        // if price is set, fee must be zero
-        if (settlementParams.price > 0 && settlementParams.fee != 0) {
-            revert InvalidSettlementParams();
-        }
+        IFillerMarket.SettlementParamsItem[] items;
     }
 
     function execSettlement(
@@ -44,16 +29,16 @@ library SettlementCallbackLib {
     ) internal {
         SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
 
-        validateSettlementParams(settlementParams);
-
         if (settlementParams.fee < 0) {
-            ERC20(quoteToken).safeTransferFrom(settlementParams.sender, address(this), uint256(-settlementParams.fee));
+            ERC20(quoteToken).safeTransferFrom(
+                settlementParams.sender, address(predyPool), uint256(-settlementParams.fee)
+            );
         }
 
         execSettlementInternal(predyPool, quoteToken, baseToken, settlementParams, baseAmountDelta);
 
         if (settlementParams.fee > 0) {
-            ERC20(quoteToken).safeTransfer(settlementParams.sender, uint256(settlementParams.fee));
+            predyPool.take(true, settlementParams.sender, uint256(settlementParams.fee));
         }
     }
 
@@ -65,9 +50,45 @@ library SettlementCallbackLib {
         int256 baseAmountDelta
     ) internal {
         if (baseAmountDelta > 0) {
-            sell(predyPool, quoteToken, baseToken, settlementParams, uint256(baseAmountDelta));
+            execSettlementInternalLoop(
+                predyPool, quoteToken, baseToken, settlementParams, true, uint256(baseAmountDelta)
+            );
         } else if (baseAmountDelta < 0) {
-            buy(predyPool, quoteToken, baseToken, settlementParams, uint256(-baseAmountDelta));
+            execSettlementInternalLoop(
+                predyPool, quoteToken, baseToken, settlementParams, false, uint256(-baseAmountDelta)
+            );
+        }
+    }
+
+    function execSettlementInternalLoop(
+        IPredyPool predyPool,
+        address quoteToken,
+        address baseToken,
+        SettlementParams memory settlementParams,
+        bool isSell,
+        uint256 baseAmountDelta
+    ) internal {
+        uint256 remain = baseAmountDelta;
+
+        for (uint256 i = 0; i < settlementParams.items.length; i++) {
+            IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
+
+            uint256 baseAmount = item.partialBaseAmount;
+
+            // if the item is the last item
+            if (i == settlementParams.items.length - 1) {
+                baseAmount = remain;
+            }
+
+            if (isSell) {
+                sell(
+                    predyPool, quoteToken, baseToken, item, settlementParams.sender, settlementParams.price, baseAmount
+                );
+            } else {
+                buy(predyPool, quoteToken, baseToken, item, settlementParams.sender, settlementParams.price, baseAmount);
+            }
+
+            remain -= baseAmount;
         }
     }
 
@@ -75,42 +96,43 @@ library SettlementCallbackLib {
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,
-        SettlementParams memory settlementParams,
+        IFillerMarket.SettlementParamsItem memory settlementParamsItem,
+        address sender,
+        uint256 price,
         uint256 sellAmount
     ) internal {
-        if (settlementParams.contractAddress == address(0)) {
+        if (settlementParamsItem.contractAddress == address(0)) {
             // direct fill
-            uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
+            uint256 quoteAmount = sellAmount * price / Constants.Q96;
 
-            predyPool.take(false, settlementParams.sender, sellAmount);
+            predyPool.take(false, sender, sellAmount);
 
-            ERC20(quoteToken).safeTransferFrom(settlementParams.sender, address(predyPool), quoteAmount);
+            ERC20(quoteToken).safeTransferFrom(sender, address(predyPool), quoteAmount);
 
             return;
         }
 
-        predyPool.take(false, settlementParams.contractAddress, sellAmount);
+        predyPool.take(false, address(this), sellAmount);
+        ERC20(baseToken).approve(address(settlementParamsItem.contractAddress), sellAmount);
 
-        uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
+        uint256 quoteAmountFromUni = ISettlement(settlementParamsItem.contractAddress).swapExactIn(
             quoteToken,
             baseToken,
-            settlementParams.encodedData,
+            settlementParamsItem.encodedData,
             sellAmount,
-            settlementParams.maxQuoteAmount,
+            settlementParamsItem.maxQuoteAmount,
             address(this)
         );
 
-        if (settlementParams.price == 0) {
-            ERC20(quoteToken).safeTransfer(address(predyPool), quoteAmountFromUni.addDelta(-settlementParams.fee));
+        if (price == 0) {
+            ERC20(quoteToken).safeTransfer(address(predyPool), quoteAmountFromUni);
         } else {
-            uint256 quoteAmount = sellAmount * settlementParams.price / Constants.Q96;
+            uint256 quoteAmount = sellAmount * price / Constants.Q96;
 
             if (quoteAmount > quoteAmountFromUni) {
-                ERC20(quoteToken).safeTransferFrom(
-                    settlementParams.sender, address(this), quoteAmount - quoteAmountFromUni
-                );
+                ERC20(quoteToken).safeTransferFrom(sender, address(this), quoteAmount - quoteAmountFromUni);
             } else if (quoteAmountFromUni > quoteAmount) {
-                ERC20(quoteToken).safeTransfer(settlementParams.sender, quoteAmountFromUni - quoteAmount);
+                ERC20(quoteToken).safeTransfer(sender, quoteAmountFromUni - quoteAmount);
             }
 
             ERC20(quoteToken).safeTransfer(address(predyPool), quoteAmount);
@@ -121,47 +143,46 @@ library SettlementCallbackLib {
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,
-        SettlementParams memory settlementParams,
+        IFillerMarket.SettlementParamsItem memory settlementParamsItem,
+        address sender,
+        uint256 price,
         uint256 buyAmount
     ) internal {
-        if (settlementParams.contractAddress == address(0)) {
+        if (settlementParamsItem.contractAddress == address(0)) {
             // direct fill
-            uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
+            uint256 quoteAmount = buyAmount * price / Constants.Q96;
 
-            predyPool.take(true, settlementParams.sender, quoteAmount);
+            predyPool.take(true, sender, quoteAmount);
 
-            ERC20(baseToken).safeTransferFrom(settlementParams.sender, address(predyPool), buyAmount);
+            ERC20(baseToken).safeTransferFrom(sender, address(predyPool), buyAmount);
 
             return;
         }
 
-        predyPool.take(true, settlementParams.contractAddress, settlementParams.maxQuoteAmount);
+        predyPool.take(true, address(this), settlementParamsItem.maxQuoteAmount);
+        ERC20(quoteToken).approve(address(settlementParamsItem.contractAddress), settlementParamsItem.maxQuoteAmount);
 
-        uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).swapExactOut(
+        uint256 quoteAmountToUni = ISettlement(settlementParamsItem.contractAddress).swapExactOut(
             quoteToken,
             baseToken,
-            settlementParams.encodedData,
+            settlementParamsItem.encodedData,
             buyAmount,
-            settlementParams.maxQuoteAmount,
+            settlementParamsItem.maxQuoteAmount,
             address(predyPool)
         );
 
-        if (settlementParams.price == 0) {
-            ERC20(quoteToken).safeTransfer(
-                address(predyPool), settlementParams.maxQuoteAmount - quoteAmountToUni.addDelta(settlementParams.fee)
-            );
+        if (price == 0) {
+            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParamsItem.maxQuoteAmount - quoteAmountToUni);
         } else {
-            uint256 quoteAmount = buyAmount * settlementParams.price / Constants.Q96;
+            uint256 quoteAmount = buyAmount * price / Constants.Q96;
 
             if (quoteAmount > quoteAmountToUni) {
-                ERC20(quoteToken).safeTransfer(settlementParams.sender, quoteAmount - quoteAmountToUni);
+                ERC20(quoteToken).safeTransfer(sender, quoteAmount - quoteAmountToUni);
             } else if (quoteAmountToUni > quoteAmount) {
-                ERC20(quoteToken).safeTransferFrom(
-                    settlementParams.sender, address(this), quoteAmountToUni - quoteAmount
-                );
+                ERC20(quoteToken).safeTransferFrom(sender, address(this), quoteAmountToUni - quoteAmount);
             }
 
-            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParams.maxQuoteAmount - quoteAmount);
+            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParamsItem.maxQuoteAmount - quoteAmount);
         }
     }
 }

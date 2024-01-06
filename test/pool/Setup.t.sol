@@ -152,7 +152,11 @@ contract TestPool is Test {
     }
 
     function _getSettlementData(uint256 price) internal pure returns (IFillerMarket.SettlementParams memory) {
-        return IFillerMarket.SettlementParams(address(0), bytes(""), 0, price, 0);
+        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
+
+        items[0] = IFillerMarket.SettlementParamsItem(address(0), bytes(""), 0, 0);
+
+        return IFillerMarket.SettlementParams(price, 0, items);
     }
 
     function _getDebugSettlementData(uint256 price, uint256 maxQuoteAmount)
@@ -160,7 +164,11 @@ contract TestPool is Test {
         view
         returns (IFillerMarket.SettlementParams memory)
     {
-        return IFillerMarket.SettlementParams(address(debugSettlement), abi.encode(price), maxQuoteAmount, 0, 0);
+        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
+
+        items[0] = IFillerMarket.SettlementParamsItem(address(debugSettlement), abi.encode(price), maxQuoteAmount, 0);
+
+        return IFillerMarket.SettlementParams(0, 0, items);
     }
 
     function _getUniSettlementData(uint256 maxQuoteAmount)
@@ -178,6 +186,10 @@ contract TestPool is Test {
     {
         bytes memory path = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
-        return IFillerMarket.SettlementParams(address(uniswapSettlement), path, maxQuoteAmount, price, fee);
+        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
+
+        items[0] = IFillerMarket.SettlementParamsItem(address(uniswapSettlement), path, maxQuoteAmount, 0);
+
+        return IFillerMarket.SettlementParams(price, fee, items);
     }
 }

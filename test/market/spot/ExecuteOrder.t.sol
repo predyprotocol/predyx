@@ -82,7 +82,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(1000, 1000);
 
-        vm.expectRevert(bytes("TRANSFER_FAILED"));
+        vm.expectRevert(bytes("TRANSFER_FROM_FAILED"));
         spotMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -151,7 +151,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
 
         vm.revertTo(snapshot);
 
-        assertEq(spotMarket.executeOrder(signedOrder, _getUniSettlementData(1100, Constants.Q96, 10)), -1000);
+        assertEq(spotMarket.executeOrder(signedOrder, _getUniSettlementData(1100, Constants.Q96, 10)), -1010);
 
         _checkBalances();
 
