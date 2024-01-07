@@ -29,6 +29,8 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         gammaTradeMarket = new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
+        gammaTradeMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
+
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
 

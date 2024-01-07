@@ -37,6 +37,10 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         settlement = new DebugSettlement();
 
+        spotMarket.updateWhitelistSettlement(address(settlement), true);
+        spotMarket.updateWhitelistSettlement(address(debugSettlement), true);
+        spotMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
+
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);
 

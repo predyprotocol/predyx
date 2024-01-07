@@ -23,6 +23,8 @@ contract TestPerpMarketQuoter is TestLens {
 
         perpMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
+        perpMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
+
         _quoter = new PerpMarketQuoter(perpMarket);
 
         from = vm.addr(1);

@@ -6,6 +6,8 @@ interface IFillerMarket {
 
     error CallerIsNotFiller();
 
+    error SettlementContractIsNotWhitelisted();
+
     struct SignedOrder {
         bytes order;
         bytes sig;

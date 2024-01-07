@@ -5,6 +5,7 @@ import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/Transfer
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
+import {Owned} from "@solmate/src/auth/Owned.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {ISpotOrderValidator} from "../../interfaces/IOrderValidator.sol";
@@ -18,7 +19,7 @@ import {SpotOrderLib, SpotOrder} from "./SpotOrder.sol";
  * @notice Spot market contract
  * A trader can swap tokens.
  */
-contract SpotMarket is IFillerMarket {
+contract SpotMarket is IFillerMarket, Owned {
     using ResolvedOrderLib for ResolvedOrder;
     using SpotOrderLib for SpotOrder;
     using Permit2Lib for ResolvedOrder;
@@ -48,8 +49,18 @@ contract SpotMarket is IFillerMarket {
 
     LockData private lockData;
 
-    constructor(address permit2Address) {
+    mapping(address settlementContractAddress => bool) internal _whiteListedSettlements;
+
+    constructor(address permit2Address) Owned(msg.sender) {
         _permit2 = IPermit2(permit2Address);
+    }
+
+    /**
+     * @notice Updates the whitelist settlement address
+     * @dev only owner can call this function
+     */
+    function updateWhitelistSettlement(address settlementContractAddress, bool isEnabled) external onlyOwner {
+        _whiteListedSettlements[settlementContractAddress] = isEnabled;
     }
 
     /**
@@ -155,6 +166,10 @@ contract SpotMarket is IFillerMarket {
 
         for (uint256 i = 0; i < settlementParams.items.length; i++) {
             IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
+
+            if (item.contractAddress != address(0) && !_whiteListedSettlements[item.contractAddress]) {
+                revert SettlementContractIsNotWhitelisted();
+            }
 
             uint256 baseAmount = item.partialBaseAmount;
 

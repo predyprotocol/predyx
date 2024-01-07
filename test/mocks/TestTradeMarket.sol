@@ -27,7 +27,9 @@ contract TestTradeMarket is BaseHookCallback, IFillerMarket {
         bytes memory settlementData,
         int256 baseAmountDelta
     ) external onlyPredyPool {
-        SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementData, baseAmountDelta);
+        SettlementCallbackLib.execSettlement(
+            _predyPool, quoteToken, baseToken, SettlementCallbackLib.decodeParams(settlementData), baseAmountDelta
+        );
     }
 
     function predyTradeAfterCallback(

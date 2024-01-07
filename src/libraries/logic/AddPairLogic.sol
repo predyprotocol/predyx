@@ -58,9 +58,6 @@ library AddPairLogic {
 
         require(pairId < Constants.MAX_PAIRS, "MAXP");
 
-        // Checks the pair group exists
-        // PairGroupLib.validatePairGroupId(_global, _addPairParam.pairGroupId);
-
         IUniswapV3Pool uniswapPool = IUniswapV3Pool(_addPairParam.uniswapPool);
 
         address stableTokenAddress = _addPairParam.marginId;

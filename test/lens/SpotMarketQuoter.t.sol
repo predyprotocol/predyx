@@ -21,6 +21,7 @@ contract TestSpotMarketQuoter is TestLens {
         IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
         _spotMarket = new SpotMarket(address(permit2));
+        _spotMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         _quoter = new SpotMarketQuoter(_spotMarket);
         _spotExclusiveLimitOrderValidator = new SpotExclusiveLimitOrderValidator();

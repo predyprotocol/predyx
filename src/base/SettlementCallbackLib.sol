@@ -20,15 +20,30 @@ library SettlementCallbackLib {
         IFillerMarket.SettlementParamsItem[] items;
     }
 
+    function decodeParams(bytes memory settlementData) internal pure returns (SettlementParams memory) {
+        return abi.decode(settlementData, (SettlementParams));
+    }
+
+    function validate(
+        mapping(address settlementContractAddress => bool) storage _whiteListedSettlements,
+        SettlementParams memory settlementParams
+    ) internal view {
+        for (uint256 i = 0; i < settlementParams.items.length; i++) {
+            IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
+
+            if (item.contractAddress != address(0) && !_whiteListedSettlements[item.contractAddress]) {
+                revert IFillerMarket.SettlementContractIsNotWhitelisted();
+            }
+        }
+    }
+
     function execSettlement(
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,
-        bytes memory settlementData,
+        SettlementParams memory settlementParams,
         int256 baseAmountDelta
     ) internal {
-        SettlementParams memory settlementParams = abi.decode(settlementData, (SettlementParams));
-
         if (settlementParams.fee < 0) {
             ERC20(quoteToken).safeTransferFrom(
                 settlementParams.sender, address(predyPool), uint256(-settlementParams.fee)

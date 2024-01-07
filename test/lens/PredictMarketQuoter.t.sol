@@ -23,6 +23,7 @@ contract TestPredictMarketQuoter is TestLens {
 
         PredictMarket predictMarket =
             new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        predictMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         _quoter = new PredictMarketQuoter(predictMarket);
 

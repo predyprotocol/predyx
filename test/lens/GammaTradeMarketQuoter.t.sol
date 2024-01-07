@@ -23,6 +23,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
 
         GammaTradeMarket gammaTradeMarket =
             new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        gammaTradeMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         _quoter = new GammaTradeMarketQuoter(gammaTradeMarket);
 

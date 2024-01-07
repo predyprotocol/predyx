@@ -15,6 +15,8 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
 
     mapping(uint256 pairId => address quoteTokenAddress) internal _quoteTokenMap;
 
+    mapping(address settlementContractAddress => bool) internal _whiteListedSettlements;
+
     modifier onlyFiller() {
         if (msg.sender != whitelistFiller) revert CallerIsNotFiller();
         _;
@@ -39,7 +41,10 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         bytes memory settlementData,
         int256 baseAmountDelta
     ) external onlyPredyPool {
-        SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementData, baseAmountDelta);
+        SettlementCallbackLib.SettlementParams memory settlementParams =
+            SettlementCallbackLib.decodeParams(settlementData);
+        SettlementCallbackLib.validate(_whiteListedSettlements, settlementParams);
+        SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementParams, baseAmountDelta);
     }
 
     function reallocate(uint256 pairId, IFillerMarket.SettlementParams memory settlementParams)
@@ -83,6 +88,14 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
      */
     function updateWhitelistFiller(address newWhitelistFiller) external onlyFiller {
         whitelistFiller = newWhitelistFiller;
+    }
+
+    /**
+     * @notice Updates the whitelist settlement address
+     * @dev only owner can call this function
+     */
+    function updateWhitelistSettlement(address settlementContractAddress, bool isEnabled) external onlyFiller {
+        _whiteListedSettlements[settlementContractAddress] = isEnabled;
     }
 
     /// @notice Registers quote token address for the pair

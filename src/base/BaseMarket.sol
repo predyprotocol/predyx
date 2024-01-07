@@ -14,6 +14,8 @@ abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
 
     mapping(uint256 pairId => address quoteTokenAddress) internal _quoteTokenMap;
 
+    mapping(address settlementContractAddress => bool) internal _whiteListedSettlements;
+
     constructor(IPredyPool predyPool, address _whitelistFiller, address quoterAddress)
         BaseHookCallback(predyPool)
         Owned(msg.sender)
@@ -29,7 +31,10 @@ abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
         bytes memory settlementData,
         int256 baseAmountDelta
     ) external onlyPredyPool {
-        SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementData, baseAmountDelta);
+        SettlementCallbackLib.SettlementParams memory settlementParams =
+            SettlementCallbackLib.decodeParams(settlementData);
+        SettlementCallbackLib.validate(_whiteListedSettlements, settlementParams);
+        SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementParams, baseAmountDelta);
     }
 
     function reallocate(uint256 pairId, IFillerMarket.SettlementParams memory settlementParams)
@@ -73,6 +78,14 @@ abstract contract BaseMarket is IFillerMarket, BaseHookCallback, Owned {
      */
     function updateWhitelistFiller(address newWhitelistFiller) external onlyOwner {
         whitelistFiller = newWhitelistFiller;
+    }
+
+    /**
+     * @notice Updates the whitelist settlement address
+     * @dev only owner can call this function
+     */
+    function updateWhitelistSettlement(address settlementContractAddress, bool isEnabled) external onlyOwner {
+        _whiteListedSettlements[settlementContractAddress] = isEnabled;
     }
 
     /// @notice Registers quote token address for the pair
