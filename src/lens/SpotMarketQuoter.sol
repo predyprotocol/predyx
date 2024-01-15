@@ -17,8 +17,15 @@ contract SpotMarketQuoter {
         spotMarket = _spotMarket;
     }
 
-    function quoteExecuteOrder(SpotOrder memory order, IFillerMarket.SettlementParams memory settlementParams)
+    function quoteExecuteOrderWithTs(SpotOrder memory order, IFillerMarket.SettlementParams memory settlementParams)
         external
+        returns (int256 quoteTokenAmount, uint256 timestamp)
+    {
+        return (quoteExecuteOrder(order, settlementParams), block.timestamp);
+    }
+
+    function quoteExecuteOrder(SpotOrder memory order, IFillerMarket.SettlementParams memory settlementParams)
+        public
         returns (int256 quoteTokenAmount)
     {
         int256 baseTokenAmount = order.baseTokenAmount;
