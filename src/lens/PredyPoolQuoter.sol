@@ -130,7 +130,7 @@ contract PredyPoolQuoter is BaseHookCallback {
         pure
         returns (IPredyPool.VaultStatus memory vaultStatus)
     {
-        if (reason.length < 192) {
+        if (reason.length < 320) {
             assembly {
                 revert(add(32, reason), mload(reason))
             }

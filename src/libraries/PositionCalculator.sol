@@ -137,15 +137,15 @@ library PositionCalculator {
         }
     }
 
-    function getPositionWithFeeAmount(Perp.UserStatus memory perpUserStatus, DataType.FeeAmount memory FeeAmount)
+    function getPositionWithFeeAmount(Perp.UserStatus memory perpUserStatus, DataType.FeeAmount memory feeAmount)
         internal
         pure
         returns (PositionParams memory positionParams)
     {
         return PositionParams(
-            perpUserStatus.perp.entryValue + perpUserStatus.sqrtPerp.entryValue + FeeAmount.feeAmountQuote,
+            perpUserStatus.perp.entryValue + perpUserStatus.sqrtPerp.entryValue + feeAmount.feeAmountQuote,
             perpUserStatus.sqrtPerp.amount,
-            perpUserStatus.perp.amount + FeeAmount.feeAmountBase
+            perpUserStatus.perp.amount + feeAmount.feeAmountBase
         );
     }
 

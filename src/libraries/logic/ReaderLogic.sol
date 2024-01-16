@@ -29,13 +29,28 @@ library ReaderLogic {
 
         Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
-        DataType.FeeAmount memory FeeAmount =
+        DataType.FeeAmount memory feeAmount =
             PerpFee.computeUserFee(pairStatus, globalData.rebalanceFeeGrowthCache, vault.openPosition);
 
         (int256 minMargin, int256 vaultValue,, uint256 oraclePice) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, FeeAmount);
+            PositionCalculator.calculateMinDeposit(pairStatus, vault, feeAmount);
 
-        revertVaultStatus(IPredyPool.VaultStatus(vaultId, vaultValue, minMargin, oraclePice, FeeAmount));
+        revertVaultStatus(
+            IPredyPool.VaultStatus(vaultId, vaultValue, minMargin, oraclePice, feeAmount, getPosition(vault, feeAmount))
+        );
+    }
+
+    function getPosition(DataType.Vault memory vault, DataType.FeeAmount memory feeAmount)
+        internal
+        pure
+        returns (IPredyPool.Position memory)
+    {
+        PositionCalculator.PositionParams memory positionParams =
+            PositionCalculator.getPositionWithFeeAmount(vault.openPosition, feeAmount);
+
+        return IPredyPool.Position(
+            vault.margin, positionParams.amountStable, positionParams.amountSqrt, positionParams.amountUnderlying
+        );
     }
 
     function revertPairStatus(DataType.PairStatus memory pairStatus) internal pure {

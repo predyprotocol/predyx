@@ -66,12 +66,20 @@ interface IPredyPool {
         int256 sqrtPayoff;
     }
 
+    struct Position {
+        int256 margin;
+        int256 amountQuote;
+        int256 amountSqrt;
+        int256 amountBase;
+    }
+
     struct VaultStatus {
         uint256 id;
         int256 vaultValue;
         int256 minMargin;
         uint256 oraclePrice;
-        DataType.FeeAmount FeeAmount;
+        DataType.FeeAmount feeAmount;
+        Position position;
     }
 
     function trade(TradeParams memory tradeParams, bytes memory settlementData)
