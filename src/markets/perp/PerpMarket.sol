@@ -4,8 +4,7 @@ pragma solidity ^0.8.17;
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/IOrderValidator.sol";
 import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
@@ -22,7 +21,7 @@ import {SettlementCallbackLib} from "../../base/SettlementCallbackLib.sol";
 /**
  * @notice Perp market contract
  */
-contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
+contract PerpMarket is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     using ResolvedOrderLib for ResolvedOrder;
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
@@ -81,6 +80,7 @@ contract PerpMarket is Initializable, BaseMarketUpgradable, ReentrancyGuard {
         public
         initializer
     {
+        __ReentrancyGuard_init();
         __BaseMarket_init(predyPool, whitelistFiller, quoterAddress);
 
         _permit2 = IPermit2(permit2Address);

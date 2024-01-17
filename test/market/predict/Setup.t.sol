@@ -29,7 +29,8 @@ contract TestPredictMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        fillerMarket = new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        fillerMarket = new PredictMarket();
+        fillerMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
         fillerMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         currency0.approve(address(permit2), type(uint256).max);

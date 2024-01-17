@@ -39,7 +39,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         currency1.approve(address(permit2), type(uint256).max);
     }
 
-    function createOrder(uint256 hedgeInterval) internal returns (GammaOrder memory order) {
+    function createOrder(uint256 hedgeInterval) internal view returns (GammaOrder memory order) {
         order = GammaOrder(
             OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,

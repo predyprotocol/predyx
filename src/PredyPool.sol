@@ -3,9 +3,9 @@ pragma solidity ^0.8.17;
 
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPredyPool} from "./interfaces/IPredyPool.sol";
 import {IHooks} from "./interfaces/IHooks.sol";
@@ -25,7 +25,7 @@ import {ReaderLogic} from "./libraries/logic/ReaderLogic.sol";
 import {LockDataLibrary, GlobalDataLibrary} from "./types/GlobalData.sol";
 
 /// @notice Holds the state for all pairs and vaults
-contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, ReentrancyGuard {
+contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, ReentrancyGuardUpgradeable {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
     using LockDataLibrary for LockDataLibrary.LockData;
     using VaultLib for GlobalDataLibrary.GlobalData;
@@ -68,6 +68,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     constructor() {}
 
     function initialize(address uniswapFactory) public initializer {
+        __ReentrancyGuard_init();
         AddPairLogic.initializeGlobalData(globalData, uniswapFactory);
 
         operator = msg.sender;
