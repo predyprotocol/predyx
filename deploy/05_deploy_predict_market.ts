@@ -3,7 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types'
 import { Filler, Permit2 } from '../addressList'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts } = hre
+  const { deployments, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
   console.log(`Start deploying predict market with ${deployer}`)
