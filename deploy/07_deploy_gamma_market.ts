@@ -16,7 +16,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy('GammaTradeMarket', {
     from: deployer,
     log: true,
-    args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
+    args: [],
+    proxy: {
+      execute: {
+        init: {
+          methodName: 'initialize',
+          args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address],
+        },
+      },
+      proxyContract: "EIP173Proxy",
+    },
   })
 
   const GammaTradeMarket = await deployments.get('GammaTradeMarket')
