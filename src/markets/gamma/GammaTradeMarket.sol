@@ -5,7 +5,7 @@ import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import "../../interfaces/IPredyPool.sol";
+import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
 import "../../base/BaseMarket.sol";
@@ -26,7 +26,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     using Permit2Lib for ResolvedOrder;
     using SafeTransferLib for ERC20;
 
-    error TooSmallHedgeInterval();
+    error TooShortHedgeInterval();
     error HedgeTriggerNotMatched();
 
     struct UserPosition {
@@ -41,6 +41,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
 
     enum CallbackSource {
         TRADE,
+        HEDGE,
         QUOTE
     }
 
@@ -228,7 +229,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
                 userPosition.vaultId,
                 -delta,
                 0,
-                abi.encode(CallbackData(CallbackSource.TRADE, owner, 0, address(0), bytes("")))
+                abi.encode(CallbackData(CallbackSource.HEDGE, owner, 0, address(0), bytes("")))
             ),
             _getSettlementData(settlementParams)
         );
@@ -279,7 +280,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         uint64 maxSlippageTolerance
     ) internal {
         if (2 hours > hedgeInterval) {
-            revert TooSmallHedgeInterval();
+            revert TooShortHedgeInterval();
         }
 
         require(maxSlippageTolerance >= minSlippageTolerance);

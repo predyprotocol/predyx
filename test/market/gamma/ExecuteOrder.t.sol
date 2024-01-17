@@ -39,22 +39,26 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         currency1.approve(address(permit2), type(uint256).max);
     }
 
-    // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
-    function testExecuteOrderSucceedsForOpen() public {
-        GammaOrder memory order = GammaOrder(
+    function createOrder(uint256 hedgeInterval) internal returns (GammaOrder memory order) {
+        order = GammaOrder(
             OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
             -1000,
             900,
             2 * 1e6,
-            12 hours,
+            hedgeInterval,
             0,
             1000,
             1000,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );
+    }
+
+    // executeOrder succeeds for open(pnl, interest, premium, borrow fee)
+    function testExecuteOrderSucceedsForOpen() public {
+        GammaOrder memory order = createOrder(12 hours);
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
@@ -232,6 +236,17 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
         vm.expectRevert(LimitOrderValidator.PriceLessThanLimit.selector);
+        gammaTradeMarket.executeOrder(signedOrder, settlementData);
+    }
+
+    function testExecuteOrderFailsIfHedgeIntervalIsTooShort() public {
+        GammaOrder memory order = createOrder(1 hours);
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
+
+        vm.expectRevert(GammaTradeMarket.TooShortHedgeInterval.selector);
         gammaTradeMarket.executeOrder(signedOrder, settlementData);
     }
 }
