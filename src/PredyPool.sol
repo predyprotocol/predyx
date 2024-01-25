@@ -158,6 +158,10 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
         AddPairLogic.updatePoolOwner(globalData.pairs[pairId], poolOwner);
     }
 
+    function updatePriceOracle(uint256 pairId, address priceOracle) external onlyPoolOwner(pairId) {
+        AddPairLogic.updatePriceOracle(globalData.pairs[pairId], priceOracle);
+    }
+
     /**
      * @notice Withdraws accumulated protocol revenue.
      * @dev Only operator can call this function.

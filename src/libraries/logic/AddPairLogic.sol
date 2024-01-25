@@ -35,6 +35,7 @@ library AddPairLogic {
     );
     event FeeRatioUpdated(uint256 pairId, uint8 feeRatio);
     event PoolOwnerUpdated(uint256 pairId, address poolOwner);
+    event PriceOracleUpdated(uint256 pairId, address priceOracle);
 
     /**
      * @notice Initialized global data counts
@@ -106,6 +107,12 @@ library AddPairLogic {
         _pairStatus.poolOwner = _poolOwner;
 
         emit PoolOwnerUpdated(_pairStatus.id, _poolOwner);
+    }
+
+    function updatePriceOracle(DataType.PairStatus storage _pairStatus, address _priceOracle) external {
+        _pairStatus.priceFeed = _priceOracle;
+
+        emit PriceOracleUpdated(_pairStatus.id, _priceOracle);
     }
 
     function updateAssetRiskParams(DataType.PairStatus storage _pairStatus, Perp.AssetRiskParams memory _riskParams)
