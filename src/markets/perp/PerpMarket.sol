@@ -5,6 +5,7 @@ import {PerpMarketV1} from "./PerpMarketV1.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {PerpOrder} from "./PerpOrder.sol";
 import {OrderInfo} from "../../libraries/orders/OrderInfoLib.sol";
+import {L2Decoder} from "../L2Decoder.sol";
 
 struct PerpOrderV2 {
     address trader;
@@ -26,7 +27,7 @@ contract PerpMarket is PerpMarketV1 {
         nonReentrant
         returns (IPredyPool.TradeResult memory)
     {
-        (uint64 deadline, uint64 pairId, uint8 leverage) = decodePerpOrderParams(orderV2.deadlinePairIdLev);
+        (uint64 deadline, uint64 pairId, uint8 leverage) = L2Decoder.decodePerpOrderParams(orderV2.deadlinePairIdLev);
 
         UserPosition memory userPosition = userPositions[orderV2.trader][pairId];
 
@@ -45,17 +46,5 @@ contract PerpMarket is PerpMarketV1 {
         });
 
         return _executeOrder(order, sig, settlementParams);
-    }
-
-    function decodePerpOrderParams(bytes32 args)
-        internal
-        pure
-        returns (uint64 deadline, uint64 pairId, uint8 leverage)
-    {
-        assembly {
-            deadline := and(args, 0xFFFFFFFFFFFFFFFF)
-            pairId := and(shr(64, args), 0xFFFFFFFFFFFFFFFF)
-            leverage := and(shr(128, args), 0xFF)
-        }
     }
 }

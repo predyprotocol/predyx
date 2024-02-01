@@ -259,11 +259,11 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     }
 
     function _saveUserPosition(UserPosition storage userPosition, PerpOrder memory perpOrder) internal {
-        require(perpOrder.slippageTolerance <= Bps.ONE);
+        require(perpOrder.slippageTolerance <= 2 * Bps.ONE);
 
         userPosition.takeProfitPrice = perpOrder.takeProfitPrice;
         userPosition.stopLossPrice = perpOrder.stopLossPrice;
-        userPosition.slippageTolerance = perpOrder.slippageTolerance + Bps.ONE;
+        userPosition.slippageTolerance = perpOrder.slippageTolerance;
         userPosition.lastLeverage = perpOrder.leverage;
 
         emit PerpTPSLOrderUpdated(

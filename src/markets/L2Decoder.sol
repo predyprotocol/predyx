@@ -23,4 +23,16 @@ library L2Decoder {
             isLimit = false;
         }
     }
+
+    function decodePerpOrderParams(bytes32 args)
+        internal
+        pure
+        returns (uint64 deadline, uint64 pairId, uint8 leverage)
+    {
+        assembly {
+            deadline := and(args, 0xFFFFFFFFFFFFFFFF)
+            pairId := and(shr(64, args), 0xFFFFFFFFFFFFFFFF)
+            leverage := and(shr(128, args), 0xFF)
+        }
+    }
 }

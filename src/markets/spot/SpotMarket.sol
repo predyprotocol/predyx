@@ -8,7 +8,7 @@ import {OrderInfo} from "../../libraries/orders/OrderInfoLib.sol";
 import {SpotDutchOrderValidationData} from "./SpotDutchOrderValidator.sol";
 import {SpotLimitOrderValidationData} from "./SpotLimitOrderValidator.sol";
 import {Math} from "../../libraries/math/Math.sol";
-import {L2Decoder} from "./L2Decoder.sol";
+import {L2Decoder} from "../L2Decoder.sol";
 
 struct SpotOrderV2 {
     address trader;
