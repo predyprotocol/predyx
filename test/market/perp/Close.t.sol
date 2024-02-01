@@ -5,6 +5,7 @@ import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
+import {PerpMarketV1} from "../../../src/markets/perp/PerpMarketV1.sol";
 
 contract TestGammaClose is TestPerpMarket {
     bytes normalSwapRoute;
@@ -95,7 +96,7 @@ contract TestGammaClose is TestPerpMarket {
 
         IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 10220 / 10000);
 
-        vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
+        vm.expectRevert(PerpMarketV1.TPSLConditionDoesNotMatch.selector);
         perpMarket.close(from2, 1, settlementData);
     }
 
@@ -104,7 +105,7 @@ contract TestGammaClose is TestPerpMarket {
 
         IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96 * 9730 / 10000);
 
-        vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
+        vm.expectRevert(PerpMarketV1.TPSLConditionDoesNotMatch.selector);
         perpMarket.close(from2, 1, settlementData);
     }
 
@@ -113,7 +114,7 @@ contract TestGammaClose is TestPerpMarket {
 
         IFillerMarket.SettlementParams memory settlementData = _getSettlementData(Constants.Q96);
 
-        vm.expectRevert(PerpMarket.TPSLConditionDoesNotMatch.selector);
+        vm.expectRevert(PerpMarketV1.TPSLConditionDoesNotMatch.selector);
         perpMarket.close(from1, 1, settlementData);
     }
 

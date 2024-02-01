@@ -11,6 +11,7 @@ import {
     SpotDutchOrderValidator
 } from "../../../src/markets/spot/SpotDutchOrderValidator.sol";
 import "../../../src/markets/spot/SpotExclusiveLimitOrderValidator.sol";
+import "../../../src/markets/spot/SpotLimitOrderValidator.sol";
 import {SpotOrder, SpotOrderLib} from "../../../src/markets/spot/SpotOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -33,7 +34,11 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        spotMarket = new SpotMarket(address(permit2));
+        dutchOrderValidator = new SpotDutchOrderValidator();
+        _spotExclusiveLimitOrderValidator = new SpotExclusiveLimitOrderValidator();
+        SpotLimitOrderValidator spotLimitOrderValidator = new SpotLimitOrderValidator();
+
+        spotMarket = new SpotMarket(address(permit2), address(dutchOrderValidator), address(spotLimitOrderValidator));
 
         settlement = new DebugSettlement();
 
@@ -49,9 +54,6 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         currency0.approve(address(settlement), type(uint256).max);
         currency1.approve(address(settlement), type(uint256).max);
-
-        dutchOrderValidator = new SpotDutchOrderValidator();
-        _spotExclusiveLimitOrderValidator = new SpotExclusiveLimitOrderValidator();
     }
 
     function _createSignedOrder(SpotOrder memory marketOrder, uint256 fromPrivateKey)
