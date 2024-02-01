@@ -5,7 +5,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
-  console.log(`Start deploying predict market with ${deployer}`)
+  console.log(`Start deploying validators market with ${deployer}`)
 
   const { deploy } = deployments
 
@@ -30,7 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   })
 
-  await deploy('SpotExclusiveLimitOrderValidator', {
+  await deploy('SpotLimitOrderValidator', {
     from: deployer,
     log: true,
   })

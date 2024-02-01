@@ -10,10 +10,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deploy } = deployments
 
+  const SpotDutchOrderValidator = await deployments.get('SpotDutchOrderValidator')
+  const SpotLimitOrderValidator = await deployments.get('SpotLimitOrderValidator')
+
   await deploy('SpotMarket', {
     from: deployer,
     log: true,
-    args: [Permit2]
+    args: [Permit2, SpotDutchOrderValidator.address, SpotLimitOrderValidator.address]
   })
 
   const SpotMarket = await deployments.get('SpotMarket')
