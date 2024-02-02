@@ -29,8 +29,8 @@ contract TestL2Decoder is Test, OrderValidatorUtils {
 
         (uint64 deadline, uint64 pairId, uint8 leverage) = L2Decoder.decodePerpOrderParams(params);
 
-        assertEq(deadline, 1);
-        assertEq(pairId, 2);
-        assertEq(leverage, 3);
+        assertEq(deadline, 1709401246);
+        assertEq(pairId, 1);
+        assertEq(leverage, 0);
     }
 }

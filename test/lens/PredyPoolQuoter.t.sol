@@ -21,6 +21,12 @@ contract TestPredyPoolQuoter is TestLens {
         _predyPoolQuoter.quoteBaseAmountDelta(IPredyPool.TradeParams(0, 1, 0, 0, bytes("")));
     }
 
+    function testQuoteReallocation() public {
+        int256 baseAmount = _predyPoolQuoter.quoteReallocation(1);
+
+        assertEq(baseAmount, 0);
+    }
+
     function testQuoteVaultStatus() public {
         IPredyPool.VaultStatus memory vaultStatus = _predyPoolQuoter.quoteVaultStatus(1);
 

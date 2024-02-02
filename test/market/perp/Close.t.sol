@@ -6,6 +6,7 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {PerpMarketV1} from "../../../src/markets/perp/PerpMarketV1.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
 
 contract TestGammaClose is TestPerpMarket {
     bytes normalSwapRoute;
@@ -53,7 +54,7 @@ contract TestGammaClose is TestPerpMarket {
             2 * 1e6,
             101 * Constants.Q96 / 100,
             100 * Constants.Q96 / 101,
-            5000,
+            Bps.ONE + 5000,
             2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
@@ -69,7 +70,7 @@ contract TestGammaClose is TestPerpMarket {
             2 * 1e6,
             0,
             0,
-            5000,
+            Bps.ONE + 5000,
             2,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))

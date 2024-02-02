@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
 
 contract TestPerpExecuteOrder is TestPerpMarket {
     bytes normalSwapRoute;
@@ -341,7 +342,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 Constants.Q96 * 10 / 11,
                 Constants.Q96 * 11 / 10,
-                10000,
+                Bps.ONE + 10000,
                 2,
                 address(0),
                 bytes("")
