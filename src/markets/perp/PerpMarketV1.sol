@@ -115,6 +115,16 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     tradeResult.fee,
                     closeValue
                 );
+            } else {
+                emit PerpTraded(
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeResult.vaultId,
+                    tradeParams.tradeAmount,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    -int256(closeValue)
+                );
             }
         } else if (callbackData.callbackSource == CallbackSource.TRADE) {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
@@ -124,6 +134,16 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
             } else if (marginAmountUpdate < 0) {
                 _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
+
+            emit PerpTraded(
+                callbackData.trader,
+                tradeParams.pairId,
+                tradeResult.vaultId,
+                tradeParams.tradeAmount,
+                tradeResult.payoff,
+                tradeResult.fee,
+                marginAmountUpdate
+            );
         }
     }
 
@@ -190,16 +210,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         IOrderValidator(perpOrder.validatorAddress).validate(
             perpOrder.tradeAmount, 0, perpOrder.validationData, tradeResult
-        );
-
-        emit PerpTraded(
-            perpOrder.info.trader,
-            perpOrder.pairId,
-            tradeResult.vaultId,
-            perpOrder.tradeAmount,
-            tradeResult.payoff,
-            tradeResult.fee,
-            perpOrder.marginAmount
         );
 
         return tradeResult;

@@ -32,7 +32,8 @@ library LiquidationLogic {
         int256 tradeAmount,
         int256 tradeSqrtAmount,
         IPredyPool.Payoff payoff,
-        int256 fee
+        int256 fee,
+        uint256 marginAmount
     );
 
     function liquidate(
@@ -83,6 +84,8 @@ library LiquidationLogic {
             tradeParams.tradeAmountSqrt == 0 ? 0 : _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
         );
 
+        uint256 sentMarginAmount = 0;
+
         if (!hasPosition) {
             int256 remainingMargin = vault.margin;
 
@@ -91,7 +94,9 @@ library LiquidationLogic {
                     // Send the remaining margin to the recipient.
                     vault.margin = 0;
 
-                    ERC20(pairStatus.quotePool.token).safeTransfer(vault.recipient, uint256(remainingMargin));
+                    sentMarginAmount = uint256(remainingMargin);
+
+                    ERC20(pairStatus.quotePool.token).safeTransfer(vault.recipient, sentMarginAmount);
                 }
             } else if (remainingMargin < 0) {
                 vault.margin = 0;
@@ -108,7 +113,8 @@ library LiquidationLogic {
             tradeParams.tradeAmount,
             tradeParams.tradeAmountSqrt,
             tradeResult.payoff,
-            tradeResult.fee
+            tradeResult.fee,
+            sentMarginAmount
         );
     }
 
