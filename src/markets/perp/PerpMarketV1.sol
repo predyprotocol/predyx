@@ -250,7 +250,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         );
 
         if (slConditionMet) {
-            SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance, 0);
+            SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance + Bps.ONE, 0);
         } else {
             if (!_getTPCondition(vault.openPosition.perp.amount > 0, userPosition, Math.abs(tradeResult.averagePrice)))
             {
@@ -269,7 +269,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     }
 
     function _saveUserPosition(UserPosition storage userPosition, PerpOrder memory perpOrder) internal {
-        require(perpOrder.slippageTolerance <= 2 * Bps.ONE);
+        require(perpOrder.slippageTolerance <= Bps.ONE);
 
         userPosition.takeProfitPrice = perpOrder.takeProfitPrice;
         userPosition.stopLossPrice = perpOrder.stopLossPrice;

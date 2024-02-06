@@ -71,20 +71,14 @@ contract PredyPoolQuoter is BaseHookCallback {
         }
     }
 
-    function quoteLiquidation(uint256 vaultId, uint256 closeRatio)
-        external
-        returns (int256 baseAmountDelta)
-    {
+    function quoteLiquidation(uint256 vaultId, uint256 closeRatio) external returns (int256 baseAmountDelta) {
         try _predyPool.execLiquidationCall(vaultId, closeRatio, "") {}
         catch (bytes memory reason) {
             return _parseRevertReasonAsBaseAmountDelta(reason);
         }
     }
 
-    function quoteReallocation(uint256 pairId)
-        external
-        returns (int256 baseAmountDelta)
-    {
+    function quoteReallocation(uint256 pairId) external returns (int256 baseAmountDelta) {
         try _predyPool.reallocate(pairId, "") {}
         catch (bytes memory reason) {
             return _parseRevertReasonAsBaseAmountDelta(reason);

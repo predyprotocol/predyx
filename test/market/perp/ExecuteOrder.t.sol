@@ -342,7 +342,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
                 0,
                 Constants.Q96 * 10 / 11,
                 Constants.Q96 * 11 / 10,
-                Bps.ONE + 10000,
+                10000,
                 2,
                 address(0),
                 bytes("")
@@ -358,7 +358,7 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         assertEq(takeProfitPrice, Constants.Q96 * 10 / 11);
         assertEq(stopLossPrice, Constants.Q96 * 11 / 10);
-        assertEq(slippageTolerance, 1010000);
+        assertEq(slippageTolerance, 10000);
         assertEq(leverage, 2);
     }
 

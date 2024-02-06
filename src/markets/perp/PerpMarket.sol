@@ -6,6 +6,7 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {PerpOrder} from "./PerpOrder.sol";
 import {OrderInfo} from "../../libraries/orders/OrderInfoLib.sol";
 import {L2Decoder} from "../L2Decoder.sol";
+import {Bps} from "../../libraries/math/Bps.sol";
 
 struct PerpOrderV2 {
     address trader;
