@@ -29,6 +29,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
     error TPSLConditionDoesNotMatch();
 
+    error UpdateMarginMustNotBePositive();
+
     struct UserPosition {
         uint256 vaultId;
         uint256 takeProfitPrice;
@@ -100,6 +102,11 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
             _revertTradeResult(tradeResult);
         } else if (tradeResult.minMargin == 0 || callbackData.callbackSource == CallbackSource.CLOSE) {
+            if (callbackData.marginAmountUpdate > 0) {
+                // to avoid funds locked in this contract
+                revert UpdateMarginMustNotBePositive();
+            }
+
             DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
             uint256 closeValue = uint256(vault.margin);

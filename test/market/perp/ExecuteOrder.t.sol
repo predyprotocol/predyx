@@ -5,6 +5,7 @@ import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Bps} from "../../../src/libraries/math/Bps.sol";
+import {PerpMarketV1} from "../../../src/markets/perp/PerpMarketV1.sol";
 
 contract TestPerpExecuteOrder is TestPerpMarket {
     bytes normalSwapRoute;
@@ -190,6 +191,51 @@ contract TestPerpExecuteOrder is TestPerpMarket {
             DataType.Vault memory vault = predyPool.getVault(1);
 
             assertEq(vault.margin, 5 * 1e6);
+        }
+    }
+
+    function testAvoidFreeze() public {
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000,
+                2 * 1e6,
+                0,
+                0,
+                0,
+                2,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrder(signedOrder, _getUniSettlementData(0));
+        }
+
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                1000,
+                3 * 1e6,
+                0,
+                0,
+                0,
+                2,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(1200);
+
+            vm.expectRevert(PerpMarketV1.UpdateMarginMustNotBePositive.selector);
+            perpMarket.executeOrder(signedOrder, settlementData);
         }
     }
 
