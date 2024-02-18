@@ -40,13 +40,9 @@ contract TestSpotMarketQuoter is TestLens {
             abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1000))
         );
 
-        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-        items[0] = IFillerMarket.SettlementParamsItem(
-            address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0
+        IFillerMarket.SettlementParams memory settlementData = IFillerMarket.SettlementParams(
+            address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0, 0
         );
-
-        IFillerMarket.SettlementParams memory settlementData = IFillerMarket.SettlementParams(0, 0, items);
 
         vm.expectRevert(SpotExclusiveLimitOrderValidator.PriceGreaterThanLimit.selector);
         _quoter.quoteExecuteOrder(order, settlementData);
@@ -71,11 +67,12 @@ contract TestSpotMarketQuoter is TestLens {
 
         // with direct
         {
-            IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-            items[0] = IFillerMarket.SettlementParamsItem(address(0), bytes(""), 0, 0);
-
-            assertEq(_quoter.quoteExecuteOrder(order, IFillerMarket.SettlementParams(Constants.Q96, 0, items)), -1000);
+            assertEq(
+                _quoter.quoteExecuteOrder(
+                    order, IFillerMarket.SettlementParams(address(0), bytes(""), 0, Constants.Q96, 0)
+                ),
+                -1000
+            );
         }
 
         // with price
@@ -101,11 +98,12 @@ contract TestSpotMarketQuoter is TestLens {
 
         // with direct
         {
-            IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-            items[0] = IFillerMarket.SettlementParamsItem(address(0), bytes(""), 1200, 0);
-
-            assertEq(_quoter.quoteExecuteOrder(order, IFillerMarket.SettlementParams(Constants.Q96, 0, items)), 1000);
+            assertEq(
+                _quoter.quoteExecuteOrder(
+                    order, IFillerMarket.SettlementParams(address(0), bytes(""), 1200, Constants.Q96, 0)
+                ),
+                1000
+            );
         }
 
         // with price

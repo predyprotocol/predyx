@@ -126,10 +126,6 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
     }
 
     function _getSettlementData(uint256 price) internal view returns (IFillerMarket.SettlementParams memory) {
-        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-        items[0] = IFillerMarket.SettlementParamsItem(address(0), bytes(""), 0, 0);
-
-        return IFillerMarket.SettlementParams(price, 0, items);
+        return IFillerMarket.SettlementParams(address(0), bytes(""), 0, price, 0);
     }
 }

@@ -154,9 +154,9 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         }
 
         if (baseAmountDelta > 0) {
-            _execSettlementLoop(quoteToken, baseToken, settlementParams, true, uint256(baseAmountDelta));
+            _execSell(quoteToken, baseToken, settlementParams, settlementParams.price, uint256(baseAmountDelta));
         } else if (baseAmountDelta < 0) {
-            _execSettlementLoop(quoteToken, baseToken, settlementParams, false, uint256(-baseAmountDelta));
+            _execBuy(quoteToken, baseToken, settlementParams, settlementParams.price, uint256(-baseAmountDelta));
         }
 
         if (settlementParams.fee > 0) {
@@ -164,43 +164,10 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         }
     }
 
-    function _execSettlementLoop(
-        address quoteToken,
-        address baseToken,
-        SettlementParams memory settlementParams,
-        bool isSell,
-        uint256 baseAmountDelta
-    ) internal {
-        uint256 remain = baseAmountDelta;
-
-        for (uint256 i = 0; i < settlementParams.items.length; i++) {
-            IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
-
-            if (item.contractAddress != address(0) && !_whiteListedSettlements[item.contractAddress]) {
-                revert SettlementContractIsNotWhitelisted();
-            }
-
-            uint256 baseAmount = item.partialBaseAmount;
-
-            // if the item is the last item
-            if (i == settlementParams.items.length - 1) {
-                baseAmount = remain;
-            }
-
-            if (isSell) {
-                _execSell(quoteToken, baseToken, item, settlementParams.price, baseAmount);
-            } else {
-                _execBuy(quoteToken, baseToken, item, settlementParams.price, baseAmount);
-            }
-
-            remain -= baseAmount;
-        }
-    }
-
     function _execSell(
         address quoteToken,
         address baseToken,
-        SettlementParamsItem memory settlementParams,
+        SettlementParams memory settlementParams,
         uint256 price,
         uint256 sellAmount
     ) internal {
@@ -239,7 +206,7 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
     function _execBuy(
         address quoteToken,
         address baseToken,
-        SettlementParamsItem memory settlementParams,
+        SettlementParams memory settlementParams,
         uint256 price,
         uint256 buyAmount
     ) internal {
@@ -279,41 +246,15 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         int256 quoteAmount = -settlementParams.fee;
 
         if (baseAmountDelta > 0) {
-            quoteAmount += _quoteSettlementLoop(settlementParams, true, uint256(baseAmountDelta));
+            quoteAmount += _quoteSell(settlementParams, settlementParams.price, uint256(baseAmountDelta));
         } else if (baseAmountDelta < 0) {
-            quoteAmount += _quoteSettlementLoop(settlementParams, false, uint256(-baseAmountDelta));
+            quoteAmount += _quoteBuy(settlementParams, settlementParams.price, uint256(-baseAmountDelta));
         }
 
         _revertQuoteAmount(quoteAmount);
     }
 
-    function _quoteSettlementLoop(SettlementParams memory settlementParams, bool isSell, uint256 baseAmountDelta)
-        internal
-        returns (int256 quoteAmount)
-    {
-        uint256 remain = baseAmountDelta;
-
-        for (uint256 i = 0; i < settlementParams.items.length; i++) {
-            IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
-
-            uint256 baseAmount = item.partialBaseAmount;
-
-            // if the item is the last item
-            if (i == settlementParams.items.length - 1) {
-                baseAmount = remain;
-            }
-
-            if (isSell) {
-                quoteAmount += _quoteSell(item, settlementParams.price, baseAmount);
-            } else {
-                quoteAmount += _quoteBuy(item, settlementParams.price, baseAmount);
-            }
-
-            remain -= baseAmount;
-        }
-    }
-
-    function _quoteSell(SettlementParamsItem memory settlementParams, uint256 price, uint256 sellAmount)
+    function _quoteSell(SettlementParams memory settlementParams, uint256 price, uint256 sellAmount)
         internal
         returns (int256)
     {
@@ -335,7 +276,7 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         }
     }
 
-    function _quoteBuy(SettlementParamsItem memory settlementParams, uint256 price, uint256 buyAmount)
+    function _quoteBuy(SettlementParams memory settlementParams, uint256 price, uint256 buyAmount)
         internal
         returns (int256)
     {

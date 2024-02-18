@@ -71,7 +71,12 @@ contract TestTradeMarket is BaseHookCallback, IFillerMarket {
     function _getSettlementData(SettlementParams memory settlementParams) internal view returns (bytes memory) {
         return abi.encode(
             SettlementCallbackLib.SettlementParams(
-                msg.sender, settlementParams.price, settlementParams.fee, settlementParams.items
+                msg.sender,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmount,
+                settlementParams.price,
+                settlementParams.fee
             )
         );
     }
