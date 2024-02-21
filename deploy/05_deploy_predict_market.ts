@@ -3,7 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types'
 import { Filler, Permit2 } from '../addressList'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts } = hre
+  const { deployments, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
   console.log(`Start deploying predict market with ${deployer}`)
@@ -16,7 +16,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy('PredictMarket', {
     from: deployer,
     log: true,
-    args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address]
+    args: [],
+    proxy: {
+      execute: {
+        init: {
+          methodName: 'initialize',
+          args: [PredyPool.address, Permit2, Filler, PredyPoolQuoter.address],
+        },
+      },
+      proxyContract: "EIP173Proxy",
+    },
   })
 
   const PredictMarket = await deployments.get('PredictMarket')

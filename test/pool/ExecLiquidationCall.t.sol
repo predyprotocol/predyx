@@ -104,6 +104,10 @@ contract TestExecLiquidationCall is TestPool {
 
         vm.warp(block.timestamp + 10 minutes);
 
+        int256 baseAmount = _predyPoolQuoter.quoteLiquidation(2, 1e18);
+
+        assertEq(baseAmount, -257);
+
         _tradeMarket.execLiquidationCall(2, 1e18, _getSettlementData(Constants.Q96 * 9000 / 10000));
 
         checkMarginEqZero(2);

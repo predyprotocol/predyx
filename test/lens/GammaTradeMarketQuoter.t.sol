@@ -21,8 +21,8 @@ contract TestGammaTradeMarketQuoter is TestLens {
 
         IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
-        GammaTradeMarket gammaTradeMarket =
-            new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        GammaTradeMarket gammaTradeMarket = new GammaTradeMarket();
+        gammaTradeMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
         gammaTradeMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         _quoter = new GammaTradeMarketQuoter(gammaTradeMarket);

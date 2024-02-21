@@ -96,7 +96,7 @@ const config = {
     },
   },
   etherscan: {
-    apiKey: process.env.BASE_ETHERSCAN_KEY,
+    apiKey: process.env.ETHERSCAN_API_KEY,
     customChains: [
       {
         network: "goerliArbitrum",

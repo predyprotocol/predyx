@@ -1,22 +1,22 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
-import { Filler, Permit2 } from '../addressList'
-
-const SwapRouter02Address = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
-const QuoterV2Address = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
+import { Permit2 } from '../addressList'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts } = hre
+  const { deployments, getNamedAccounts } = hre
   const { deployer } = await getNamedAccounts()
 
   console.log(`Start deploying spot market with ${deployer}`)
 
   const { deploy } = deployments
 
+  const SpotDutchOrderValidator = await deployments.get('SpotDutchOrderValidator')
+  const SpotLimitOrderValidator = await deployments.get('SpotLimitOrderValidator')
+
   await deploy('SpotMarket', {
     from: deployer,
     log: true,
-    args: [Permit2]
+    args: [Permit2, SpotDutchOrderValidator.address, SpotLimitOrderValidator.address]
   })
 
   const SpotMarket = await deployments.get('SpotMarket')

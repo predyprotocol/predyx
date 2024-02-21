@@ -1,2 +1,8 @@
-export const Permit2 = '0x000000000022d473030f116ddee9f6b43ac78ba3' // '0x3e4871e30c964EF76A2aCcedDb54E14Df9d6a0e0' 
-export const Filler = '0x4b748969Ab77C9d09AE07b4282A151B82F96311B'
+export const Permit2 = '0x000000000022d473030f116ddee9f6b43ac78ba3'
+export const Filler = '0x51B89C499F3038756Eff64a0EF52d753147EAd75'
+
+// Chainlink USDC
+// 0x50834f3163758fcc1df9973b6e91f0f0f0434ad3
+// ETH
+// 0x639fe6ab55c921f74e7fac1ee960c0b6293ba612
+// decimalDiff: 12

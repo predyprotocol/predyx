@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {SpotMarket} from "../markets/spot/SpotMarket.sol";
+import {ISpotMarket} from "../interfaces/ISpotMarket.sol";
 import {SpotOrder} from "../markets/spot/SpotOrder.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {ISpotOrderValidator} from "../interfaces/IOrderValidator.sol";
@@ -11,9 +11,9 @@ import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
  * @notice Quoter contract for SpotMarket
  */
 contract SpotMarketQuoter {
-    SpotMarket spotMarket;
+    ISpotMarket spotMarket;
 
-    constructor(SpotMarket _spotMarket) {
+    constructor(ISpotMarket _spotMarket) {
         spotMarket = _spotMarket;
     }
 

@@ -15,9 +15,11 @@ library SettlementCallbackLib {
 
     struct SettlementParams {
         address sender;
+        address contractAddress;
+        bytes encodedData;
+        uint256 maxQuoteAmount;
         uint256 price;
         int256 fee;
-        IFillerMarket.SettlementParamsItem[] items;
     }
 
     function decodeParams(bytes memory settlementData) internal pure returns (SettlementParams memory) {
@@ -28,12 +30,10 @@ library SettlementCallbackLib {
         mapping(address settlementContractAddress => bool) storage _whiteListedSettlements,
         SettlementParams memory settlementParams
     ) internal view {
-        for (uint256 i = 0; i < settlementParams.items.length; i++) {
-            IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
-
-            if (item.contractAddress != address(0) && !_whiteListedSettlements[item.contractAddress]) {
-                revert IFillerMarket.SettlementContractIsNotWhitelisted();
-            }
+        if (
+            settlementParams.contractAddress != address(0) && !_whiteListedSettlements[settlementParams.contractAddress]
+        ) {
+            revert IFillerMarket.SettlementContractIsNotWhitelisted();
         }
     }
 
@@ -65,45 +65,25 @@ library SettlementCallbackLib {
         int256 baseAmountDelta
     ) internal {
         if (baseAmountDelta > 0) {
-            execSettlementInternalLoop(
-                predyPool, quoteToken, baseToken, settlementParams, true, uint256(baseAmountDelta)
+            sell(
+                predyPool,
+                quoteToken,
+                baseToken,
+                settlementParams,
+                settlementParams.sender,
+                settlementParams.price,
+                uint256(baseAmountDelta)
             );
         } else if (baseAmountDelta < 0) {
-            execSettlementInternalLoop(
-                predyPool, quoteToken, baseToken, settlementParams, false, uint256(-baseAmountDelta)
+            buy(
+                predyPool,
+                quoteToken,
+                baseToken,
+                settlementParams,
+                settlementParams.sender,
+                settlementParams.price,
+                uint256(-baseAmountDelta)
             );
-        }
-    }
-
-    function execSettlementInternalLoop(
-        IPredyPool predyPool,
-        address quoteToken,
-        address baseToken,
-        SettlementParams memory settlementParams,
-        bool isSell,
-        uint256 baseAmountDelta
-    ) internal {
-        uint256 remain = baseAmountDelta;
-
-        for (uint256 i = 0; i < settlementParams.items.length; i++) {
-            IFillerMarket.SettlementParamsItem memory item = settlementParams.items[i];
-
-            uint256 baseAmount = item.partialBaseAmount;
-
-            // if the item is the last item
-            if (i == settlementParams.items.length - 1) {
-                baseAmount = remain;
-            }
-
-            if (isSell) {
-                sell(
-                    predyPool, quoteToken, baseToken, item, settlementParams.sender, settlementParams.price, baseAmount
-                );
-            } else {
-                buy(predyPool, quoteToken, baseToken, item, settlementParams.sender, settlementParams.price, baseAmount);
-            }
-
-            remain -= baseAmount;
         }
     }
 
@@ -111,12 +91,12 @@ library SettlementCallbackLib {
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,
-        IFillerMarket.SettlementParamsItem memory settlementParamsItem,
+        SettlementParams memory settlementParams,
         address sender,
         uint256 price,
         uint256 sellAmount
     ) internal {
-        if (settlementParamsItem.contractAddress == address(0)) {
+        if (settlementParams.contractAddress == address(0)) {
             // direct fill
             uint256 quoteAmount = sellAmount * price / Constants.Q96;
 
@@ -128,14 +108,14 @@ library SettlementCallbackLib {
         }
 
         predyPool.take(false, address(this), sellAmount);
-        ERC20(baseToken).approve(address(settlementParamsItem.contractAddress), sellAmount);
+        ERC20(baseToken).approve(address(settlementParams.contractAddress), sellAmount);
 
-        uint256 quoteAmountFromUni = ISettlement(settlementParamsItem.contractAddress).swapExactIn(
+        uint256 quoteAmountFromUni = ISettlement(settlementParams.contractAddress).swapExactIn(
             quoteToken,
             baseToken,
-            settlementParamsItem.encodedData,
+            settlementParams.encodedData,
             sellAmount,
-            settlementParamsItem.maxQuoteAmount,
+            settlementParams.maxQuoteAmount,
             address(this)
         );
 
@@ -158,12 +138,12 @@ library SettlementCallbackLib {
         IPredyPool predyPool,
         address quoteToken,
         address baseToken,
-        IFillerMarket.SettlementParamsItem memory settlementParamsItem,
+        SettlementParams memory settlementParams,
         address sender,
         uint256 price,
         uint256 buyAmount
     ) internal {
-        if (settlementParamsItem.contractAddress == address(0)) {
+        if (settlementParams.contractAddress == address(0)) {
             // direct fill
             uint256 quoteAmount = buyAmount * price / Constants.Q96;
 
@@ -174,20 +154,20 @@ library SettlementCallbackLib {
             return;
         }
 
-        predyPool.take(true, address(this), settlementParamsItem.maxQuoteAmount);
-        ERC20(quoteToken).approve(address(settlementParamsItem.contractAddress), settlementParamsItem.maxQuoteAmount);
+        predyPool.take(true, address(this), settlementParams.maxQuoteAmount);
+        ERC20(quoteToken).approve(address(settlementParams.contractAddress), settlementParams.maxQuoteAmount);
 
-        uint256 quoteAmountToUni = ISettlement(settlementParamsItem.contractAddress).swapExactOut(
+        uint256 quoteAmountToUni = ISettlement(settlementParams.contractAddress).swapExactOut(
             quoteToken,
             baseToken,
-            settlementParamsItem.encodedData,
+            settlementParams.encodedData,
             buyAmount,
-            settlementParamsItem.maxQuoteAmount,
+            settlementParams.maxQuoteAmount,
             address(predyPool)
         );
 
         if (price == 0) {
-            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParamsItem.maxQuoteAmount - quoteAmountToUni);
+            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParams.maxQuoteAmount - quoteAmountToUni);
         } else {
             uint256 quoteAmount = buyAmount * price / Constants.Q96;
 
@@ -197,7 +177,7 @@ library SettlementCallbackLib {
                 ERC20(quoteToken).safeTransferFrom(sender, address(this), quoteAmountToUni - quoteAmount);
             }
 
-            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParamsItem.maxQuoteAmount - quoteAmount);
+            ERC20(quoteToken).safeTransfer(address(predyPool), settlementParams.maxQuoteAmount - quoteAmount);
         }
     }
 }

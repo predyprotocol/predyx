@@ -9,7 +9,8 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseMarket.sol";
+import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
+import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
@@ -25,7 +26,7 @@ import {SettlementCallbackLib} from "../../base/SettlementCallbackLib.sol";
  * A trader can open position with any duration.
  * Anyone can close the position after expiration timestamp.
  */
-contract PredictMarket is IFillerMarket, BaseMarket {
+contract PredictMarket is IFillerMarket, BaseMarketUpgradable {
     using ResolvedOrderLib for ResolvedOrder;
     using PredictOrderLib for PredictOrder;
     using PredictCloseOrderLib for PredictCloseOrder;
@@ -39,7 +40,7 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     error CloseAfterExpiration();
     error CloseBeforeExpiration();
 
-    IPermit2 private immutable _permit2;
+    IPermit2 private _permit2;
 
     // The duration of dutch auction is 20 minutes
     uint256 private constant _AUCTION_DURATION = 20 minutes;
@@ -81,16 +82,21 @@ contract PredictMarket is IFillerMarket, BaseMarket {
     );
     event PredictPositionClosed(uint256 vaultId, uint256 closeValue, IPredyPool.Payoff payoff, int256 fee);
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
-        BaseMarket(predyPool, whitelistFiller, quoterAddress)
+    constructor() {}
+
+    function initialize(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        public
+        initializer
     {
+        __BaseMarket_init(predyPool, whitelistFiller, quoterAddress);
+
         _permit2 = IPermit2(permit2Address);
     }
 
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) onlyPredyPool {
+    ) external override(BaseHookCallbackUpgradable) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
 
         if (callbackData.callbackSource == CallbackSource.QUOTE) {

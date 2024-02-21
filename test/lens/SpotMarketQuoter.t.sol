@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import "../../src/lens/SpotMarketQuoter.sol";
 import "../../src/markets/validators/LimitOrderValidator.sol";
-import "../../src/markets/spot/SpotMarket.sol";
+import "../../src/markets/spot/SpotMarketV1.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import "../../src/settlements/UniswapSettlement.sol";
 import "../../src/markets/spot/SpotExclusiveLimitOrderValidator.sol";
 
 contract TestSpotMarketQuoter is TestLens {
     SpotMarketQuoter _quoter;
-    SpotMarket _spotMarket;
+    SpotMarketV1 _spotMarket;
     SpotExclusiveLimitOrderValidator _spotExclusiveLimitOrderValidator;
     address _from;
 
@@ -20,7 +20,7 @@ contract TestSpotMarketQuoter is TestLens {
 
         IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
-        _spotMarket = new SpotMarket(address(permit2));
+        _spotMarket = new SpotMarketV1(address(permit2));
         _spotMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         _quoter = new SpotMarketQuoter(_spotMarket);
@@ -40,13 +40,9 @@ contract TestSpotMarketQuoter is TestLens {
             abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1000))
         );
 
-        IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-        items[0] = IFillerMarket.SettlementParamsItem(
-            address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0
+        IFillerMarket.SettlementParams memory settlementData = IFillerMarket.SettlementParams(
+            address(uniswapSettlement), abi.encodePacked(address(currency0), uint24(500), address(currency1)), 0, 0, 0
         );
-
-        SpotMarket.SettlementParams memory settlementData = IFillerMarket.SettlementParams(0, 0, items);
 
         vm.expectRevert(SpotExclusiveLimitOrderValidator.PriceGreaterThanLimit.selector);
         _quoter.quoteExecuteOrder(order, settlementData);
@@ -71,11 +67,12 @@ contract TestSpotMarketQuoter is TestLens {
 
         // with direct
         {
-            IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-            items[0] = IFillerMarket.SettlementParamsItem(address(0), bytes(""), 0, 0);
-
-            assertEq(_quoter.quoteExecuteOrder(order, IFillerMarket.SettlementParams(Constants.Q96, 0, items)), -1000);
+            assertEq(
+                _quoter.quoteExecuteOrder(
+                    order, IFillerMarket.SettlementParams(address(0), bytes(""), 0, Constants.Q96, 0)
+                ),
+                -1000
+            );
         }
 
         // with price
@@ -101,11 +98,12 @@ contract TestSpotMarketQuoter is TestLens {
 
         // with direct
         {
-            IFillerMarket.SettlementParamsItem[] memory items = new IFillerMarket.SettlementParamsItem[](1);
-
-            items[0] = IFillerMarket.SettlementParamsItem(address(0), bytes(""), 1200, 0);
-
-            assertEq(_quoter.quoteExecuteOrder(order, IFillerMarket.SettlementParams(Constants.Q96, 0, items)), 1000);
+            assertEq(
+                _quoter.quoteExecuteOrder(
+                    order, IFillerMarket.SettlementParams(address(0), bytes(""), 1200, Constants.Q96, 0)
+                ),
+                1000
+            );
         }
 
         // with price

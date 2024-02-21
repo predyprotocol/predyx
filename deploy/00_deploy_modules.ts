@@ -53,4 +53,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   })
 }
 
+func.tags = ['PredyPool'];
+
 export default func

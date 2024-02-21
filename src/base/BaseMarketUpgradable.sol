@@ -77,7 +77,12 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
     {
         return abi.encode(
             SettlementCallbackLib.SettlementParams(
-                filler, settlementParams.price, settlementParams.fee, settlementParams.items
+                filler,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmount,
+                settlementParams.price,
+                settlementParams.fee
             )
         );
     }

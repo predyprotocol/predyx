@@ -21,8 +21,8 @@ contract TestPredictMarketQuoter is TestLens {
 
         IPermit2 permit2 = IPermit2(deployCode("../test-artifacts/Permit2.sol:Permit2"));
 
-        PredictMarket predictMarket =
-            new PredictMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        PredictMarket predictMarket = new PredictMarket();
+        predictMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
         predictMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 
         _quoter = new PredictMarketQuoter(predictMarket);

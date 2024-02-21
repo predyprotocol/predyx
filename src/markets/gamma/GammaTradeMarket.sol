@@ -3,12 +3,13 @@ pragma solidity ^0.8.17;
 
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import "../../interfaces/IFillerMarket.sol";
 import "../../interfaces/IOrderValidator.sol";
-import "../../base/BaseMarket.sol";
+import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
+import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/logic/LiquidationLogic.sol";
@@ -20,7 +21,7 @@ import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 /**
  * @notice Gamma trade market contract
  */
-contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
+contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     using ResolvedOrderLib for ResolvedOrder;
     using GammaOrderLib for GammaOrder;
     using Permit2Lib for ResolvedOrder;
@@ -58,7 +59,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
     // The range of auction price
     uint256 private constant _AUCTION_RANGE = 100;
 
-    IPermit2 private immutable _permit2;
+    IPermit2 private _permit2;
 
     mapping(address owner => mapping(uint256 pairId => UserPosition)) public userPositions;
 
@@ -82,16 +83,22 @@ contract GammaTradeMarket is IFillerMarket, BaseMarket, ReentrancyGuard {
         int256 fee
     );
 
-    constructor(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
-        BaseMarket(predyPool, whitelistFiller, quoterAddress)
+    constructor() {}
+
+    function initialize(IPredyPool predyPool, address permit2Address, address whitelistFiller, address quoterAddress)
+        public
+        initializer
     {
+        __ReentrancyGuard_init();
+        __BaseMarket_init(predyPool, whitelistFiller, quoterAddress);
+
         _permit2 = IPermit2(permit2Address);
     }
 
     function predyTradeAfterCallback(
         IPredyPool.TradeParams memory tradeParams,
         IPredyPool.TradeResult memory tradeResult
-    ) external override(BaseHookCallback) onlyPredyPool {
+    ) external override(BaseHookCallbackUpgradable) onlyPredyPool {
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 

@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
-import "forge-std/console2.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
+import {PerpMarketV1} from "../../../src/markets/perp/PerpMarketV1.sol";
 
 contract TestPerpExecuteOrder is TestPerpMarket {
     bytes normalSwapRoute;
@@ -23,8 +24,6 @@ contract TestPerpExecuteOrder is TestPerpMarket {
         predyPool.supply(1, false, 1e10);
 
         normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
-
-        // perpMarket.depositToFillerPool(100 * 1e6);
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -195,11 +194,50 @@ contract TestPerpExecuteOrder is TestPerpMarket {
         }
     }
 
-    // executeOrder succeeds with margin amount
-    // executeOrder fails if withdrawn margin amount is too large
+    function testAvoidFreeze() public {
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000,
+                2 * 1e6,
+                0,
+                0,
+                0,
+                2,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
 
-    // executeOrder succeeds with margin ratio
-    // executeOrder fails if margin ratio is invalid
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrder(signedOrder, _getUniSettlementData(0));
+        }
+
+        {
+            PerpOrder memory order = PerpOrder(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                1000,
+                3 * 1e6,
+                0,
+                0,
+                0,
+                2,
+                address(limitOrderValidator),
+                abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(1200);
+
+            vm.expectRevert(PerpMarketV1.UpdateMarginMustNotBePositive.selector);
+            perpMarket.executeOrder(signedOrder, settlementData);
+        }
+    }
 
     // executeOrder fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
@@ -272,8 +310,6 @@ contract TestPerpExecuteOrder is TestPerpMarket {
         }
     }
 
-    // executeOrder fails if nonce is invalid
-
     // executeOrder fails if price is greater than limit
     function testExecuteOrderFails_IfPriceIsGreaterThanLimit() public {
         PerpOrder memory order = PerpOrder(
@@ -322,11 +358,6 @@ contract TestPerpExecuteOrder is TestPerpMarket {
         perpMarket.executeOrder(signedOrder, settlementData);
     }
 
-    // executeOrder fails if filler pool is not enough
-    // executeOrder fails if the vault is danger
-
-    // executeOrder fails if pairId does not exist
-
     function testExecuteOrderSucceedsForTPSL() public {
         {
             PerpOrder memory order = PerpOrder(
@@ -373,7 +404,45 @@ contract TestPerpExecuteOrder is TestPerpMarket {
 
         assertEq(takeProfitPrice, Constants.Q96 * 10 / 11);
         assertEq(stopLossPrice, Constants.Q96 * 11 / 10);
-        assertEq(slippageTolerance, 1010000);
+        assertEq(slippageTolerance, 10000);
         assertEq(leverage, 2);
+    }
+
+    // decode
+    function testExecuteOrderV2Succeeds() public {
+        PerpOrder memory order = PerpOrder(
+            OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+            1,
+            address(currency1),
+            -1000,
+            2 * 1e6,
+            0,
+            0,
+            0,
+            2,
+            address(limitOrderValidator),
+            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+        );
+
+        PerpOrderV2 memory optOrder = PerpOrderV2(
+            from1,
+            order.info.nonce,
+            encodePerpOrderParams(uint64(order.info.deadline), uint64(order.pairId), uint8(order.leverage)),
+            order.tradeAmount,
+            order.marginAmount,
+            order.validatorAddress,
+            order.validationData
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+
+        IPredyPool.TradeResult memory tradeResult = perpMarket.executeOrderV2(optOrder, signedOrder.sig, settlementData);
+
+        assertEq(tradeResult.payoff.perpEntryUpdate, 998);
+        assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
+        assertEq(tradeResult.payoff.perpPayoff, 0);
+        assertEq(tradeResult.payoff.sqrtPayoff, 0);
     }
 }

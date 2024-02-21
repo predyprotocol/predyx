@@ -27,7 +27,9 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        gammaTradeMarket = new GammaTradeMarket(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
+        gammaTradeMarket = new GammaTradeMarket();
+
+        gammaTradeMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
         gammaTradeMarket.updateWhitelistSettlement(address(uniswapSettlement), true);
 

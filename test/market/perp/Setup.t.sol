@@ -5,7 +5,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
-import {PerpMarket} from "../../../src/markets/perp/PerpMarket.sol";
+import {PerpMarket, PerpOrderV2} from "../../../src/markets/perp/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {PerpOrder, PerpOrderLib} from "../../../src/markets/perp/PerpOrder.sol";
