@@ -268,9 +268,18 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
     function getUserPosition(address owner, uint256 pairId)
         external
-        returns (UserPosition memory userPosition, IPredyPool.VaultStatus memory, DataType.Vault memory)
+        returns (
+            UserPosition memory userPosition,
+            IPredyPool.VaultStatus memory vaultStatus,
+            DataType.Vault memory vault
+        )
     {
         userPosition = userPositions[owner][pairId];
+
+        if (userPosition.vaultId == 0) {
+            // if user has no position, return empty vault status and vault
+            return (userPosition, vaultStatus, vault);
+        }
 
         return (userPosition, _quoter.quoteVaultStatus(userPosition.vaultId), _predyPool.getVault(userPosition.vaultId));
     }
