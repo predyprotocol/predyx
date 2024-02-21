@@ -222,4 +222,44 @@ contract TestPoolProtocolInsolvency is TestPool {
         assertEq(currency0.balanceOf(address(predyPool)), 1);
         assertEq(currency1.balanceOf(address(predyPool)), 1);
     }
+
+    function testCreatorFeeFlow() external {
+        predyPool.updateFeeRatio(1, 4);
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 0, 1e7, 0, abi.encode(_getTradeAfterParams(1e7))),
+            _getSettlementData(Constants.Q96)
+        );
+
+        vm.warp(block.timestamp + 10 days);
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 0, -2 * 1e7, 0, abi.encode(_getTradeAfterParams(1e7))),
+            _getSettlementData(Constants.Q96)
+        );
+
+        _movePrice(true, 1000);
+
+        vm.warp(block.timestamp + 7 days);
+
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 1, -1e7, 0, abi.encode(_getTradeAfterParams(0))),
+            _getSettlementData(Constants.Q96 * 10100 / 10000)
+        );
+        tradeMarket.trade(
+            IPredyPool.TradeParams(1, 2, 2 * 1e7, 0, abi.encode(_getTradeAfterParams(0))),
+            _getSettlementData(Constants.Q96 * 10100 / 10000)
+        );
+
+        predyPool.withdraw(1, true, 1e18);
+        predyPool.withdraw(1, false, 1e18);
+
+        predyPool.withdrawCreatorRevenue(1, true);
+        predyPool.withdrawProtocolRevenue(1, true);
+        predyPool.withdrawCreatorRevenue(1, false);
+        predyPool.withdrawProtocolRevenue(1, false);
+
+        assertEq(currency0.balanceOf(address(predyPool)), 3);
+        assertEq(currency1.balanceOf(address(predyPool)), 4);
+    }
 }
