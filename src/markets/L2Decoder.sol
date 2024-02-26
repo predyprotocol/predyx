@@ -2,25 +2,36 @@
 pragma solidity ^0.8.17;
 
 library L2Decoder {
-    function decodeSpotOrderParams(bytes32 args)
+    function decodeSpotOrderParams(bytes32 args1, bytes32 args2)
         internal
         pure
-        returns (bool isLimit, uint32 decay, uint64 startTime, uint64 endTime, uint64 deadline)
+        returns (
+            bool isLimit,
+            uint64 startTime,
+            uint64 endTime,
+            uint64 deadline,
+            uint128 startAmount,
+            uint128 endAmount
+        )
     {
         uint32 isLimitUint;
 
         assembly {
-            deadline := and(args, 0xFFFFFFFFFFFFFFFF)
-            startTime := and(shr(64, args), 0xFFFFFFFFFFFFFFFF)
-            endTime := and(shr(128, args), 0xFFFFFFFFFFFFFFFF)
-            decay := and(shr(192, args), 0xFFFFFFFF)
-            isLimitUint := and(shr(224, args), 0xFFFFFFFF)
+            deadline := and(args1, 0xFFFFFFFFFFFFFFFF)
+            startTime := and(shr(64, args1), 0xFFFFFFFFFFFFFFFF)
+            endTime := and(shr(128, args1), 0xFFFFFFFFFFFFFFFF)
+            isLimitUint := and(shr(192, args1), 0xFFFFFFFF)
         }
 
         if (isLimitUint == 1) {
             isLimit = true;
         } else {
             isLimit = false;
+        }
+
+        assembly {
+            startAmount := and(args2, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            endAmount := and(shr(128, args2), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
         }
     }
 

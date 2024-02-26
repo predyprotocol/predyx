@@ -50,9 +50,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             1100,
             address(dutchOrderValidator),
             abi.encode(
-                SpotDutchOrderValidationData(
-                    Constants.Q96, Constants.Q96 + 1000, block.timestamp - 1 minutes, block.timestamp + 4 minutes
-                )
+                SpotDutchOrderValidationData(1000, 1001, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
             )
         );
 
@@ -74,9 +72,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             999,
             address(dutchOrderValidator),
             abi.encode(
-                SpotDutchOrderValidationData(
-                    Constants.Q96, Constants.Q96 + 1000000, block.timestamp - 1 minutes, block.timestamp + 4 minutes
-                )
+                SpotDutchOrderValidationData(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
             )
         );
 
@@ -97,9 +93,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             1000,
             address(dutchOrderValidator),
             abi.encode(
-                SpotDutchOrderValidationData(
-                    Constants.Q96, Constants.Q96 + 1000000, block.timestamp - 1 minutes, block.timestamp + 4 minutes
-                )
+                SpotDutchOrderValidationData(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
             )
         );
 
@@ -119,9 +113,7 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             2000,
             address(dutchOrderValidator),
             abi.encode(
-                SpotDutchOrderValidationData(
-                    Constants.Q96, Constants.Q96 + 1000000, block.timestamp - 1 minutes, block.timestamp + 4 minutes
-                )
+                SpotDutchOrderValidationData(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
             )
         );
 
@@ -193,13 +185,17 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             1100,
             address(dutchOrderValidator),
             abi.encode(
-                SpotDutchOrderValidationData(
-                    Constants.Q96,
-                    Constants.Q96 * 10010 / 10000,
-                    block.timestamp - 1 minutes,
-                    block.timestamp + 4 minutes
-                )
+                SpotDutchOrderValidationData(1000, 1100, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
             )
+        );
+
+        (bytes32 params1, bytes32 params2) = encodeParams(
+            false,
+            uint64(block.timestamp - 1 minutes),
+            uint64(block.timestamp + 4 minutes),
+            uint64(order.info.deadline),
+            1000,
+            1100
         );
         SpotOrderV2 memory orderV2 = SpotOrderV2(
             order.info.trader,
@@ -208,14 +204,8 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             order.baseToken,
             order.baseTokenAmount,
             order.quoteTokenAmount,
-            encodeParams(
-                false,
-                10010,
-                uint64(block.timestamp - 1 minutes),
-                uint64(block.timestamp + 4 minutes),
-                uint64(order.info.deadline)
-            ),
-            Constants.Q96
+            params1,
+            params2
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);

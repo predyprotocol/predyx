@@ -18,7 +18,7 @@ struct SpotOrderV2 {
     int256 baseTokenAmount;
     uint256 quoteTokenAmount;
     bytes32 params1;
-    uint256 params2;
+    bytes32 params2;
 }
 
 /**
@@ -26,14 +26,14 @@ struct SpotOrderV2 {
  * Optimizing calldata size in this contract since L2 calldata is relatively expensive.
  */
 contract SpotMarket is SpotMarketV1 {
-    address internal immutable _dutchOrderValidator;
-    address internal immutable _limitOrderValidator;
+    address internal immutable DUTCH_ORDER_VALIDATOR;
+    address internal immutable LIMIT_ORDER_VALIDATOR;
 
     constructor(address permit2Address, address dutchOrderValidator, address limitOrderValidator)
         SpotMarketV1(permit2Address)
     {
-        _dutchOrderValidator = dutchOrderValidator;
-        _limitOrderValidator = limitOrderValidator;
+        DUTCH_ORDER_VALIDATOR = dutchOrderValidator;
+        LIMIT_ORDER_VALIDATOR = limitOrderValidator;
     }
 
     function executeOrderV2(SpotOrderV2 memory orderV2, bytes memory sig, SettlementParams memory settlementParams)
@@ -56,26 +56,26 @@ contract SpotMarket is SpotMarketV1 {
         return _executeOrder(order, sig, settlementParams);
     }
 
-    function getValidationDate(bytes32 params1, uint256 params2)
+    function getValidationDate(bytes32 params1, bytes32 params2)
         internal
         view
         returns (uint64 deadline, address validatorAddress, bytes memory validationData)
     {
         bool isLimit;
-        uint32 decay;
         uint64 startTime;
         uint64 endTime;
+        uint128 startAmount;
+        uint128 endAmount;
 
-        (isLimit, decay, startTime, endTime, deadline) = L2Decoder.decodeSpotOrderParams(params1);
+        (isLimit, startTime, endTime, deadline, startAmount, endAmount) =
+            L2Decoder.decodeSpotOrderParams(params1, params2);
 
         if (isLimit) {
-            validatorAddress = _limitOrderValidator;
-            validationData = abi.encode(SpotLimitOrderValidationData(params2));
+            validatorAddress = LIMIT_ORDER_VALIDATOR;
+            validationData = abi.encode(SpotLimitOrderValidationData(startAmount));
         } else {
-            validatorAddress = _dutchOrderValidator;
-            validationData = abi.encode(
-                SpotDutchOrderValidationData(params2, params2 * (10000 + decay - 10000) / 10000, startTime, endTime)
-            );
+            validatorAddress = DUTCH_ORDER_VALIDATOR;
+            validationData = abi.encode(SpotDutchOrderValidationData(startAmount, endAmount, startTime, endTime));
         }
     }
 }

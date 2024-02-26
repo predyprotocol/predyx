@@ -8,20 +8,23 @@ import {OrderValidatorUtils} from "../utils/OrderValidatorUtils.sol";
 contract TestL2Decoder is Test, OrderValidatorUtils {
     function testSucceedsToDecodeSpotParams(
         bool isLimit,
-        uint32 decay,
         uint64 startTime,
         uint32 untilEndTime,
-        uint64 deadline
+        uint64 deadline,
+        uint128 startAmount,
+        uint128 endAmount
     ) public {
-        bytes32 params = encodeParams(isLimit, decay, startTime, untilEndTime, deadline);
+        (bytes32 params1, bytes32 params2) =
+            encodeParams(isLimit, startTime, untilEndTime, deadline, startAmount, endAmount);
 
-        (bool a, uint32 b, uint64 c, uint64 d, uint64 e) = L2Decoder.decodeSpotOrderParams(params);
+        (bool a, uint64 b, uint64 c, uint64 d, uint128 e, uint128 f) = L2Decoder.decodeSpotOrderParams(params1, params2);
 
         assertEq(a, isLimit);
-        assertEq(b, decay);
-        assertEq(c, startTime);
-        assertEq(d, untilEndTime);
-        assertEq(e, deadline);
+        assertEq(b, startTime);
+        assertEq(c, untilEndTime);
+        assertEq(d, deadline);
+        assertEq(e, startAmount);
+        assertEq(f, endAmount);
     }
 
     function testSucceedsToDecodePerpParams() public {

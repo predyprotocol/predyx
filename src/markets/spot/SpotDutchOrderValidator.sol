@@ -7,8 +7,8 @@ import {DecayLib} from "../../libraries/orders/DecayLib.sol";
 import {SpotOrder} from "./SpotOrder.sol";
 
 struct SpotDutchOrderValidationData {
-    uint256 startPrice;
-    uint256 endPrice;
+    uint256 startAmount;
+    uint256 endAmount;
     uint256 startTime;
     uint256 endTime;
 }
@@ -25,18 +25,18 @@ contract SpotDutchOrderValidator {
         SpotDutchOrderValidationData memory validationData =
             abi.decode(spotOrder.validationData, (SpotDutchOrderValidationData));
 
-        uint256 decayedPrice = DecayLib.decay(
-            validationData.startPrice, validationData.endPrice, validationData.startTime, validationData.endTime
+        uint256 decayedAmount = DecayLib.decay(
+            validationData.startAmount, validationData.endAmount, validationData.startTime, validationData.endTime
         );
 
         if (spotOrder.baseTokenAmount != 0) {
-            uint256 tradePrice = Math.abs(quoteTokenAmount) * Constants.Q96 / Math.abs(spotOrder.baseTokenAmount);
+            uint256 quoteTokenAmountAbs = Math.abs(quoteTokenAmount);
 
-            if (spotOrder.baseTokenAmount > 0 && decayedPrice < tradePrice) {
+            if (spotOrder.baseTokenAmount > 0 && decayedAmount < quoteTokenAmountAbs) {
                 revert PriceGreaterThanLimit();
             }
 
-            if (spotOrder.baseTokenAmount < 0 && decayedPrice > tradePrice) {
+            if (spotOrder.baseTokenAmount < 0 && decayedAmount > quoteTokenAmountAbs) {
                 revert PriceLessThanLimit();
             }
         }

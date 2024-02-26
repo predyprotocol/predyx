@@ -18,16 +18,22 @@ contract OrderValidatorUtils {
         }
     }
 
-    function encodeParams(bool isLimit, uint32 decay, uint64 startTime, uint64 endTime, uint64 deadline)
-        internal
-        pure
-        returns (bytes32 params)
-    {
+    function encodeParams(
+        bool isLimit,
+        uint64 startTime,
+        uint64 endTime,
+        uint64 deadline,
+        uint128 startAmount,
+        uint128 endAmount
+    ) internal pure returns (bytes32 params1, bytes32 params2) {
         uint32 isLimitUint = isLimit ? 1 : 0;
 
         assembly {
-            params :=
-                add(deadline, add(shl(64, startTime), add(shl(128, endTime), add(shl(192, decay), shl(224, isLimitUint)))))
+            params1 := add(deadline, add(shl(64, startTime), add(shl(128, endTime), shl(192, isLimitUint))))
+        }
+
+        assembly {
+            params2 := add(startAmount, shl(128, endAmount))
         }
     }
 }
