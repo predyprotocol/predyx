@@ -49,7 +49,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     enum CallbackSource {
         TRADE,
         TRADE3,
-        QUOTE
+        QUOTE,
+        QUOTE3
     }
 
     struct CallbackData {
@@ -109,6 +110,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                 tradeParams.tradeAmount, 0, callbackData.validationData, tradeResult
             );
 
+            _revertTradeResult(tradeResult);
+        } else if (callbackData.callbackSource == CallbackSource.QUOTE3) {
             _revertTradeResult(tradeResult);
         } else if (tradeResult.minMargin == 0) {
             if (callbackData.marginAmountUpdate > 0) {
@@ -409,6 +412,44 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         perpOrder.validationData,
                         perpOrder.leverage,
                         PerpOrderLib.resolve(perpOrder, bytes(""))
+                    )
+                )
+            ),
+            _getSettlementData(settlementParams, filler)
+        );
+    }
+
+    /// @notice Estimate transaction results and return with revert message
+    function quoteExecuteOrderV3(PerpOrderV3 memory perpOrder, SettlementParams memory settlementParams, address filler)
+        external
+    {
+        UserPosition memory userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
+
+        int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
+            _predyPool.getVault(userPosition.vaultId).openPosition.perp.amount,
+            perpOrder.tradeAmount,
+            perpOrder.reduceOnly,
+            perpOrder.closePosition
+        );
+
+        if (tradeAmount == 0) {
+            revert AmountIsZero();
+        }
+        _predyPool.trade(
+            IPredyPool.TradeParams(
+                perpOrder.pairId,
+                userPosition.vaultId,
+                tradeAmount,
+                0,
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.QUOTE3,
+                        perpOrder.info.trader,
+                        0,
+                        address(0),
+                        bytes(""),
+                        perpOrder.leverage,
+                        PerpOrderV3Lib.resolve(perpOrder, bytes(""))
                     )
                 )
             ),

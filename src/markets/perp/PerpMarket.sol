@@ -4,9 +4,11 @@ pragma solidity ^0.8.17;
 import {PerpMarketV1} from "./PerpMarketV1.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {PerpOrder} from "./PerpOrder.sol";
+import {PerpOrderV3} from "./PerpOrderV3.sol";
 import {OrderInfo} from "../../libraries/orders/OrderInfoLib.sol";
 import {L2Decoder} from "../L2Decoder.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
+import {DataType} from "../../libraries/DataType.sol";
 
 struct PerpOrderV2 {
     address trader;
@@ -16,6 +18,17 @@ struct PerpOrderV2 {
     int256 marginAmount;
     address validatorAddress;
     bytes validationData;
+}
+
+struct PerpOrderV3L2 {
+    address trader;
+    uint256 nonce;
+    int256 tradeAmount;
+    uint256 marginAmount;
+    uint256 limitPrice;
+    uint256 stopPrice;
+    bytes32 data1;
+    bytes auctionData;
 }
 
 /**
@@ -47,5 +60,30 @@ contract PerpMarket is PerpMarketV1 {
         });
 
         return _executeOrder(order, sig, settlementParams);
+    }
+
+    function executeOrderV3L2(
+        PerpOrderV3L2 memory compressedOrder,
+        bytes memory sig,
+        SettlementParams memory settlementParams
+    ) external nonReentrant returns (IPredyPool.TradeResult memory) {
+        (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition) =
+            L2Decoder.decodePerpOrderV3Params(compressedOrder.data1);
+
+        PerpOrderV3 memory order = PerpOrderV3({
+            info: OrderInfo(address(this), compressedOrder.trader, compressedOrder.nonce, deadline),
+            pairId: pairId,
+            entryTokenAddress: _quoteTokenMap[pairId],
+            tradeAmount: compressedOrder.tradeAmount,
+            marginAmount: compressedOrder.marginAmount,
+            limitPrice: compressedOrder.limitPrice,
+            stopPrice: compressedOrder.stopPrice,
+            leverage: leverage,
+            reduceOnly: reduceOnly,
+            closePosition: closePosition,
+            auctionData: compressedOrder.auctionData
+        });
+
+        return _executeOrderV3(order, sig, settlementParams);
     }
 }

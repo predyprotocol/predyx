@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {PerpMarket} from "../markets/perp/PerpMarket.sol";
 import {PerpOrder} from "../markets/perp/PerpOrder.sol";
+import {PerpOrderV3} from "../markets/perp/PerpOrderV3.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
@@ -23,6 +24,17 @@ contract PerpMarketQuoter {
         address filler
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         try perpMarket.quoteExecuteOrder(order, settlementParams, filler) {}
+        catch (bytes memory reason) {
+            tradeResult = _parseRevertReason(reason);
+        }
+    }
+
+    function quoteExecuteOrderV3(
+        PerpOrderV3 memory order,
+        IFillerMarket.SettlementParams memory settlementParams,
+        address filler
+    ) external returns (IPredyPool.TradeResult memory tradeResult) {
+        try perpMarket.quoteExecuteOrderV3(order, settlementParams, filler) {}
         catch (bytes memory reason) {
             tradeResult = _parseRevertReason(reason);
         }

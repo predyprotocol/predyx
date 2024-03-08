@@ -46,4 +46,24 @@ library L2Decoder {
             leverage := and(shr(128, args), 0xFF)
         }
     }
+
+    function decodePerpOrderV3Params(bytes32 args)
+        internal
+        pure
+        returns (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition)
+    {
+        uint8 reduceOnlyUint;
+        uint8 closePositionUint;
+
+        assembly {
+            deadline := and(args, 0xFFFFFFFFFFFFFFFF)
+            pairId := and(shr(64, args), 0xFFFFFFFFFFFFFFFF)
+            leverage := and(shr(128, args), 0xFF)
+            reduceOnlyUint := and(shr(136, args), 0xFF)
+            closePositionUint := and(shr(144, args), 0xFF)
+        }
+
+        reduceOnly = reduceOnlyUint == 1;
+        closePosition = closePositionUint == 1;
+    }
 }
