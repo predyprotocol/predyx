@@ -6,6 +6,47 @@ import {PerpMarketLib} from "../../../src/markets/perp/PerpMarketLib.sol";
 import {IPredyPool} from "../../../src/interfaces/IPredyPool.sol";
 
 contract TestPerpMarketLib is Test {
+    function testCalculateTradeAmount(int256 currentPositionAmount, int256 tradeAmount) public {
+        bool reduceOnly = false;
+        bool closePosition = false;
+
+        assertEq(
+            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, tradeAmount, reduceOnly, closePosition),
+            tradeAmount
+        );
+    }
+
+    function testCalculateTradeAmountWithReduceOnly(int256 tradeAmount) public {
+        tradeAmount = int256(bound(tradeAmount, -2 ** 100, 2 ** 100));
+
+        bool reduceOnly = true;
+        bool closePosition = false;
+        int256 currentPositionAmount = 1e6;
+
+        int256 result = PerpMarketLib.getFinalTradeAmount(currentPositionAmount, tradeAmount, reduceOnly, closePosition);
+
+        if (-1e6 <= tradeAmount && tradeAmount < 0) {
+            assertEq(result, tradeAmount);
+        } else if (tradeAmount < -1e6) {
+            assertEq(result, -1e6);
+        } else {
+            assertEq(result, 0);
+        }
+    }
+
+    function testCalculateTradeAmountWithClosePosition(int256 currentPositionAmount, int256 tradeAmount) public {
+        currentPositionAmount = int256(bound(currentPositionAmount, -2 ** 100, 2 ** 100));
+        tradeAmount = int256(bound(tradeAmount, -2 ** 100, 2 ** 100));
+
+        bool reduceOnly = false;
+        bool closePosition = true;
+
+        assertEq(
+            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, tradeAmount, reduceOnly, closePosition),
+            -currentPositionAmount
+        );
+    }
+
     function testValidateTradeBuy(uint256 entryUpdate) public {
         entryUpdate = bound(entryUpdate, 0, 2 ** 100);
 

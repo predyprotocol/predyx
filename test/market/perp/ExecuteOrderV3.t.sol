@@ -63,6 +63,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 0,
                 0,
                 1,
+                false,
+                false,
                 abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
             );
 
@@ -96,7 +98,9 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 0,
                 0,
                 2,
-                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(2 * Constants.Q96, 2 * Constants.Q96, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -114,12 +118,14 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         uint256 balance2 = currency1.balanceOf(from1);
 
-        assertEq(balance0 - balance1, 2000000);
-        assertEq(balance2 - balance1, 1997996);
+        assertEq(balance0 - balance1, 2001001);
+        assertEq(balance2 - balance1, 1998997);
     }
 
-    // netting
-    function testExecuteOrderSucceedsWithNetting() public {
+    // reduce and increase position
+    function testExecuteOrderV3SucceedsWithReducingAndIncreasing() public {
+        uint256 balance0 = currency1.balanceOf(from1);
+
         {
             PerpOrderV3 memory order = PerpOrderV3(
                 OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
@@ -130,6 +136,177 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 0,
                 0,
                 2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(0));
+        }
+
+        uint256 balance1 = currency1.balanceOf(from1);
+
+        uint256 snapshot = vm.snapshot();
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                500 * 1e4,
+                0,
+                calculateLimitPrice(1200, 1000),
+                0,
+                2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(1200 * 1e4));
+
+            uint256 balance2 = currency1.balanceOf(from1);
+
+            assertEq(balance0 - balance1, 5005001);
+            assertEq(balance2 - balance1, 2497498);
+        }
+
+        vm.revertTo(snapshot);
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                -500 * 1e4,
+                1e8,
+                calculateLimitPrice(800, 1000),
+                0,
+                2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(400 * 1e4));
+        }
+
+        uint256 balance3 = currency1.balanceOf(from1);
+
+        assertEq(balance1 - balance3, 2502501);
+    }
+
+    function testExecuteOrderV3WithReduceOnly() public {
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000 * 1e4,
+                2 * 1e8,
+                0,
+                0,
+                2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(0));
+        }
+
+        uint256 snapshot = vm.snapshot();
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                500 * 1e4,
+                0,
+                calculateLimitPrice(1200, 1000),
+                0,
+                2,
+                true,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(1200 * 1e4));
+        }
+
+        vm.revertTo(snapshot);
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                -500 * 1e4,
+                1e8,
+                calculateLimitPrice(800, 1000),
+                0,
+                2,
+                true,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(400 * 1e4);
+
+            vm.expectRevert(PerpMarketV1.AmountIsZero.selector);
+            perpMarket.executeOrderV3(signedOrder, settlementData);
+        }
+    }
+
+    function testExecuteOrderV3WithClosePosition() public {
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000 * 1e4,
+                2 * 1e8,
+                0,
+                0,
+                2,
+                false,
+                true,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+
+            vm.expectRevert(PerpMarketV1.AmountIsZero.selector);
+            perpMarket.executeOrderV3(signedOrder, settlementData);
+        }
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -1000 * 1e4,
+                2 * 1e8,
+                0,
+                0,
+                2,
+                false,
+                false,
                 abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
             );
 
@@ -143,11 +320,13 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
                 1,
                 address(currency1),
-                1000 * 1e4,
+                0,
+                0,
                 calculateLimitPrice(1200, 1000),
                 0,
-                0,
                 2,
+                false,
+                true,
                 abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
             );
 
@@ -168,6 +347,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
             0,
             0,
             2,
+            false,
+            false,
             abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
         );
 
@@ -190,6 +371,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 0,
                 0,
                 2,
+                false,
+                false,
                 abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
             );
 
@@ -208,7 +391,9 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 0,
                 0,
                 2,
-                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(2 * Constants.Q96, 2 * Constants.Q96, 0, 0))
             );
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -232,6 +417,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
             calculateLimitPrice(1200, 1000),
             0,
             2,
+            false,
+            false,
             abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
         );
 
@@ -257,6 +444,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 calculateLimitPrice(1200, 1000),
                 0,
                 2,
+                false,
+                false,
                 abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
             );
 
@@ -275,6 +464,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 calculateLimitPrice(1200, 1000),
                 0,
                 2,
+                false,
+                false,
                 abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
             );
 
@@ -297,6 +488,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
             calculateLimitPrice(999, 1000),
             0,
             2,
+            false,
+            false,
             abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
         );
 
@@ -319,6 +512,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
             calculateLimitPrice(1001, 1000),
             0,
             2,
+            false,
+            false,
             abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
         );
 
@@ -341,6 +536,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
             0,
             calculateLimitPrice(1001, 1000),
             2,
+            false,
+            false,
             abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
         );
 
@@ -363,6 +560,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
             0,
             calculateLimitPrice(999, 1000),
             2,
+            false,
+            false,
             abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
         );
 

@@ -12,6 +12,7 @@ import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
+import {PositionCalculator} from "../../libraries/PositionCalculator.sol";
 import {Constants} from "../../libraries/Constants.sol";
 import {Perp} from "../../libraries/Perp.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
@@ -279,7 +280,14 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         userPosition.lastLeverage = perpOrder.leverage;
 
-        if (perpOrder.tradeAmount == 0) {
+        int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
+            _predyPool.getVault(userPosition.vaultId).openPosition.perp.amount,
+            perpOrder.tradeAmount,
+            perpOrder.reduceOnly,
+            perpOrder.closePosition
+        );
+
+        if (tradeAmount == 0) {
             revert AmountIsZero();
         }
 
@@ -287,7 +295,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
             IPredyPool.TradeParams(
                 perpOrder.pairId,
                 userPosition.vaultId,
-                perpOrder.tradeAmount,
+                tradeAmount,
                 0,
                 abi.encode(
                     CallbackData(
@@ -317,13 +325,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
             _predyPool.updateRecepient(tradeResult.vaultId, perpOrder.info.trader);
         }
 
-        if (perpOrder.limitPrice == 0 && perpOrder.stopPrice == 0) {
-            // market order
-            return tradeResult;
-        }
-
         PerpMarketLib.validateTrade(
-            tradeResult, perpOrder.tradeAmount, perpOrder.limitPrice, perpOrder.stopPrice, perpOrder.auctionData
+            tradeResult, tradeAmount, perpOrder.limitPrice, perpOrder.stopPrice, perpOrder.auctionData
         );
 
         return tradeResult;
@@ -342,13 +345,18 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         uint256 netValue = _calculateNetValue(vault, price);
 
-        return int256(netValue / leverage) - vault.margin;
+        return int256(netValue / leverage) - _calculatePositionValue(vault, sqrtPrice);
     }
 
     function _calculateNetValue(DataType.Vault memory vault, uint256 price) internal pure returns (uint256) {
         int256 positionAmount = vault.openPosition.perp.amount;
 
         return Math.abs(positionAmount) * price / Constants.Q96;
+    }
+
+    function _calculatePositionValue(DataType.Vault memory vault, uint256 sqrtPrice) internal pure returns (int256) {
+        return PositionCalculator.calculateValue(sqrtPrice, PositionCalculator.getPosition(vault.openPosition))
+            + vault.margin;
     }
 
     function getUserPosition(address owner, uint256 pairId)

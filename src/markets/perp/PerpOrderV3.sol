@@ -15,6 +15,8 @@ struct PerpOrderV3 {
     uint256 limitPrice;
     uint256 stopPrice;
     uint8 leverage;
+    bool reduceOnly;
+    bool closePosition;
     bytes auctionData;
 }
 
@@ -32,6 +34,8 @@ library PerpOrderV3Lib {
         "uint256 limitPrice,",
         "uint256 stopPrice,",
         "uint8 leverage,",
+        "bool reduceOnly,",
+        "bool closePosition,",
         "bytes auctionData)"
     );
 
@@ -60,6 +64,8 @@ library PerpOrderV3Lib {
                 order.marginAmount,
                 order.limitPrice,
                 order.stopPrice,
+                order.reduceOnly,
+                order.closePosition,
                 order.leverage,
                 keccak256(order.auctionData)
             )

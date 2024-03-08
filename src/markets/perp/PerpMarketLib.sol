@@ -23,6 +23,46 @@ library PerpMarketLib {
         uint256 endTime;
     }
 
+    function getFinalTradeAmount(int256 currentPositionAmount, int256 tradeAmount, bool reduceOnly, bool closePosition)
+        internal
+        pure
+        returns (int256 finalTradeAmount)
+    {
+        if (closePosition) {
+            return -currentPositionAmount;
+        }
+
+        if (reduceOnly) {
+            if (currentPositionAmount == 0) {
+                return 0;
+            }
+
+            if (currentPositionAmount > 0) {
+                if (tradeAmount < 0) {
+                    if (currentPositionAmount > -tradeAmount) {
+                        return tradeAmount;
+                    } else {
+                        return -currentPositionAmount;
+                    }
+                } else {
+                    return 0;
+                }
+            } else {
+                if (tradeAmount > 0) {
+                    if (-currentPositionAmount > tradeAmount) {
+                        return tradeAmount;
+                    } else {
+                        return -currentPositionAmount;
+                    }
+                } else {
+                    return 0;
+                }
+            }
+        }
+
+        return tradeAmount;
+    }
+
     function validateTrade(
         IPredyPool.TradeResult memory tradeResult,
         int256 tradeAmount,
