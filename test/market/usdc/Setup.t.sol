@@ -57,7 +57,7 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
         _from = vm.addr(_fromPrivateKey);
 
         // Gets tokens
-        deal(address(_usdc), address(this), 10000 * 1e6);
+        deal(address(_usdc), address(this), 20000 * 1e6);
         deal(address(_usdc), _from, 10000 * 1e6);
         deal(address(_weth), address(this), 1000 * 1e18);
 
@@ -83,8 +83,8 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
         // _weth.approve(address(settlement), type(uint256).max);
         // _usdc.approve(address(settlement), type(uint256).max);
 
-        _predyPool.supply(1, true, 5000 * 1e6);
-        _predyPool.supply(1, false, 1e18);
+        _predyPool.supply(1, true, 10000 * 1e6);
+        _predyPool.supply(1, false, 10 * 1e18);
     }
 
     function registerPair(address marginId, address priceFeed) public returns (uint256) {

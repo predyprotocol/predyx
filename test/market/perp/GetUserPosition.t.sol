@@ -41,7 +41,7 @@ contract TestPerpGetUserPosition is TestPerpMarket {
             1,
             address(currency1),
             -4 * 1e8,
-            1e8,
+            400000000,
             0,
             0,
             0,
