@@ -49,6 +49,13 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
         currency1.approve(address(permit2), type(uint256).max);
     }
 
+    function testAmountIsZeroSignature() public {
+        assertEq(
+            PerpMarketV1.AmountIsZero.selector,
+            bytes32(0x43ad20fc00000000000000000000000000000000000000000000000000000000)
+        );
+    }
+
     // executeOrderV3 succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderV3SucceedsForOpen() public {
         uint256 balance0 = currency1.balanceOf(from1);

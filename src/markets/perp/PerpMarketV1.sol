@@ -57,8 +57,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         CallbackSource callbackSource;
         address trader;
         int256 marginAmountUpdate;
-        address validatorAddress;
-        bytes validationData;
         uint8 leverage;
         ResolvedOrder resolvedOrder;
     }
@@ -106,10 +104,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
         if (callbackData.callbackSource == CallbackSource.QUOTE) {
-            IOrderValidator(callbackData.validatorAddress).validate(
-                tradeParams.tradeAmount, 0, callbackData.validationData, tradeResult
-            );
-
             _revertTradeResult(tradeResult);
         } else if (callbackData.callbackSource == CallbackSource.QUOTE3) {
             _revertTradeResult(tradeResult);
@@ -241,8 +235,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         CallbackSource.TRADE,
                         perpOrder.info.trader,
                         perpOrder.marginAmount,
-                        address(0),
-                        bytes(""),
                         perpOrder.leverage,
                         resolvedOrder
                     )
@@ -305,8 +297,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         CallbackSource.TRADE3,
                         perpOrder.info.trader,
                         0,
-                        address(0),
-                        bytes(""),
                         perpOrder.leverage,
                         resolvedOrder
                     )
@@ -408,8 +398,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         CallbackSource.QUOTE,
                         perpOrder.info.trader,
                         perpOrder.marginAmount,
-                        perpOrder.validatorAddress,
-                        perpOrder.validationData,
                         perpOrder.leverage,
                         PerpOrderLib.resolve(perpOrder, bytes(""))
                     )
@@ -446,8 +434,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         CallbackSource.QUOTE3,
                         perpOrder.info.trader,
                         0,
-                        address(0),
-                        bytes(""),
                         perpOrder.leverage,
                         PerpOrderV3Lib.resolve(perpOrder, bytes(""))
                     )
