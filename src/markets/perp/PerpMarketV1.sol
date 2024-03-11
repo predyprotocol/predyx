@@ -107,45 +107,47 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
             _revertTradeResult(tradeResult);
         } else if (callbackData.callbackSource == CallbackSource.QUOTE3) {
             _revertTradeResult(tradeResult);
-        } else if (tradeResult.minMargin == 0) {
-            if (callbackData.marginAmountUpdate > 0) {
-                // to avoid funds locked in this contract
-                revert UpdateMarginMustNotBePositive();
-            }
-
-            DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
-
-            uint256 closeValue = uint256(vault.margin);
-
-            _predyPool.take(true, callbackData.trader, closeValue);
-
-            emit PerpTraded(
-                callbackData.trader,
-                tradeParams.pairId,
-                tradeResult.vaultId,
-                tradeParams.tradeAmount,
-                tradeResult.payoff,
-                tradeResult.fee,
-                -int256(closeValue)
-            );
         } else if (callbackData.callbackSource == CallbackSource.TRADE) {
-            int256 marginAmountUpdate = callbackData.marginAmountUpdate;
+            if (tradeResult.minMargin == 0) {
+                if (callbackData.marginAmountUpdate > 0) {
+                    // to avoid funds locked in this contract
+                    revert UpdateMarginMustNotBePositive();
+                }
 
-            if (marginAmountUpdate > 0) {
-                quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
-            } else if (marginAmountUpdate < 0) {
-                _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
+                DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
+
+                uint256 closeValue = uint256(vault.margin);
+
+                _predyPool.take(true, callbackData.trader, closeValue);
+
+                emit PerpTraded(
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeResult.vaultId,
+                    tradeParams.tradeAmount,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    -int256(closeValue)
+                );
+            } else {
+                int256 marginAmountUpdate = callbackData.marginAmountUpdate;
+
+                if (marginAmountUpdate > 0) {
+                    quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
+                } else if (marginAmountUpdate < 0) {
+                    _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
+                }
+
+                emit PerpTraded(
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeResult.vaultId,
+                    tradeParams.tradeAmount,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    marginAmountUpdate
+                );
             }
-
-            emit PerpTraded(
-                callbackData.trader,
-                tradeParams.pairId,
-                tradeResult.vaultId,
-                tradeParams.tradeAmount,
-                tradeResult.payoff,
-                tradeResult.fee,
-                marginAmountUpdate
-            );
         } else if (callbackData.callbackSource == CallbackSource.TRADE3) {
             int256 marginAmountUpdate =
                 _calculateInitialMargin(tradeParams.vaultId, tradeParams.pairId, callbackData.leverage);
@@ -293,13 +295,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                 tradeAmount,
                 0,
                 abi.encode(
-                    CallbackData(
-                        CallbackSource.TRADE3,
-                        perpOrder.info.trader,
-                        0,
-                        perpOrder.leverage,
-                        resolvedOrder
-                    )
+                    CallbackData(CallbackSource.TRADE3, perpOrder.info.trader, 0, perpOrder.leverage, resolvedOrder)
                 )
             ),
             _getSettlementData(settlementParams)
