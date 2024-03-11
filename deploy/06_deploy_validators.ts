@@ -23,17 +23,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
   })
-
-  // for spot market
-  await deploy('SpotDutchOrderValidator', {
-    from: deployer,
-    log: true,
-  })
-
-  await deploy('SpotLimitOrderValidator', {
-    from: deployer,
-    log: true,
-  })
 }
 
 func.tags = ['validators'];
