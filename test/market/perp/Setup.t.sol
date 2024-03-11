@@ -9,12 +9,14 @@ import {PerpMarket, PerpOrderV2} from "../../../src/markets/perp/PerpMarket.sol"
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {PerpOrder, PerpOrderLib} from "../../../src/markets/perp/PerpOrder.sol";
+import {PerpOrderV3, PerpOrderV3Lib} from "../../../src/markets/perp/PerpOrderV3.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
 contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
     using PerpOrderLib for PerpOrder;
+    using PerpOrderV3Lib for PerpOrderV3;
 
     UniswapSettlement settlement;
     PerpMarket perpMarket;
@@ -61,5 +63,24 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
         );
 
         signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
+    }
+
+    function _createSignedOrder(PerpOrderV3 memory order, uint256 fromPrivateKey)
+        internal
+        view
+        returns (IFillerMarket.SignedOrder memory signedOrder)
+    {
+        bytes32 witness = order.hash();
+
+        bytes memory sig = getPermitSignature(
+            fromPrivateKey,
+            _toPermit(order),
+            address(perpMarket),
+            PerpOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
+
+        signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
     }
 }

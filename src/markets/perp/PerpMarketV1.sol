@@ -12,11 +12,16 @@ import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
+import {PositionCalculator} from "../../libraries/PositionCalculator.sol";
+import {Constants} from "../../libraries/Constants.sol";
+import {Perp} from "../../libraries/Perp.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
 import {Math} from "../../libraries/math/Math.sol";
 import "./PerpOrder.sol";
+import "./PerpOrderV3.sol";
 import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
 import {SettlementCallbackLib} from "../../base/SettlementCallbackLib.sol";
+import {PerpMarketLib} from "./PerpMarketLib.sol";
 
 /**
  * @notice Perp market contract
@@ -31,6 +36,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
     error UpdateMarginMustNotBePositive();
 
+    error AmountIsZero();
+
     struct UserPosition {
         uint256 vaultId;
         uint256 takeProfitPrice;
@@ -41,16 +48,17 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
     enum CallbackSource {
         TRADE,
-        CLOSE,
-        QUOTE
+        TRADE3,
+        QUOTE,
+        QUOTE3
     }
 
     struct CallbackData {
         CallbackSource callbackSource;
         address trader;
         int256 marginAmountUpdate;
-        address validatorAddress;
-        bytes validationData;
+        uint8 leverage;
+        ResolvedOrder resolvedOrder;
     }
 
     IPermit2 private _permit2;
@@ -96,12 +104,10 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
         if (callbackData.callbackSource == CallbackSource.QUOTE) {
-            IOrderValidator(callbackData.validatorAddress).validate(
-                tradeParams.tradeAmount, 0, callbackData.validationData, tradeResult
-            );
-
             _revertTradeResult(tradeResult);
-        } else if (tradeResult.minMargin == 0 || callbackData.callbackSource == CallbackSource.CLOSE) {
+        } else if (callbackData.callbackSource == CallbackSource.QUOTE3) {
+            _revertTradeResult(tradeResult);
+        } else if (tradeResult.minMargin == 0) {
             if (callbackData.marginAmountUpdate > 0) {
                 // to avoid funds locked in this contract
                 revert UpdateMarginMustNotBePositive();
@@ -113,28 +119,44 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
             _predyPool.take(true, callbackData.trader, closeValue);
 
-            if (callbackData.callbackSource == CallbackSource.CLOSE) {
-                emit PerpClosedByTPSLOrder(
-                    callbackData.trader,
-                    tradeParams.pairId,
-                    tradeParams.tradeAmount,
-                    tradeResult.payoff,
-                    tradeResult.fee,
-                    closeValue
-                );
-            } else {
-                emit PerpTraded(
-                    callbackData.trader,
-                    tradeParams.pairId,
-                    tradeResult.vaultId,
-                    tradeParams.tradeAmount,
-                    tradeResult.payoff,
-                    tradeResult.fee,
-                    -int256(closeValue)
-                );
-            }
+            emit PerpTraded(
+                callbackData.trader,
+                tradeParams.pairId,
+                tradeResult.vaultId,
+                tradeParams.tradeAmount,
+                tradeResult.payoff,
+                tradeResult.fee,
+                -int256(closeValue)
+            );
         } else if (callbackData.callbackSource == CallbackSource.TRADE) {
             int256 marginAmountUpdate = callbackData.marginAmountUpdate;
+
+            if (marginAmountUpdate > 0) {
+                quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
+            } else if (marginAmountUpdate < 0) {
+                _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
+            }
+
+            emit PerpTraded(
+                callbackData.trader,
+                tradeParams.pairId,
+                tradeResult.vaultId,
+                tradeParams.tradeAmount,
+                tradeResult.payoff,
+                tradeResult.fee,
+                marginAmountUpdate
+            );
+        } else if (callbackData.callbackSource == CallbackSource.TRADE3) {
+            int256 marginAmountUpdate =
+                _calculateInitialMargin(tradeParams.vaultId, tradeParams.pairId, callbackData.leverage);
+
+            uint256 cost = 0;
+
+            if (marginAmountUpdate > 0) {
+                cost = uint256(marginAmountUpdate);
+            }
+
+            _verifyOrder(callbackData.resolvedOrder, cost);
 
             if (marginAmountUpdate > 0) {
                 quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
@@ -169,6 +191,21 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         return _executeOrder(perpOrder, order.sig, settlementParams);
     }
 
+    /**
+     * @notice Verifies signature of the order_v3 and executes trade
+     * @param order The order signed by trader
+     * @param settlementParams The route of settlement created by filler
+     */
+    function executeOrderV3(SignedOrder memory order, SettlementParams memory settlementParams)
+        external
+        nonReentrant
+        returns (IPredyPool.TradeResult memory)
+    {
+        PerpOrderV3 memory perpOrder = abi.decode(order.order, (PerpOrderV3));
+
+        return _executeOrderV3(perpOrder, order.sig, settlementParams);
+    }
+
     function _executeOrder(PerpOrder memory perpOrder, bytes memory sig, SettlementParams memory settlementParams)
         internal
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -177,14 +214,14 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         _validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
 
-        _verifyOrder(resolvedOrder);
+        _verifyOrder(resolvedOrder, resolvedOrder.amount);
 
         UserPosition storage userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
 
         _saveUserPosition(userPosition, perpOrder);
 
-        if (perpOrder.tradeAmount == 0 && perpOrder.marginAmount == 0) {
-            return tradeResult;
+        if (perpOrder.tradeAmount == 0) {
+            revert AmountIsZero();
         }
 
         tradeResult = _predyPool.trade(
@@ -195,7 +232,11 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                 0,
                 abi.encode(
                     CallbackData(
-                        CallbackSource.TRADE, perpOrder.info.trader, perpOrder.marginAmount, address(0), bytes("")
+                        CallbackSource.TRADE,
+                        perpOrder.info.trader,
+                        perpOrder.marginAmount,
+                        perpOrder.leverage,
+                        resolvedOrder
                     )
                 )
             ),
@@ -222,48 +263,93 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         return tradeResult;
     }
 
-    /**
-     * @notice Closes a position if TakeProfit/StopLoss condition is met.
-     * @param owner owner address
-     * @param pairId The id of pair
-     * @param settlementParams The route of settlement created by filler
-     * @return tradeResult The result of trade
-     * @dev Anyone can call this function
-     */
-    function close(address owner, uint256 pairId, SettlementParams memory settlementParams)
-        external
-        nonReentrant
+    function _executeOrderV3(PerpOrderV3 memory perpOrder, bytes memory sig, SettlementParams memory settlementParams)
+        internal
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        UserPosition storage userPosition = userPositions[owner][pairId];
+        ResolvedOrder memory resolvedOrder = PerpOrderV3Lib.resolve(perpOrder, sig);
 
-        require(userPosition.vaultId > 0);
+        _validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
 
-        DataType.Vault memory vault = _predyPool.getVault(userPosition.vaultId);
+        UserPosition storage userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
 
-        uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(vault.openPosition.pairId);
+        userPosition.lastLeverage = perpOrder.leverage;
 
-        bool slConditionMet = _getSLCondition(vault.openPosition.perp.amount > 0, userPosition, sqrtPrice);
+        int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
+            _predyPool.getVault(userPosition.vaultId).openPosition.perp.amount,
+            perpOrder.tradeAmount,
+            perpOrder.reduceOnly,
+            perpOrder.closePosition
+        );
+
+        if (tradeAmount == 0) {
+            revert AmountIsZero();
+        }
 
         tradeResult = _predyPool.trade(
             IPredyPool.TradeParams(
-                vault.openPosition.pairId,
+                perpOrder.pairId,
                 userPosition.vaultId,
-                -vault.openPosition.perp.amount,
-                -vault.openPosition.sqrtPerp.amount,
-                abi.encode(CallbackData(CallbackSource.CLOSE, owner, 0, address(0), bytes("")))
+                tradeAmount,
+                0,
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.TRADE3,
+                        perpOrder.info.trader,
+                        0,
+                        perpOrder.leverage,
+                        resolvedOrder
+                    )
+                )
             ),
             _getSettlementData(settlementParams)
         );
 
-        if (slConditionMet) {
-            SlippageLib.checkPrice(sqrtPrice, tradeResult, userPosition.slippageTolerance + Bps.ONE, 0);
-        } else {
-            if (!_getTPCondition(vault.openPosition.perp.amount > 0, userPosition, Math.abs(tradeResult.averagePrice)))
-            {
-                revert TPSLConditionDoesNotMatch();
+        if (tradeResult.minMargin > 0) {
+            // only whitelisted filler can open position
+            if (msg.sender != whitelistFiller) {
+                revert CallerIsNotFiller();
             }
         }
+
+        if (userPosition.vaultId == 0) {
+            userPosition.vaultId = tradeResult.vaultId;
+
+            _predyPool.updateRecepient(tradeResult.vaultId, perpOrder.info.trader);
+        }
+
+        PerpMarketLib.validateTrade(
+            tradeResult, tradeAmount, perpOrder.limitPrice, perpOrder.stopPrice, perpOrder.auctionData
+        );
+
+        return tradeResult;
+    }
+
+    function _calculateInitialMargin(uint256 vaultId, uint256 pairId, uint256 leverage)
+        internal
+        view
+        returns (int256)
+    {
+        DataType.Vault memory vault = _predyPool.getVault(vaultId);
+
+        uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(pairId);
+
+        uint256 price = sqrtPrice * sqrtPrice / Constants.Q96;
+
+        uint256 netValue = _calculateNetValue(vault, price);
+
+        return int256(netValue / leverage) - _calculatePositionValue(vault, sqrtPrice);
+    }
+
+    function _calculateNetValue(DataType.Vault memory vault, uint256 price) internal pure returns (uint256) {
+        int256 positionAmount = vault.openPosition.perp.amount;
+
+        return Math.abs(positionAmount) * price / Constants.Q96;
+    }
+
+    function _calculatePositionValue(DataType.Vault memory vault, uint256 sqrtPrice) internal pure returns (int256) {
+        return PositionCalculator.calculateValue(sqrtPrice, PositionCalculator.getPosition(vault.openPosition))
+            + vault.margin;
     }
 
     function getUserPosition(address owner, uint256 pairId)
@@ -297,40 +383,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         );
     }
 
-    function _getSLCondition(bool isLong, UserPosition memory userPosition, uint256 sqrtIndexPrice)
-        internal
-        pure
-        returns (bool)
-    {
-        uint256 priceX96 = Math.calSqrtPriceToPrice(sqrtIndexPrice);
-
-        if (userPosition.stopLossPrice == 0) {
-            return false;
-        }
-
-        if (isLong) {
-            return priceX96 <= userPosition.stopLossPrice;
-        } else {
-            return userPosition.stopLossPrice <= priceX96;
-        }
-    }
-
-    function _getTPCondition(bool isLong, UserPosition memory userPosition, uint256 averagePrice)
-        internal
-        pure
-        returns (bool)
-    {
-        if (userPosition.takeProfitPrice == 0) {
-            return false;
-        }
-
-        if (isLong) {
-            return userPosition.takeProfitPrice <= averagePrice;
-        } else {
-            return averagePrice <= userPosition.takeProfitPrice;
-        }
-    }
-
     /// @notice Estimate transaction results and return with revert message
     function quoteExecuteOrder(PerpOrder memory perpOrder, SettlementParams memory settlementParams, address filler)
         external
@@ -346,8 +398,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         CallbackSource.QUOTE,
                         perpOrder.info.trader,
                         perpOrder.marginAmount,
-                        perpOrder.validatorAddress,
-                        perpOrder.validationData
+                        perpOrder.leverage,
+                        PerpOrderLib.resolve(perpOrder, bytes(""))
                     )
                 )
             ),
@@ -355,12 +407,48 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         );
     }
 
-    function _verifyOrder(ResolvedOrder memory order) internal {
+    /// @notice Estimate transaction results and return with revert message
+    function quoteExecuteOrderV3(PerpOrderV3 memory perpOrder, SettlementParams memory settlementParams, address filler)
+        external
+    {
+        UserPosition memory userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
+
+        int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
+            _predyPool.getVault(userPosition.vaultId).openPosition.perp.amount,
+            perpOrder.tradeAmount,
+            perpOrder.reduceOnly,
+            perpOrder.closePosition
+        );
+
+        if (tradeAmount == 0) {
+            revert AmountIsZero();
+        }
+        _predyPool.trade(
+            IPredyPool.TradeParams(
+                perpOrder.pairId,
+                userPosition.vaultId,
+                tradeAmount,
+                0,
+                abi.encode(
+                    CallbackData(
+                        CallbackSource.QUOTE3,
+                        perpOrder.info.trader,
+                        0,
+                        perpOrder.leverage,
+                        PerpOrderV3Lib.resolve(perpOrder, bytes(""))
+                    )
+                )
+            ),
+            _getSettlementData(settlementParams, filler)
+        );
+    }
+
+    function _verifyOrder(ResolvedOrder memory order, uint256 amount) internal {
         order.validate();
 
         _permit2.permitWitnessTransferFrom(
             order.toPermit(),
-            order.transferDetails(address(this)),
+            ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amount}),
             order.info.trader,
             order.hash,
             PerpOrderLib.PERMIT2_ORDER_TYPE,

@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ISignatureTransfer} from "@uniswap/permit2/src/interfaces/ISignatureTransfer.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {PerpOrder} from "../../src/markets/perp/PerpOrder.sol";
+import {PerpOrderV3} from "../../src/markets/perp/PerpOrderV3.sol";
 import {GammaOrder} from "../../src/markets/gamma/GammaOrder.sol";
 import {PredictOrder} from "../../src/markets/predict/PredictOrder.sol";
 import {PredictCloseOrder} from "../../src/markets/predict/PredictCloseOrder.sol";
@@ -19,6 +20,14 @@ contract SigUtils is Test {
 
     function _toPermit(PerpOrder memory order) internal pure returns (ISignatureTransfer.PermitTransferFrom memory) {
         return _toPermit(order.entryTokenAddress, order.marginAmount, order.info);
+    }
+
+    function _toPermit(PerpOrderV3 memory order) internal pure returns (ISignatureTransfer.PermitTransferFrom memory) {
+        return ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: order.entryTokenAddress, amount: order.marginAmount}),
+            nonce: order.info.nonce,
+            deadline: order.info.deadline
+        });
     }
 
     function _toPermit(GammaOrder memory order) internal pure returns (ISignatureTransfer.PermitTransferFrom memory) {

@@ -44,11 +44,11 @@ contract TestPerpExecLiquidationCall is TestPerpMarket {
             1,
             address(currency1),
             -4 * 1e8,
-            1e8,
+            101000000,
             0,
             0,
             0,
-            2,
+            4,
             address(limitOrderValidator),
             abi.encode(LimitOrderValidationData(0, 0, 0, 0))
         );

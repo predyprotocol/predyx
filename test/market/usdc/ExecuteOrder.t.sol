@@ -36,8 +36,8 @@ contract TestPerpMarketExecuteOrder is TestUSDCPerpMarket {
             OrderInfo(address(perpMarket), _from, 0, block.timestamp + 100),
             1,
             address(_usdc),
-            -1000,
-            2 * 1e6,
+            -1e17,
+            200 * 1e6,
             0,
             0,
             0,
@@ -49,9 +49,9 @@ contract TestPerpMarketExecuteOrder is TestUSDCPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, _fromPrivateKey);
 
         IPredyPool.TradeResult memory tradeResult =
-            perpMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96 * 1600 / 10000));
+            perpMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96 * 2000 * 1e6 / 1e18));
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 159);
+        assertEq(tradeResult.payoff.perpEntryUpdate, 199999999);
         assertEq(tradeResult.payoff.perpPayoff, 0);
     }
 }
