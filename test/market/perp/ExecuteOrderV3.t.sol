@@ -9,6 +9,7 @@ import {PerpMarketV1} from "../../../src/markets/perp/PerpMarketV1.sol";
 import {PerpOrderV3} from "../../../src/markets/perp/PerpOrderV3.sol";
 import {PerpMarketLib} from "../../../src/markets/perp/PerpMarketLib.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
+import {SignatureVerification} from "@uniswap/permit2/src/libraries/SignatureVerification.sol";
 
 contract TestPerpExecuteOrderV3 is TestPerpMarket {
     bytes normalSwapRoute;
@@ -439,7 +440,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
     // executeOrderV3 fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(15 * 1e6);
+        IFillerMarket.SettlementParams memory settlementDataForLong = _getUniSettlementData(15 * 1e6);
+        IFillerMarket.SettlementParams memory settlementDataForShort = _getUniSettlementData(5 * 1e6);
 
         {
             PerpOrderV3 memory order = PerpOrderV3(
@@ -458,7 +460,28 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, settlementData);
+            perpMarket.executeOrderV3(signedOrder, settlementDataForLong);
+        }
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp),
+                1,
+                address(currency1),
+                -1e7,
+                0,
+                calculateLimitPrice(800, 1000),
+                0,
+                2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey2);
+
+            vm.expectRevert(SignatureVerification.InvalidSigner.selector);
+            perpMarket.executeOrderV3(signedOrder, settlementDataForShort);
         }
 
         {
@@ -467,7 +490,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
                 1,
                 address(currency1),
                 1e7,
-                0,
+                2 * 1e7,
                 calculateLimitPrice(1200, 1000),
                 0,
                 2,
@@ -478,9 +501,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            // vm.expectRevert(IFillerMarket.SignerIsNotVaultOwner.selector);
-            vm.expectRevert();
-            perpMarket.executeOrderV3(signedOrder, settlementData);
+            vm.expectRevert(SignatureVerification.InvalidSigner.selector);
+            perpMarket.executeOrderV3(signedOrder, settlementDataForLong);
         }
     }
 
