@@ -12,8 +12,11 @@ struct PredictOrder {
     int256 tradeAmount;
     int256 tradeAmountSqrt;
     uint256 marginAmount;
-    address validatorAddress;
-    bytes validationData;
+    bool closePosition;
+    uint256 startMinValue;
+    uint256 endMinValue;
+    uint64 startTime;
+    uint64 endTime;
 }
 
 /// @notice helpers for handling predict order objects

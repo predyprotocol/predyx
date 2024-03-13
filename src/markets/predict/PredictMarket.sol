@@ -15,6 +15,7 @@ import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import "../../libraries/orders/Permit2Lib.sol";
 import "../../libraries/orders/ResolvedOrder.sol";
 import "../../libraries/math/Bps.sol";
+import {DecayLib} from "../../libraries/orders/DecayLib.sol";
 import {PredictOrderLib, PredictOrder} from "./PredictOrder.sol";
 import {PredictCloseOrderLib, PredictCloseOrder} from "./PredictCloseOrder.sol";
 import "../../libraries/math/Math.sol";
@@ -157,9 +158,7 @@ contract PredictMarket is IFillerMarket, BaseMarketUpgradable {
 
         _predyPool.updateRecepient(tradeResult.vaultId, predictOrder.info.trader);
 
-        IOrderValidator(predictOrder.validatorAddress).validate(
-            predictOrder.tradeAmount, predictOrder.tradeAmountSqrt, predictOrder.validationData, tradeResult
-        );
+        _validateMarketOrder(_predyPool.getVault(tradeResult.vaultId), tradeResult.sqrtPrice, predictOrder);
 
         emit PredictPositionOpened(
             tradeResult.vaultId,
@@ -282,6 +281,37 @@ contract PredictMarket is IFillerMarket, BaseMarketUpgradable {
 
         userPositions[vaultId].owner = owner;
         userPositions[vaultId].expiration = expiration;
+    }
+
+    function _calculatePositionValue(DataType.Vault memory vault, uint256 sqrtPrice) internal pure returns (int256) {
+        return PositionCalculator.calculateValue(sqrtPrice, PositionCalculator.getPosition(vault.openPosition))
+            + vault.margin;
+    }
+
+
+    function _validateMarketOrder(DataType.Vault memory vault, uint256 sqrtPrice, PredictOrder memory order)
+        internal
+        view
+        returns (bool)
+    {
+        int256 positionValue = _calculatePositionValue(vault, sqrtPrice);
+
+        if(positionValue < 0) {
+            return false;
+        }
+
+        uint256 decayedValue = DecayLib.decay(
+            order.startMinValue,
+            order.endMinValue,
+            order.startTime,
+            order.endTime
+        );
+
+        if(uint256(positionValue) < decayedValue) {
+            return false;
+        }
+
+        return true;
     }
 
     function _calculateSlippageTolerance(uint256 startTime, uint256 currentTime) internal pure returns (uint256) {
