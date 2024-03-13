@@ -42,7 +42,7 @@ library LiquidationLogic {
         GlobalDataLibrary.GlobalData storage globalData,
         bytes memory settlementData
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
-        require(closeRatio > 0);
+        require(closeRatio > 0 && closeRatio <= 1e18, "ICR");
         DataType.Vault storage vault = globalData.vaults[vaultId];
         DataType.PairStatus storage pairStatus = globalData.pairs[vault.openPosition.pairId];
 

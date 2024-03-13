@@ -6,6 +6,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {Owned} from "@solmate/src/auth/Owned.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {ISpotMarket} from "../../interfaces/ISpotMarket.sol";
@@ -26,6 +27,7 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
     using Permit2Lib for ResolvedOrder;
     using SafeTransferLib for ERC20;
     using Math for uint256;
+    using SafeCast for uint256;
 
     error RequiredQuoteAmountExceedsMax();
 
@@ -95,7 +97,7 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         if (quoteTokenAmount > 0) {
             TransferHelper.safeTransfer(spotOrder.quoteToken, spotOrder.info.trader, uint256(quoteTokenAmount));
         } else if (quoteTokenAmount < 0) {
-            int256 diff = int256(spotOrder.quoteTokenAmount) + quoteTokenAmount;
+            int256 diff = spotOrder.quoteTokenAmount.toInt256() + quoteTokenAmount;
 
             if (diff < 0) {
                 revert RequiredQuoteAmountExceedsMax();
@@ -136,11 +138,11 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         uint256 afterQuoteReserve = ERC20(spotOrder.quoteToken).balanceOf(address(this));
         uint256 afterBaseReserve = ERC20(spotOrder.baseToken).balanceOf(address(this));
 
-        if (totalBaseAmount + int256(baseReserve) != int256(afterBaseReserve)) {
+        if (totalBaseAmount + baseReserve.toInt256() != afterBaseReserve.toInt256()) {
             revert BaseCurrencyNotSettled();
         }
 
-        return int256(afterQuoteReserve) - int256(quoteReserve);
+        return afterQuoteReserve.toInt256() - quoteReserve.toInt256();
     }
 
     function _execSettlement(
@@ -261,18 +263,18 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         if (settlementParams.contractAddress == address(0)) {
             uint256 quoteAmount = sellAmount * price / Constants.Q96;
 
-            return int256(quoteAmount);
+            return quoteAmount.toInt256();
         }
 
         uint256 quoteAmountFromUni =
             ISettlement(settlementParams.contractAddress).quoteSwapExactIn(settlementParams.encodedData, sellAmount);
 
         if (price == 0) {
-            return int256(quoteAmountFromUni);
+            return quoteAmountFromUni.toInt256();
         } else {
             uint256 quoteAmount = sellAmount * price / Constants.Q96;
 
-            return int256(quoteAmount);
+            return quoteAmount.toInt256();
         }
     }
 
@@ -283,18 +285,18 @@ contract SpotMarketV1 is IFillerMarket, ISpotMarket, Owned {
         if (settlementParams.contractAddress == address(0)) {
             uint256 quoteAmount = buyAmount * price / Constants.Q96;
 
-            return -int256(quoteAmount);
+            return -quoteAmount.toInt256();
         }
 
         uint256 quoteAmountToUni =
             ISettlement(settlementParams.contractAddress).quoteSwapExactOut(settlementParams.encodedData, buyAmount);
 
         if (price == 0) {
-            return -int256(quoteAmountToUni);
+            return -quoteAmountToUni.toInt256();
         } else {
             uint256 quoteAmount = buyAmount * price / Constants.Q96;
 
-            return -int256(quoteAmount);
+            return -quoteAmount.toInt256();
         }
     }
 

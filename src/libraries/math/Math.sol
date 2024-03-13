@@ -3,9 +3,12 @@ pragma solidity ^0.8.17;
 
 import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import {FixedPointMathLib} from "@solmate/src/utils/FixedPointMathLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Constants} from "../Constants.sol";
 
 library Math {
+    using SafeCast for uint256;
+
     function abs(int256 x) internal pure returns (uint256) {
         return uint256(x >= 0 ? x : -x);
     }
@@ -22,9 +25,9 @@ library Math {
         if (x == 0) {
             return 0;
         } else if (x > 0) {
-            return int256(FullMath.mulDiv(uint256(x), y, z));
+            return FullMath.mulDiv(uint256(x), y, z).toInt256();
         } else {
-            return -int256(FullMath.mulDiv(uint256(-x), y, z));
+            return -FullMath.mulDiv(uint256(-x), y, z).toInt256();
         }
     }
 
@@ -32,9 +35,9 @@ library Math {
         if (x == 0) {
             return 0;
         } else if (x > 0) {
-            return int256(FullMath.mulDiv(uint256(x), y, z));
+            return FullMath.mulDiv(uint256(x), y, z).toInt256();
         } else {
-            return -int256(FullMath.mulDivRoundingUp(uint256(-x), y, z));
+            return -FullMath.mulDivRoundingUp(uint256(-x), y, z).toInt256();
         }
     }
 
@@ -42,9 +45,9 @@ library Math {
         if (x == 0) {
             return 0;
         } else if (x > 0) {
-            return int256(FixedPointMathLib.mulDivDown(uint256(x), y, z));
+            return FixedPointMathLib.mulDivDown(uint256(x), y, z).toInt256();
         } else {
-            return -int256(FixedPointMathLib.mulDivUp(uint256(-x), y, z));
+            return -FixedPointMathLib.mulDivUp(uint256(-x), y, z).toInt256();
         }
     }
 
@@ -57,6 +60,6 @@ library Math {
     }
 
     function calSqrtPriceToPrice(uint256 sqrtPrice) internal pure returns (uint256 price) {
-        price = (sqrtPrice * sqrtPrice) >> Constants.RESOLUTION;
+        price = FullMath.mulDiv(sqrtPrice, sqrtPrice, Constants.Q96);
     }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "../../interfaces/IPredyPool.sol";
 import "../../interfaces/IOrderValidator.sol";
@@ -31,6 +32,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     using PerpOrderLib for PerpOrder;
     using Permit2Lib for ResolvedOrder;
     using SafeTransferLib for ERC20;
+    using SafeCast for uint256;
 
     error TPSLConditionDoesNotMatch();
 
@@ -127,7 +129,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     tradeParams.tradeAmount,
                     tradeResult.payoff,
                     tradeResult.fee,
-                    -int256(closeValue)
+                    -closeValue.toInt256()
                 );
             } else {
                 int256 marginAmountUpdate = callbackData.marginAmountUpdate;
@@ -330,11 +332,11 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(pairId);
 
-        uint256 price = sqrtPrice * sqrtPrice / Constants.Q96;
+        uint256 price = Math.calSqrtPriceToPrice(sqrtPrice);
 
         uint256 netValue = _calculateNetValue(vault, price);
 
-        return int256(netValue / leverage) - _calculatePositionValue(vault, sqrtPrice);
+        return (netValue / leverage).toInt256() - _calculatePositionValue(vault, sqrtPrice);
     }
 
     function _calculateNetValue(DataType.Vault memory vault, uint256 price) internal pure returns (uint256) {

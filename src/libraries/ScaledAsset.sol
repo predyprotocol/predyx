@@ -2,11 +2,13 @@
 pragma solidity ^0.8.17;
 
 import {FixedPointMathLib} from "@solmate/src/utils/FixedPointMathLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Constants} from "./Constants.sol";
 import {Math} from "./math/Math.sol";
 
 library ScaledAsset {
     using Math for int256;
+    using SafeCast for uint256;
 
     struct AssetStatus {
         uint256 totalCompoundDeposited;
@@ -67,6 +69,10 @@ library ScaledAsset {
         tokenState.totalCompoundDeposited -= finalBurnAmount;
     }
 
+    function isSameSign(int256 a, int256 b) internal pure returns (bool) {
+        return (a >= 0 && b >= 0) || (a < 0 && b < 0);
+    }
+
     function updatePosition(
         ScaledAsset.AssetStatus storage tokenStatus,
         ScaledAsset.UserStatus storage userStatus,
@@ -84,7 +90,7 @@ library ScaledAsset {
         int256 openAmount;
         int256 closeAmount;
 
-        if (userStatus.positionAmount * _amount >= 0) {
+        if (isSameSign(userStatus.positionAmount, _amount)) {
             openAmount = _amount;
         } else {
             if (userStatus.positionAmount.abs() >= _amount.abs()) {
@@ -127,9 +133,9 @@ library ScaledAsset {
         returns (int256 interestFee)
     {
         if (_userStatus.positionAmount > 0) {
-            interestFee = int256(getAssetFee(_assetStatus, _userStatus));
+            interestFee = (getAssetFee(_assetStatus, _userStatus)).toInt256();
         } else {
-            interestFee = -int256(getDebtFee(_assetStatus, _userStatus));
+            interestFee = -(getDebtFee(_assetStatus, _userStatus)).toInt256();
         }
     }
 
