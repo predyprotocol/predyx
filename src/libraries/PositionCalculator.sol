@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./UniHelper.sol";
 import "./Perp.sol";
@@ -72,7 +73,7 @@ library PositionCalculator {
     function calculateMinDeposit(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory vault,
-        DataType.FeeAmount memory FeeAmount
+        DataType.FeeAmount memory feeAmount
     ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint256 twap) {
         int256 minValue;
         uint256 debtValue;
@@ -80,7 +81,7 @@ library PositionCalculator {
         twap = getSqrtIndexPrice(pairStatus);
 
         (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
-            vault.margin, getPositionWithFeeAmount(vault.openPosition, FeeAmount), twap, pairStatus.riskParams.riskRatio
+            vault.margin, getPositionWithFeeAmount(vault.openPosition, feeAmount), twap, pairStatus.riskParams.riskRatio
         );
 
         int256 minMinValue = (calculateRequiredCollateralWithDebt() * debtValue).toInt256() / 1e6;
@@ -218,7 +219,7 @@ library PositionCalculator {
      * and `c` is Stable asset amount
      */
     function calculateValue(uint256 _sqrtPrice, PositionParams memory _positionParams) internal pure returns (int256) {
-        uint256 price = (_sqrtPrice * _sqrtPrice) >> Constants.RESOLUTION;
+        uint256 price = Math.calSqrtPriceToPrice(_sqrtPrice);
 
         return Math.fullMulDivInt256(_positionParams.amountUnderlying, price, Constants.Q96)
             + Math.fullMulDivInt256(2 * _positionParams.amountSqrt, _sqrtPrice, Constants.Q96)

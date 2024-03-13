@@ -40,8 +40,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
         fromPrivateKey2 = 0x1235678;
         from2 = vm.addr(fromPrivateKey2);
 
-        currency1.mint(from1, type(uint128).max);
-        currency1.mint(from2, type(uint128).max);
+        currency1.mint(from1, 2 ** 250);
+        currency1.mint(from2, 2 ** 250);
 
         vm.prank(from1);
         currency1.approve(address(permit2), type(uint256).max);
@@ -600,5 +600,61 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         vm.expectRevert(PerpMarketLib.StopPriceDoesNotMatch.selector);
         perpMarket.executeOrderV3(signedOrder, settlementData);
+    }
+
+    // check large amount
+    function testExecuteOrderV3Fuzz(uint256 sqrtPrice) public {
+        sqrtPrice = bound(sqrtPrice, 2 ** 90, 2 ** 156);
+
+        predyPool.supply(1, true, 2 ** 180);
+        predyPool.supply(1, false, 2 ** 180);
+
+        _priceFeed.setSqrtPrice(sqrtPrice);
+        uint256 price = Math.calSqrtPriceToPrice(sqrtPrice);
+
+        uint256 amount = 1e10;
+        uint256 margin = price * amount / 2 ** 96;
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+                1,
+                address(currency1),
+                -int256(amount),
+                margin * 101 / 100,
+                0,
+                0,
+                2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            IFillerMarket.SettlementParams memory settlementData = _getDebugSettlementData(price, 0);
+
+            perpMarket.executeOrderV3(signedOrder, settlementData);
+        }
+
+        {
+            PerpOrderV3 memory order = PerpOrderV3(
+                OrderInfo(address(perpMarket), from1, 1, block.timestamp + 100),
+                1,
+                address(currency1),
+                int256(amount),
+                0,
+                0,
+                0,
+                2,
+                false,
+                false,
+                abi.encode(PerpMarketLib.AuctionParams(type(uint256).max, type(uint256).max, 0, 0))
+            );
+
+            IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+            perpMarket.executeOrderV3(signedOrder, _getDebugSettlementData(price, price * amount * 101 / 2 ** 96 / 100));
+        }
     }
 }

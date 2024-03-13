@@ -279,6 +279,7 @@ library Perp {
             address(this), _sqrtAssetStatus.tickLower, _sqrtAssetStatus.tickUpper, _totalLiquidityAmount, ""
         );
 
+        // these amounts are originally int256, so we can cast these to int256 safely
         updateRebalancePosition(
             _assetStatusUnderlying,
             int256(receivedAmount0) - int256(requiredAmount0),

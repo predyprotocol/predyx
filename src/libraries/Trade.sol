@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {IHooks} from "../interfaces/IHooks.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
@@ -17,6 +18,7 @@ import {UniHelper} from "./UniHelper.sol";
 
 library Trade {
     using GlobalDataLibrary for GlobalDataLibrary.GlobalData;
+    using SafeCast for uint256;
 
     struct SwapStableResult {
         int256 amountPerp;
@@ -78,7 +80,7 @@ library Trade {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
         if (totalBaseAmount == 0) {
-            int256 amountStable = int256(calculateStableAmount(sqrtPrice, 1e18));
+            int256 amountStable = calculateStableAmount(sqrtPrice, 1e18).toInt256();
 
             return divToStable(swapParams, int256(1e18), amountStable, 0);
         }
@@ -121,7 +123,7 @@ library Trade {
         swapResult.amountSqrtPerp = amountStable * swapParams.amountSqrtPerp / amountUnderlying;
         swapResult.fee = totalAmountStable - swapResult.amountPerp - swapResult.amountSqrtPerp;
 
-        swapResult.averagePrice = amountStable * int256(Constants.Q96) / int256(Math.abs(amountUnderlying));
+        swapResult.averagePrice = amountStable * int256(Constants.Q96) / Math.abs(amountUnderlying).toInt256();
     }
 
     function settleUserBalanceAndFee(

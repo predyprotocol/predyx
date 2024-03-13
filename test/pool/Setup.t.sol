@@ -42,8 +42,8 @@ contract TestPool is Test {
             (currency0, currency1) = (currency1, currency0);
         }
 
-        currency0.mint(address(this), type(uint128).max);
-        currency1.mint(address(this), type(uint128).max);
+        currency0.mint(address(this), 2 ** 254);
+        currency1.mint(address(this), 2 ** 254);
 
         uniswapFactory =
             deployCode("../node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol:UniswapV3Factory");
@@ -84,8 +84,8 @@ contract TestPool is Test {
         uniswapSettlement = new UniswapSettlement(swapRouter, quoterV2);
 
         debugSettlement = new DebugSettlement2();
-        currency0.mint(address(debugSettlement), type(uint128).max);
-        currency1.mint(address(debugSettlement), type(uint128).max);
+        currency0.mint(address(debugSettlement), 2 ** 254);
+        currency1.mint(address(debugSettlement), 2 ** 254);
     }
 
     /**

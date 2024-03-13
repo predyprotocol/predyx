@@ -36,6 +36,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
         perpMarket = new PerpMarket();
         perpMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
         perpMarket.updateWhitelistSettlement(address(settlement), true);
+        perpMarket.updateWhitelistSettlement(address(debugSettlement), true);
 
         currency0.approve(address(permit2), type(uint256).max);
         currency1.approve(address(permit2), type(uint256).max);

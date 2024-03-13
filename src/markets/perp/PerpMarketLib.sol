@@ -73,7 +73,7 @@ library PerpMarketLib {
         uint256 tradePrice = Math.abs(tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff)
             * Constants.Q96 / Math.abs(tradeAmount);
 
-        uint256 oraclePrice = (tradeResult.sqrtTwap * tradeResult.sqrtTwap) >> Constants.RESOLUTION;
+        uint256 oraclePrice = Math.calSqrtPriceToPrice(tradeResult.sqrtTwap);
 
         if (limitPrice == 0 && stopPrice == 0) {
             // market order

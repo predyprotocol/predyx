@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import "../interfaces/IPredyPool.sol";
 import {IHooks} from "../interfaces/IHooks.sol";
@@ -10,6 +11,7 @@ import "./LockData.sol";
 
 library GlobalDataLibrary {
     using SafeTransferLib for ERC20;
+    using SafeCast for uint256;
 
     struct GlobalData {
         uint256 pairsCount;
@@ -106,7 +108,6 @@ library GlobalDataLibrary {
             globalData.lockData.baseReserve = reserveAfter;
         }
 
-        // TODO: safe cast
-        paid = int256(reserveAfter) - int256(reservesBefore);
+        paid = reserveAfter.toInt256() - reservesBefore.toInt256();
     }
 }
