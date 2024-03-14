@@ -200,7 +200,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
      * @param order The order signed by trader
      * @param settlementParams The route of settlement created by filler
      */
-    function executeOrderV3(SignedOrder memory order, SettlementParams memory settlementParams)
+    function executeOrderV3(SignedOrder memory order, SettlementParamsV2 memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory)
@@ -267,7 +267,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         return tradeResult;
     }
 
-    function _executeOrderV3(PerpOrderV3 memory perpOrder, bytes memory sig, SettlementParams memory settlementParams)
+    function _executeOrderV3(PerpOrderV3 memory perpOrder, bytes memory sig, SettlementParamsV2 memory settlementParams)
         internal
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -300,7 +300,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     CallbackData(CallbackSource.TRADE3, perpOrder.info.trader, 0, perpOrder.leverage, resolvedOrder)
                 )
             ),
-            _getSettlementData(settlementParams)
+            _getSettlementDataFromV2(settlementParams, msg.sender, tradeAmount)
         );
 
         if (tradeResult.minMargin > 0) {
@@ -406,9 +406,11 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrderV3(PerpOrderV3 memory perpOrder, SettlementParams memory settlementParams, address filler)
-        external
-    {
+    function quoteExecuteOrderV3(
+        PerpOrderV3 memory perpOrder,
+        SettlementParamsV2 memory settlementParams,
+        address filler
+    ) external {
         UserPosition memory userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
 
         int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
@@ -437,7 +439,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     )
                 )
             ),
-            _getSettlementData(settlementParams, filler)
+            _getSettlementDataFromV2(settlementParams, filler, tradeAmount)
         );
     }
 

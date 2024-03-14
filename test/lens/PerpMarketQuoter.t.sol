@@ -6,6 +6,7 @@ import "../../src/lens/PredyPoolQuoter.sol";
 import "../../src/lens/PerpMarketQuoter.sol";
 import "../../src/markets/validators/LimitOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
+import {Constants} from "../../src/libraries/Constants.sol";
 import {PerpOrderV3} from "../../src/markets/perp/PerpOrderV3.sol";
 import {PerpMarketLib} from "../../src/markets/perp/PerpMarketLib.sol";
 
@@ -57,7 +58,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with settlement contract
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getUniSettlementData(1200), address(this));
+                _quoter.quoteExecuteOrderV3(order, _getUniSettlementDataV2(Constants.Q96 * 12 / 10), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, -1002);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
@@ -67,10 +68,11 @@ contract TestPerpMarketQuoter is TestLens {
 
         // with fee
         {
-            IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getUniSettlementData(1200, 0, 10), address(this));
+            IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrderV3(
+                order, _getUniSettlementDataV2(Constants.Q96 * 12 / 10, 0, Constants.Q96 / 100), address(this)
+            );
 
-            assertEq(tradeResult.payoff.perpEntryUpdate, -1012);
+            assertEq(tradeResult.payoff.perpEntryUpdate, -1011);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
             assertEq(tradeResult.payoff.perpPayoff, 0);
             assertEq(tradeResult.payoff.sqrtPayoff, 0);
@@ -78,8 +80,9 @@ contract TestPerpMarketQuoter is TestLens {
 
         // with price
         {
-            IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getUniSettlementData(1200, Constants.Q96, 0), address(this));
+            IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrderV3(
+                order, _getUniSettlementDataV2(Constants.Q96 * 12 / 10, Constants.Q96, 0), address(this)
+            );
 
             assertEq(tradeResult.payoff.perpEntryUpdate, -1000);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
@@ -89,10 +92,13 @@ contract TestPerpMarketQuoter is TestLens {
 
         // with price and fee
         {
-            IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getUniSettlementData(1200, Constants.Q96, 10), address(this));
+            IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrderV3(
+                order,
+                _getUniSettlementDataV2(Constants.Q96 * 12 / 10, Constants.Q96, Constants.Q96 / 100),
+                address(this)
+            );
 
-            assertEq(tradeResult.payoff.perpEntryUpdate, -1010);
+            assertEq(tradeResult.payoff.perpEntryUpdate, -1009);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
             assertEq(tradeResult.payoff.perpPayoff, 0);
             assertEq(tradeResult.payoff.sqrtPayoff, 0);
@@ -101,7 +107,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with direct
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getSettlementData(Constants.Q96), address(this));
+                _quoter.quoteExecuteOrderV3(order, _getSettlementDataV2(Constants.Q96), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, -1000);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
@@ -128,7 +134,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with settlement contract
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getUniSettlementData(0), address(this));
+                _quoter.quoteExecuteOrderV3(order, _getUniSettlementDataV2(0), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, 998);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
@@ -139,7 +145,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with price
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getUniSettlementData(0, Constants.Q96, 0), address(this));
+                _quoter.quoteExecuteOrderV3(order, _getUniSettlementDataV2(0, Constants.Q96, 0), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);
@@ -150,7 +156,7 @@ contract TestPerpMarketQuoter is TestLens {
         // with direct
         {
             IPredyPool.TradeResult memory tradeResult =
-                _quoter.quoteExecuteOrderV3(order, _getSettlementData(Constants.Q96), address(this));
+                _quoter.quoteExecuteOrderV3(order, _getSettlementDataV2(Constants.Q96), address(this));
 
             assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
             assertEq(tradeResult.payoff.sqrtEntryUpdate, 0);

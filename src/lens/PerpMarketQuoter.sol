@@ -31,7 +31,7 @@ contract PerpMarketQuoter {
 
     function quoteExecuteOrderV3(
         PerpOrderV3 memory order,
-        IFillerMarket.SettlementParams memory settlementParams,
+        IFillerMarket.SettlementParamsV2 memory settlementParams,
         address filler
     ) external returns (IPredyPool.TradeResult memory tradeResult) {
         try perpMarket.quoteExecuteOrderV3(order, settlementParams, filler) {}

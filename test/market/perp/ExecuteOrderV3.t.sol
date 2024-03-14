@@ -20,6 +20,9 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
     MockPriceFeed private _priceFeed;
 
+    uint256 MIN_QUOTE_PRICE = Constants.Q96 * 11 / 10;
+    uint256 MAX_QUOTE_PRICE = Constants.Q96 * 10 / 11;
+
     function setUp() public override {
         TestPerpMarket.setUp();
 
@@ -78,7 +81,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+            IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(0);
 
             vm.startPrank(from1);
             vm.expectRevert(IFillerMarket.CallerIsNotFiller.selector);
@@ -115,7 +118,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             vm.startPrank(from1);
             IPredyPool.TradeResult memory tradeResult2 =
-                perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(2 * 1e6 * 101 / 100));
+                perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(MIN_QUOTE_PRICE));
             vm.stopPrank();
 
             assertEq(tradeResult2.payoff.perpEntryUpdate, -1998999);
@@ -151,7 +154,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(0));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(0));
         }
 
         uint256 balance1 = currency1.balanceOf(from1);
@@ -175,7 +178,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(1200 * 1e4));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(MIN_QUOTE_PRICE));
 
             uint256 balance2 = currency1.balanceOf(from1);
 
@@ -202,7 +205,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(400 * 1e4));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(400 * 1e4));
         }
 
         uint256 balance3 = currency1.balanceOf(from1);
@@ -228,7 +231,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(0));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(0));
         }
 
         uint256 snapshot = vm.snapshot();
@@ -250,7 +253,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(1200 * 1e4));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(MIN_QUOTE_PRICE));
         }
 
         vm.revertTo(snapshot);
@@ -272,7 +275,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(400 * 1e4);
+            IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(MIN_QUOTE_PRICE);
 
             vm.expectRevert(PerpMarketV1.AmountIsZero.selector);
             perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -297,7 +300,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+            IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(0);
 
             vm.expectRevert(PerpMarketV1.AmountIsZero.selector);
             perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -320,7 +323,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(0));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(0));
         }
 
         {
@@ -340,7 +343,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(1200 * 1e4));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(MIN_QUOTE_PRICE));
         }
     }
 
@@ -362,7 +365,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(0);
 
         vm.expectRevert(PerpMarketV1.AmountIsZero.selector);
         perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -386,7 +389,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getUniSettlementData(0));
+            perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV2(0));
         }
 
         {
@@ -406,7 +409,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(12 * 1e6);
+            IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(MIN_QUOTE_PRICE);
 
             perpMarket.executeOrderV3(signedOrder, settlementData);
         }
@@ -432,7 +435,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(1500);
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(MIN_QUOTE_PRICE);
 
         vm.expectRevert();
         perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -440,8 +443,8 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
     // executeOrderV3 fails if signature is invalid
     function testExecuteOrderFails_IfSignerIsNotOwner() public {
-        IFillerMarket.SettlementParams memory settlementDataForLong = _getUniSettlementData(15 * 1e6);
-        IFillerMarket.SettlementParams memory settlementDataForShort = _getUniSettlementData(5 * 1e6);
+        IFillerMarket.SettlementParamsV2 memory settlementDataForLong = _getUniSettlementDataV2(MIN_QUOTE_PRICE);
+        IFillerMarket.SettlementParamsV2 memory settlementDataForShort = _getUniSettlementDataV2(MAX_QUOTE_PRICE);
 
         {
             PerpOrderV3 memory order = PerpOrderV3(
@@ -524,7 +527,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(15 * 1e6);
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(MIN_QUOTE_PRICE);
 
         vm.expectRevert(PerpMarketLib.LimitPriceDoesNotMatch.selector);
         perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -548,7 +551,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(0);
 
         vm.expectRevert(PerpMarketLib.LimitPriceDoesNotMatch.selector);
         perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -572,7 +575,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(15 * 1e6);
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(MIN_QUOTE_PRICE);
 
         vm.expectRevert(PerpMarketLib.StopPriceDoesNotMatch.selector);
         perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -596,7 +599,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(0);
 
         vm.expectRevert(PerpMarketLib.StopPriceDoesNotMatch.selector);
         perpMarket.executeOrderV3(signedOrder, settlementData);
@@ -632,7 +635,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            IFillerMarket.SettlementParams memory settlementData = _getDebugSettlementData(price, 0);
+            IFillerMarket.SettlementParamsV2 memory settlementData = _getDebugSettlementDataV2(price, 0);
 
             perpMarket.executeOrderV3(signedOrder, settlementData);
         }
@@ -654,7 +657,7 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-            perpMarket.executeOrderV3(signedOrder, _getDebugSettlementData(price, price * amount * 101 / 2 ** 96 / 100));
+            perpMarket.executeOrderV3(signedOrder, _getDebugSettlementDataV2(price, price * 101 / 100));
         }
     }
 }

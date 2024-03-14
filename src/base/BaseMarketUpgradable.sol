@@ -87,6 +87,31 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         );
     }
 
+    function _getSettlementDataFromV2(
+        IFillerMarket.SettlementParamsV2 memory settlementParams,
+        address filler,
+        int256 tradeAmount
+    ) internal pure returns (bytes memory) {
+        uint256 tradeAmountAbs = Math.abs(tradeAmount);
+
+        uint256 fee = settlementParams.feePrice * tradeAmountAbs / Constants.Q96;
+
+        if (fee < settlementParams.minFee) {
+            fee = settlementParams.minFee;
+        }
+
+        return abi.encode(
+            SettlementCallbackLib.SettlementParams(
+                filler,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmountPrice * tradeAmountAbs / Constants.Q96,
+                settlementParams.price,
+                int256(fee)
+            )
+        );
+    }
+
     /**
      * @notice Updates the whitelist filler address
      * @dev only owner can call this function

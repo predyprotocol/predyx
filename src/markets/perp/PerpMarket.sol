@@ -65,7 +65,7 @@ contract PerpMarket is PerpMarketV1 {
     function executeOrderV3L2(
         PerpOrderV3L2 memory compressedOrder,
         bytes memory sig,
-        SettlementParams memory settlementParams
+        SettlementParamsV2 memory settlementParams
     ) external nonReentrant returns (IPredyPool.TradeResult memory) {
         (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition) =
             L2Decoder.decodePerpOrderV3Params(compressedOrder.data1);

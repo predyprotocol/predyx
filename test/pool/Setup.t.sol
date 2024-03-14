@@ -180,4 +180,39 @@ contract TestPool is Test {
 
         return IFillerMarket.SettlementParams(address(uniswapSettlement), path, maxQuoteAmount, price, fee);
     }
+
+    // settlement data v2
+
+    function _getSettlementDataV2(uint256 price) internal pure returns (IFillerMarket.SettlementParamsV2 memory) {
+        return IFillerMarket.SettlementParamsV2(address(0), bytes(""), 0, price, 0, 0);
+    }
+
+    function _getDebugSettlementDataV2(uint256 price, uint256 maxQuoteAmountPrice)
+        internal
+        view
+        returns (IFillerMarket.SettlementParamsV2 memory)
+    {
+        return IFillerMarket.SettlementParamsV2(
+            address(debugSettlement), abi.encode(price), maxQuoteAmountPrice, price, 0, 0
+        );
+    }
+
+    function _getUniSettlementDataV2(uint256 maxQuoteAmountPrice)
+        internal
+        view
+        returns (IFillerMarket.SettlementParamsV2 memory)
+    {
+        return _getUniSettlementDataV2(maxQuoteAmountPrice, 0, 0);
+    }
+
+    function _getUniSettlementDataV2(uint256 maxQuoteAmountPrice, uint256 price, uint256 feePrice)
+        internal
+        view
+        returns (IFillerMarket.SettlementParamsV2 memory)
+    {
+        bytes memory path = abi.encodePacked(address(currency0), uint24(500), address(currency1));
+
+        return
+            IFillerMarket.SettlementParamsV2(address(uniswapSettlement), path, maxQuoteAmountPrice, price, feePrice, 0);
+    }
 }
