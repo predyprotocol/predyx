@@ -10,8 +10,8 @@ struct SpotOrder {
     address baseToken;
     int256 baseTokenAmount;
     uint256 quoteTokenAmount;
-    address validatorAddress;
-    bytes validationData;
+    uint256 limitQuoteTokenAmount;
+    bytes auctionData;
 }
 
 /// @notice helpers for handling predict order objects
@@ -25,8 +25,8 @@ library SpotOrderLib {
         "address baseToken,",
         "int256 baseTokenAmount,",
         "uint256 quoteTokenAmount,",
-        "address validatorAddress,",
-        "bytes validationData)"
+        "uint256 limitQuoteTokenAmount,",
+        "bytes auctionData)"
     );
 
     bytes internal constant ORDER_TYPE = abi.encodePacked(SPOT_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
@@ -51,8 +51,8 @@ library SpotOrderLib {
                 order.baseToken,
                 order.baseTokenAmount,
                 order.quoteTokenAmount,
-                order.validatorAddress,
-                keccak256(order.validationData)
+                order.limitQuoteTokenAmount,
+                keccak256(order.auctionData)
             )
         );
     }

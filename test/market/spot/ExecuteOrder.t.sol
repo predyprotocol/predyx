@@ -4,12 +4,11 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
-import {SpotDutchOrderValidator} from "../../../src/markets/spot/SpotDutchOrderValidator.sol";
 import {SpotOrder} from "../../../src/markets/spot/SpotOrder.sol";
-import {SpotOrderV2} from "../../../src/markets/spot/SpotMarket.sol";
-import {SpotMarketV1} from "../../../src/markets/spot/SpotMarketV1.sol";
+import {SpotMarketOrder, SpotLimitOrder} from "../../../src/markets/spot/SpotMarketL2.sol";
+import {SpotMarket} from "../../../src/markets/spot/SpotMarket.sol";
 
-contract TestPerpExecuteOrder is TestSpotMarket {
+contract TestSpotExecuteOrder is TestSpotMarket {
     uint256 private fromPrivateKey1;
     address private from1;
 
@@ -48,10 +47,8 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             address(currency0),
             1000,
             1100,
-            address(dutchOrderValidator),
-            abi.encode(
-                SpotDutchOrderValidationData(1000, 1001, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
-            )
+            0,
+            abi.encode(SpotMarket.AuctionParams(1000, 1001, block.timestamp - 1 minutes, block.timestamp + 4 minutes))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -70,10 +67,8 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             address(currency0),
             1000,
             999,
-            address(dutchOrderValidator),
-            abi.encode(
-                SpotDutchOrderValidationData(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
-            )
+            0,
+            abi.encode(SpotMarket.AuctionParams(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -91,16 +86,14 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             address(currency0),
             999,
             1000,
-            address(dutchOrderValidator),
-            abi.encode(
-                SpotDutchOrderValidationData(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
-            )
+            0,
+            abi.encode(SpotMarket.AuctionParams(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
         SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(1000, 1000);
 
-        vm.expectRevert(SpotMarketV1.BaseCurrencyNotSettled.selector);
+        vm.expectRevert(SpotMarket.BaseCurrencyNotSettled.selector);
         spotMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -111,16 +104,32 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             address(currency0),
             1000,
             2000,
-            address(dutchOrderValidator),
-            abi.encode(
-                SpotDutchOrderValidationData(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
-            )
+            0,
+            abi.encode(SpotMarket.AuctionParams(1000, 1010, block.timestamp - 1 minutes, block.timestamp + 4 minutes))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
         SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(2000, 1000);
 
-        vm.expectRevert(SpotDutchOrderValidator.PriceGreaterThanLimit.selector);
+        vm.expectRevert(SpotMarket.MarketOrderDoesNotMatch.selector);
+        spotMarket.executeOrder(signedOrder, settlementData);
+    }
+
+    function testExecuteOrderFailsByLimitPrice() public {
+        SpotOrder memory order = SpotOrder(
+            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
+            address(currency1),
+            address(currency0),
+            1000,
+            2000,
+            500,
+            bytes("")
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+        SpotMarket.SettlementParams memory settlementData = _getSpotSettlementParams(2000, 1000);
+
+        vm.expectRevert(SpotMarket.LimitOrderDoesNotMatch.selector);
         spotMarket.executeOrder(signedOrder, settlementData);
     }
 
@@ -131,8 +140,8 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             address(currency0),
             1000,
             1100,
-            address(_spotExclusiveLimitOrderValidator),
-            abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 1012))
+            1012, // limit quote token amount
+            bytes("")
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -161,8 +170,8 @@ contract TestPerpExecuteOrder is TestSpotMarket {
             address(currency0),
             -1000,
             1100,
-            address(_spotExclusiveLimitOrderValidator),
-            abi.encode(SpotExclusiveLimitOrderValidationData(address(this), 988))
+            988,
+            bytes("")
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
@@ -174,47 +183,5 @@ contract TestPerpExecuteOrder is TestSpotMarket {
         vm.revertTo(snapshot);
 
         assertEq(spotMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96)), 1000);
-    }
-
-    function testExecuteOrderV2Succeeds() public {
-        SpotOrder memory order = SpotOrder(
-            OrderInfo(address(spotMarket), from1, 0, block.timestamp + 100),
-            address(currency1),
-            address(currency0),
-            1000,
-            1100,
-            address(dutchOrderValidator),
-            abi.encode(
-                SpotDutchOrderValidationData(1000, 1100, block.timestamp - 1 minutes, block.timestamp + 4 minutes)
-            )
-        );
-
-        (bytes32 params1, bytes32 params2) = encodeParams(
-            false,
-            uint64(block.timestamp - 1 minutes),
-            uint64(block.timestamp + 4 minutes),
-            uint64(order.info.deadline),
-            1000,
-            1100
-        );
-        SpotOrderV2 memory orderV2 = SpotOrderV2(
-            order.info.trader,
-            order.info.nonce,
-            order.quoteToken,
-            order.baseToken,
-            order.baseTokenAmount,
-            order.quoteTokenAmount,
-            params1,
-            params2
-        );
-
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
-
-        int256 quoteTokenAmount =
-            spotMarket.executeOrderV2(orderV2, signedOrder.sig, _getSpotSettlementParams(1000, 1000));
-
-        assertEq(quoteTokenAmount, -1000);
-
-        _checkBalances();
     }
 }

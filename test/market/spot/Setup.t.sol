@@ -4,14 +4,8 @@ pragma solidity ^0.8.0;
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
-import "../../../src/markets/spot/SpotMarket.sol";
+import "../../../src/markets/spot/SpotMarketL2.sol";
 import {DebugSettlement} from "../../mocks/DebugSettlement.sol";
-import {
-    SpotDutchOrderValidationData,
-    SpotDutchOrderValidator
-} from "../../../src/markets/spot/SpotDutchOrderValidator.sol";
-import "../../../src/markets/spot/SpotExclusiveLimitOrderValidator.sol";
-import "../../../src/markets/spot/SpotLimitOrderValidator.sol";
 import {SpotOrder, SpotOrderLib} from "../../../src/markets/spot/SpotOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -21,10 +15,8 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
     using SpotOrderLib for SpotOrder;
 
     DebugSettlement settlement;
-    SpotMarket spotMarket;
+    SpotMarketL2 spotMarket;
     IPermit2 permit2;
-    SpotDutchOrderValidator dutchOrderValidator;
-    SpotExclusiveLimitOrderValidator _spotExclusiveLimitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public virtual override(TestPool) {
@@ -34,11 +26,7 @@ contract TestSpotMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        dutchOrderValidator = new SpotDutchOrderValidator();
-        _spotExclusiveLimitOrderValidator = new SpotExclusiveLimitOrderValidator();
-        SpotLimitOrderValidator spotLimitOrderValidator = new SpotLimitOrderValidator();
-
-        spotMarket = new SpotMarket(address(permit2), address(dutchOrderValidator), address(spotLimitOrderValidator));
+        spotMarket = new SpotMarketL2(address(permit2));
 
         settlement = new DebugSettlement();
 

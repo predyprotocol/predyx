@@ -6,9 +6,6 @@ import "../../src/libraries/orders/OrderInfoLib.sol";
 import "../../src/lens/PerpMarketQuoter.sol";
 import "../../src/markets/perp/PerpMarket.sol";
 import "../../src/markets/spot/SpotMarket.sol";
-import "forge-std/console2.sol";
-import "../../src/markets/validators/DutchOrderValidator.sol";
-import "../../src/markets/spot/SpotDutchOrderValidator.sol";
 
 contract TestFork is Test {
     uint256 internal _arbitrumFork;

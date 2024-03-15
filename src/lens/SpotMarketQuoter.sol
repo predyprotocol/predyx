@@ -34,10 +34,6 @@ contract SpotMarketQuoter {
         catch (bytes memory reason) {
             quoteTokenAmount = _parseRevertReason(reason);
         }
-
-        if (order.validatorAddress != address(0)) {
-            ISpotOrderValidator(order.validatorAddress).validate(order, quoteTokenAmount, msg.sender);
-        }
     }
 
     /// @notice Return the trade result of abi-encoded bytes.
