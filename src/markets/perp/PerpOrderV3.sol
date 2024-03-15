@@ -64,9 +64,9 @@ library PerpOrderV3Lib {
                 order.marginAmount,
                 order.limitPrice,
                 order.stopPrice,
+                order.leverage,
                 order.reduceOnly,
                 order.closePosition,
-                order.leverage,
                 keccak256(order.auctionData)
             )
         );
