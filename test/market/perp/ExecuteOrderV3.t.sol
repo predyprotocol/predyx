@@ -6,6 +6,7 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Bps} from "../../../src/libraries/math/Bps.sol";
 import {PerpMarketV1} from "../../../src/markets/perp/PerpMarketV1.sol";
+import "../../../src/markets/perp/PerpMarket.sol";
 import {PerpOrderV3} from "../../../src/markets/perp/PerpOrderV3.sol";
 import {PerpMarketLib} from "../../../src/markets/perp/PerpMarketLib.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
@@ -659,5 +660,44 @@ contract TestPerpExecuteOrderV3 is TestPerpMarket {
 
             perpMarket.executeOrderV3(signedOrder, _getDebugSettlementDataV2(price, price * 101 / 100));
         }
+    }
+
+    function testExecuteOrderV3L2() public {
+        PerpOrderV3 memory order = PerpOrderV3(
+            OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
+            1,
+            address(currency1),
+            -2 * 1e6,
+            2 * 1e6 * 101 / 100,
+            0,
+            0,
+            1,
+            false,
+            false,
+            abi.encode(PerpMarketLib.AuctionParams(0, 0, 0, 0))
+        );
+
+        PerpOrderV3L2 memory orderL2 = PerpOrderV3L2(
+            order.info.trader,
+            order.info.nonce,
+            order.tradeAmount,
+            order.marginAmount,
+            order.limitPrice,
+            order.stopPrice,
+            encodePerpOrderV3Params(
+                uint64(order.info.deadline),
+                uint64(order.pairId),
+                uint8(order.leverage),
+                order.reduceOnly,
+                order.closePosition
+            ),
+            order.auctionData
+        );
+
+        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
+
+        IFillerMarket.SettlementParamsV2 memory settlementData = _getUniSettlementDataV2(0);
+
+        perpMarket.executeOrderV3L2(orderL2, signedOrder.sig, settlementData, 0);
     }
 }

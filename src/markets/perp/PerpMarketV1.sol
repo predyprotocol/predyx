@@ -162,7 +162,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                 cost = uint256(marginAmountUpdate);
             }
 
-            _verifyOrder(callbackData.resolvedOrder, cost);
+            _verifyOrderV3(callbackData.resolvedOrder, cost);
 
             if (marginAmountUpdate > 0) {
                 quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
@@ -458,6 +458,19 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
             order.info.trader,
             order.hash,
             PerpOrderLib.PERMIT2_ORDER_TYPE,
+            order.sig
+        );
+    }
+
+    function _verifyOrderV3(ResolvedOrder memory order, uint256 amount) internal {
+        order.validate();
+
+        _permit2.permitWitnessTransferFrom(
+            order.toPermit(),
+            ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amount}),
+            order.info.trader,
+            order.hash,
+            PerpOrderV3Lib.PERMIT2_ORDER_TYPE,
             order.sig
         );
     }
