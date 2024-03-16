@@ -61,6 +61,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         int256 marginAmountUpdate;
         uint8 leverage;
         ResolvedOrder resolvedOrder;
+        uint64 orderId;
     }
 
     IPermit2 private _permit2;
@@ -76,15 +77,16 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         int256 fee,
         int256 marginAmount
     );
-    event PerpClosedByTPSLOrder(
+    event PerpTraded2(
         address indexed trader,
         uint256 pairId,
+        uint256 vaultId,
         int256 tradeAmount,
         IPredyPool.Payoff payoff,
         int256 fee,
-        uint256 closeValue
+        int256 marginAmount,
+        uint64 orderId
     );
-    event PerpTPSLOrderUpdated(address indexed trader, uint256 pairId, uint256 takeProfitPrice, uint256 stopLossPrice);
 
     constructor() {}
 
@@ -168,14 +170,15 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                 _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
             }
 
-            emit PerpTraded(
+            emit PerpTraded2(
                 callbackData.trader,
                 tradeParams.pairId,
                 tradeResult.vaultId,
                 tradeParams.tradeAmount,
                 tradeResult.payoff,
                 tradeResult.fee,
-                marginAmountUpdate
+                marginAmountUpdate,
+                callbackData.orderId
             );
         }
     }
@@ -207,7 +210,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     {
         PerpOrderV3 memory perpOrder = abi.decode(order.order, (PerpOrderV3));
 
-        return _executeOrderV3(perpOrder, order.sig, settlementParams);
+        return _executeOrderV3(perpOrder, order.sig, settlementParams, 0);
     }
 
     function _executeOrder(PerpOrder memory perpOrder, bytes memory sig, SettlementParams memory settlementParams)
@@ -240,7 +243,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         perpOrder.info.trader,
                         perpOrder.marginAmount,
                         perpOrder.leverage,
-                        resolvedOrder
+                        resolvedOrder,
+                        0
                     )
                 )
             ),
@@ -267,10 +271,12 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         return tradeResult;
     }
 
-    function _executeOrderV3(PerpOrderV3 memory perpOrder, bytes memory sig, SettlementParamsV2 memory settlementParams)
-        internal
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
+    function _executeOrderV3(
+        PerpOrderV3 memory perpOrder,
+        bytes memory sig,
+        SettlementParamsV2 memory settlementParams,
+        uint64 orderId
+    ) internal returns (IPredyPool.TradeResult memory tradeResult) {
         ResolvedOrder memory resolvedOrder = PerpOrderV3Lib.resolve(perpOrder, sig);
 
         _validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
@@ -297,7 +303,9 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                 tradeAmount,
                 0,
                 abi.encode(
-                    CallbackData(CallbackSource.TRADE3, perpOrder.info.trader, 0, perpOrder.leverage, resolvedOrder)
+                    CallbackData(
+                        CallbackSource.TRADE3, perpOrder.info.trader, 0, perpOrder.leverage, resolvedOrder, orderId
+                    )
                 )
             ),
             _getSettlementDataFromV2(settlementParams, msg.sender, tradeAmount)
@@ -375,10 +383,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         userPosition.stopLossPrice = perpOrder.stopLossPrice;
         userPosition.slippageTolerance = perpOrder.slippageTolerance;
         userPosition.lastLeverage = perpOrder.leverage;
-
-        emit PerpTPSLOrderUpdated(
-            perpOrder.info.trader, perpOrder.pairId, perpOrder.takeProfitPrice, perpOrder.stopLossPrice
-        );
     }
 
     /// @notice Estimate transaction results and return with revert message
@@ -397,7 +401,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         perpOrder.info.trader,
                         perpOrder.marginAmount,
                         perpOrder.leverage,
-                        PerpOrderLib.resolve(perpOrder, bytes(""))
+                        PerpOrderLib.resolve(perpOrder, bytes("")),
+                        0
                     )
                 )
             ),
@@ -435,7 +440,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                         perpOrder.info.trader,
                         0,
                         perpOrder.leverage,
-                        PerpOrderV3Lib.resolve(perpOrder, bytes(""))
+                        PerpOrderV3Lib.resolve(perpOrder, bytes("")),
+                        0
                     )
                 )
             ),
