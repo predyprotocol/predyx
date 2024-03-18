@@ -42,16 +42,18 @@ contract TestL2Decoder is Test, OrderValidatorUtils {
         uint64 pairId,
         uint8 leverage,
         bool reduceOnly,
-        bool closePosition
+        bool closePosition,
+        bool side
     ) public {
-        bytes32 params = encodePerpOrderV3Params(deadline, pairId, leverage, reduceOnly, closePosition);
+        bytes32 params = encodePerpOrderV3Params(deadline, pairId, leverage, reduceOnly, closePosition, side);
 
-        (uint64 a, uint64 b, uint8 c, bool d, bool e) = L2Decoder.decodePerpOrderV3Params(params);
+        (uint64 a, uint64 b, uint8 c, bool d, bool e, bool f) = L2Decoder.decodePerpOrderV3Params(params);
 
         assertEq(a, deadline);
         assertEq(b, pairId);
         assertEq(c, leverage);
         assertEq(d, reduceOnly);
         assertEq(e, closePosition);
+        assertEq(f, side);
     }
 }

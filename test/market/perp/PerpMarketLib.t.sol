@@ -6,44 +6,81 @@ import {PerpMarketLib} from "../../../src/markets/perp/PerpMarketLib.sol";
 import {IPredyPool} from "../../../src/interfaces/IPredyPool.sol";
 
 contract TestPerpMarketLib is Test {
-    function testCalculateTradeAmount(int256 currentPositionAmount, int256 tradeAmount) public {
+    function testCalculateTradeAmountBuy(int256 currentPositionAmount, uint256 tradeAmount) public {
         bool reduceOnly = false;
         bool closePosition = false;
 
         assertEq(
-            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, tradeAmount, reduceOnly, closePosition),
-            tradeAmount
+            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Buy", tradeAmount, reduceOnly, closePosition),
+            int256(tradeAmount)
         );
     }
 
-    function testCalculateTradeAmountWithReduceOnly(int256 tradeAmount) public {
-        tradeAmount = int256(bound(tradeAmount, -2 ** 100, 2 ** 100));
+    function testCalculateTradeAmountSell(int256 currentPositionAmount, uint256 tradeAmount) public {
+        bool reduceOnly = false;
+        bool closePosition = false;
+
+        assertEq(
+            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Sell", tradeAmount, reduceOnly, closePosition),
+            -int256(tradeAmount)
+        );
+    }
+
+    function testCalculateTradeAmountWithReduceOnlyBuy(uint256 tradeAmount) public {
+        tradeAmount = bound(tradeAmount, 0, 2 ** 100);
+
+        bool reduceOnly = true;
+        bool closePosition = false;
+        int256 currentPositionAmount = -1e6;
+
+        int256 result = PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Buy", tradeAmount, reduceOnly, closePosition);
+
+        if (0 <= tradeAmount && tradeAmount <= 1e6) {
+            assertEq(result, int256(tradeAmount));
+        } else if (tradeAmount > 1e6) {
+            assertEq(result, 1e6);
+        } else {
+            assertEq(result, 0);
+        }
+    }
+
+    function testCalculateTradeAmountWithReduceOnlySell(uint256 tradeAmount) public {
+        tradeAmount = bound(tradeAmount, 0, 2 ** 100);
 
         bool reduceOnly = true;
         bool closePosition = false;
         int256 currentPositionAmount = 1e6;
 
-        int256 result = PerpMarketLib.getFinalTradeAmount(currentPositionAmount, tradeAmount, reduceOnly, closePosition);
+        int256 result = PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Sell", tradeAmount, reduceOnly, closePosition);
 
-        if (-1e6 <= tradeAmount && tradeAmount < 0) {
-            assertEq(result, tradeAmount);
-        } else if (tradeAmount < -1e6) {
+        if (0 <= tradeAmount && tradeAmount <= 1e6) {
+            assertEq(result, -int256(tradeAmount));
+        } else if (tradeAmount > 1e6) {
             assertEq(result, -1e6);
         } else {
             assertEq(result, 0);
         }
     }
 
-    function testCalculateTradeAmountWithClosePosition(int256 currentPositionAmount, int256 tradeAmount) public {
-        currentPositionAmount = int256(bound(currentPositionAmount, -2 ** 100, 2 ** 100));
-        tradeAmount = int256(bound(tradeAmount, -2 ** 100, 2 ** 100));
-
+    function testCalculateTradeAmountWithClosePosition(uint256 quantity) public {
         bool reduceOnly = false;
         bool closePosition = true;
 
         assertEq(
-            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, tradeAmount, reduceOnly, closePosition),
-            -currentPositionAmount
+            PerpMarketLib.getFinalTradeAmount(100, "Buy", quantity, reduceOnly, closePosition),
+            0
+        );
+        assertEq(
+            PerpMarketLib.getFinalTradeAmount(-100, "Buy", quantity, reduceOnly, closePosition),
+            100
+        );
+        assertEq(
+            PerpMarketLib.getFinalTradeAmount(100, "Sell", quantity, reduceOnly, closePosition),
+            -100
+        );
+        assertEq(
+            PerpMarketLib.getFinalTradeAmount(-100, "Sell", quantity, reduceOnly, closePosition),
+            0
         );
     }
 

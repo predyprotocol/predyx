@@ -287,7 +287,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
             _predyPool.getVault(userPosition.vaultId).openPosition.perp.amount,
-            perpOrder.tradeAmount,
+            perpOrder.side,
+            perpOrder.quantity,
             perpOrder.reduceOnly,
             perpOrder.closePosition
         );
@@ -420,7 +421,8 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
 
         int256 tradeAmount = PerpMarketLib.getFinalTradeAmount(
             _predyPool.getVault(userPosition.vaultId).openPosition.perp.amount,
-            perpOrder.tradeAmount,
+            perpOrder.side,
+            perpOrder.quantity,
             perpOrder.reduceOnly,
             perpOrder.closePosition
         );

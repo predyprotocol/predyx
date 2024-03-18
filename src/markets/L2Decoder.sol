@@ -50,10 +50,11 @@ library L2Decoder {
     function decodePerpOrderV3Params(bytes32 args)
         internal
         pure
-        returns (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition)
+        returns (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition, bool side)
     {
         uint8 reduceOnlyUint;
         uint8 closePositionUint;
+        uint8 sideUint;
 
         assembly {
             deadline := and(args, 0xFFFFFFFFFFFFFFFF)
@@ -61,9 +62,12 @@ library L2Decoder {
             leverage := and(shr(128, args), 0xFF)
             reduceOnlyUint := and(shr(136, args), 0xFF)
             closePositionUint := and(shr(144, args), 0xFF)
+            sideUint := and(shr(152, args), 0xFF)
+            
         }
 
         reduceOnly = reduceOnlyUint == 1;
         closePosition = closePositionUint == 1;
+        side = sideUint == 1;
     }
 }

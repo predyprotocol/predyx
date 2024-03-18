@@ -10,7 +10,8 @@ struct PerpOrderV3 {
     OrderInfo info;
     uint64 pairId;
     address entryTokenAddress;
-    int256 tradeAmount;
+    string side;
+    uint256 quantity;
     uint256 marginAmount;
     uint256 limitPrice;
     uint256 stopPrice;
@@ -29,7 +30,8 @@ library PerpOrderV3Lib {
         "OrderInfo info,",
         "uint64 pairId,",
         "address entryTokenAddress,",
-        "int256 tradeAmount,",
+        "string side,",
+        "uint256 quantity,",
         "uint256 marginAmount,",
         "uint256 limitPrice,",
         "uint256 stopPrice,",
@@ -60,7 +62,8 @@ library PerpOrderV3Lib {
                 order.info.hash(),
                 order.pairId,
                 order.entryTokenAddress,
-                order.tradeAmount,
+                keccak256(bytes(order.side)),
+                order.quantity,
                 order.marginAmount,
                 order.limitPrice,
                 order.stopPrice,

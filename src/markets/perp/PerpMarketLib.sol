@@ -23,12 +23,26 @@ library PerpMarketLib {
         uint256 endTime;
     }
 
-    function getFinalTradeAmount(int256 currentPositionAmount, int256 tradeAmount, bool reduceOnly, bool closePosition)
+    function getFinalTradeAmount(int256 currentPositionAmount, string memory side, uint256 quantity, bool reduceOnly, bool closePosition)
         internal
         pure
         returns (int256 finalTradeAmount)
     {
+        bool isLong = (
+            keccak256(bytes(side))
+        ) == keccak256(bytes("Buy"));
+
+        int256 tradeAmount = isLong ? int256(quantity) : -int256(quantity);
+
         if (closePosition) {
+            if(isLong && currentPositionAmount >= 0) {
+                return 0;
+            }
+
+            if(!isLong && currentPositionAmount <= 0) {
+                return 0;
+            }
+
             return -currentPositionAmount;
         }
 

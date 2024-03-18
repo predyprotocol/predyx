@@ -23,17 +23,29 @@ contract OrderValidatorUtils {
         uint64 pairId,
         uint8 leverage,
         bool reduceOnly,
-        bool closePosition
+        bool closePosition,
+        bool side
     ) internal pure returns (bytes32 params) {
         uint8 reduceOnlyUint = reduceOnly ? 1 : 0;
         uint8 closePositionUint = closePosition ? 1 : 0;
+        uint8 sideUint = side ? 1 : 0;
 
         assembly {
             params :=
                 add(
                     deadline,
                     add(
-                        shl(64, pairId), add(shl(128, leverage), add(shl(136, reduceOnlyUint), shl(144, closePositionUint)))
+                        shl(64, pairId),
+                        add(
+                            shl(128, leverage),
+                            add(
+                                shl(136, reduceOnlyUint),
+                                add(
+                                    shl(144, closePositionUint),
+                                    shl(152, sideUint)
+                                )
+                            )
+                        )
                     )
                 )
         }
