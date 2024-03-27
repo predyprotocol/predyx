@@ -38,13 +38,7 @@ contract OrderValidatorUtils {
                         shl(64, pairId),
                         add(
                             shl(128, leverage),
-                            add(
-                                shl(136, reduceOnlyUint),
-                                add(
-                                    shl(144, closePositionUint),
-                                    shl(152, sideUint)
-                                )
-                            )
+                            add(shl(136, reduceOnlyUint), add(shl(144, closePositionUint), shl(152, sideUint)))
                         )
                     )
                 )

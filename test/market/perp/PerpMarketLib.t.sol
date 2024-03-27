@@ -33,7 +33,8 @@ contract TestPerpMarketLib is Test {
         bool closePosition = false;
         int256 currentPositionAmount = -1e6;
 
-        int256 result = PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Buy", tradeAmount, reduceOnly, closePosition);
+        int256 result =
+            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Buy", tradeAmount, reduceOnly, closePosition);
 
         if (0 <= tradeAmount && tradeAmount <= 1e6) {
             assertEq(result, int256(tradeAmount));
@@ -51,7 +52,8 @@ contract TestPerpMarketLib is Test {
         bool closePosition = false;
         int256 currentPositionAmount = 1e6;
 
-        int256 result = PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Sell", tradeAmount, reduceOnly, closePosition);
+        int256 result =
+            PerpMarketLib.getFinalTradeAmount(currentPositionAmount, "Sell", tradeAmount, reduceOnly, closePosition);
 
         if (0 <= tradeAmount && tradeAmount <= 1e6) {
             assertEq(result, -int256(tradeAmount));
@@ -66,22 +68,10 @@ contract TestPerpMarketLib is Test {
         bool reduceOnly = false;
         bool closePosition = true;
 
-        assertEq(
-            PerpMarketLib.getFinalTradeAmount(100, "Buy", quantity, reduceOnly, closePosition),
-            0
-        );
-        assertEq(
-            PerpMarketLib.getFinalTradeAmount(-100, "Buy", quantity, reduceOnly, closePosition),
-            100
-        );
-        assertEq(
-            PerpMarketLib.getFinalTradeAmount(100, "Sell", quantity, reduceOnly, closePosition),
-            -100
-        );
-        assertEq(
-            PerpMarketLib.getFinalTradeAmount(-100, "Sell", quantity, reduceOnly, closePosition),
-            0
-        );
+        assertEq(PerpMarketLib.getFinalTradeAmount(100, "Buy", quantity, reduceOnly, closePosition), 0);
+        assertEq(PerpMarketLib.getFinalTradeAmount(-100, "Buy", quantity, reduceOnly, closePosition), 100);
+        assertEq(PerpMarketLib.getFinalTradeAmount(100, "Sell", quantity, reduceOnly, closePosition), -100);
+        assertEq(PerpMarketLib.getFinalTradeAmount(-100, "Sell", quantity, reduceOnly, closePosition), 0);
     }
 
     function testValidateTradeBuy(uint256 entryUpdate) public {

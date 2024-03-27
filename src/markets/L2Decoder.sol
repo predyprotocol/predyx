@@ -63,7 +63,6 @@ library L2Decoder {
             reduceOnlyUint := and(shr(136, args), 0xFF)
             closePositionUint := and(shr(144, args), 0xFF)
             sideUint := and(shr(152, args), 0xFF)
-            
         }
 
         reduceOnly = reduceOnlyUint == 1;
