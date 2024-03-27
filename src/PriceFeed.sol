@@ -3,15 +3,22 @@ pragma solidity ^0.8.17;
 
 import {FixedPointMathLib} from "@solmate/src/utils/FixedPointMathLib.sol";
 import {AggregatorV3Interface} from "./vendors/AggregatorV3Interface.sol";
+import {IPyth} from "./vendors/IPyth.sol";
 import {Constants} from "./libraries/Constants.sol";
 
 contract PriceFeedFactory {
-    event PriceFeedCreated(address quotePrice, address basePrice, uint256 decimalsDiff, address priceFeed);
+    address private immutable _pyth;
 
-    function createPriceFeed(address quotePrice, address basePrice, uint256 decimalsDiff) external returns (address) {
-        PriceFeed priceFeed = new PriceFeed(quotePrice, basePrice, decimalsDiff);
+    event PriceFeedCreated(address quotePrice, bytes32 priceId, uint256 decimalsDiff, address priceFeed);
 
-        emit PriceFeedCreated(quotePrice, basePrice, decimalsDiff, address(priceFeed));
+    constructor(address pyth) {
+        _pyth = pyth;
+    }
+
+    function createPriceFeed(address quotePrice, bytes32 priceId, uint256 decimalsDiff) external returns (address) {
+        PriceFeed priceFeed = new PriceFeed(quotePrice, _pyth, priceId, decimalsDiff);
+
+        emit PriceFeedCreated(quotePrice, priceId, decimalsDiff, address(priceFeed));
 
         return address(priceFeed);
     }
@@ -21,22 +28,29 @@ contract PriceFeedFactory {
 /// @notice The contract provides the square root price of the base token in terms of the quote token
 contract PriceFeed {
     address private immutable _quotePriceFeed;
-    address private immutable _basePriceFeed;
+    address private immutable _pyth;
     uint256 private immutable _decimalsDiff;
+    bytes32 private immutable _priceId;
 
-    constructor(address quotePrice, address basePrice, uint256 decimalsDiff) {
+    uint256 private constant VALID_TIME_PERIOD = 5 * 60;
+
+    constructor(address quotePrice, address pyth, bytes32 priceId, uint256 decimalsDiff) {
         _quotePriceFeed = quotePrice;
-        _basePriceFeed = basePrice;
+        _pyth = pyth;
+        _priceId = priceId;
         _decimalsDiff = decimalsDiff;
     }
 
     function getSqrtPrice() external view returns (uint256 sqrtPrice) {
         (, int256 quoteAnswer,,,) = AggregatorV3Interface(_quotePriceFeed).latestRoundData();
-        (, int256 baseAnswer,,,) = AggregatorV3Interface(_basePriceFeed).latestRoundData();
 
-        require(quoteAnswer > 0 && baseAnswer > 0);
+        IPyth.Price memory basePrice = IPyth(_pyth).getPriceNoOlderThan(_priceId, VALID_TIME_PERIOD);
 
-        uint256 price = uint256(baseAnswer) * Constants.Q96 / uint256(quoteAnswer);
+        require(basePrice.expo == -8, "INVALID_EXP");
+
+        require(quoteAnswer > 0 && basePrice.price > 0);
+
+        uint256 price = uint256(int256(basePrice.price)) * Constants.Q96 / uint256(quoteAnswer);
         price = price * Constants.Q96 / _decimalsDiff;
 
         sqrtPrice = FixedPointMathLib.sqrt(price);

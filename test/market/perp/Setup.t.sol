@@ -77,7 +77,7 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
             fromPrivateKey,
             _toPermit(order),
             address(perpMarket),
-            PerpOrderLib.PERMIT2_ORDER_TYPE,
+            PerpOrderV3Lib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
         );

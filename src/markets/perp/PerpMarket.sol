@@ -23,7 +23,7 @@ struct PerpOrderV2 {
 struct PerpOrderV3L2 {
     address trader;
     uint256 nonce;
-    int256 tradeAmount;
+    uint256 quantity;
     uint256 marginAmount;
     uint256 limitPrice;
     uint256 stopPrice;
@@ -65,16 +65,18 @@ contract PerpMarket is PerpMarketV1 {
     function executeOrderV3L2(
         PerpOrderV3L2 memory compressedOrder,
         bytes memory sig,
-        SettlementParamsV2 memory settlementParams
+        SettlementParamsV2 memory settlementParams,
+        uint64 orderId
     ) external nonReentrant returns (IPredyPool.TradeResult memory) {
-        (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition) =
+        (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition, bool side) =
             L2Decoder.decodePerpOrderV3Params(compressedOrder.data1);
 
         PerpOrderV3 memory order = PerpOrderV3({
             info: OrderInfo(address(this), compressedOrder.trader, compressedOrder.nonce, deadline),
             pairId: pairId,
             entryTokenAddress: _quoteTokenMap[pairId],
-            tradeAmount: compressedOrder.tradeAmount,
+            side: side ? "Buy" : "Sell",
+            quantity: compressedOrder.quantity,
             marginAmount: compressedOrder.marginAmount,
             limitPrice: compressedOrder.limitPrice,
             stopPrice: compressedOrder.stopPrice,
@@ -84,6 +86,6 @@ contract PerpMarket is PerpMarketV1 {
             auctionData: compressedOrder.auctionData
         });
 
-        return _executeOrderV3(order, sig, settlementParams);
+        return _executeOrderV3(order, sig, settlementParams, orderId);
     }
 }

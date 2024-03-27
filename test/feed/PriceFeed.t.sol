@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../../src/PriceFeed.sol";
+import {IPyth} from "../../src/vendors/IPyth.sol";
 
 contract MockPriceFeed {
     int256 latestAnswer;
@@ -24,17 +25,30 @@ contract MockPriceFeed {
     }
 }
 
+contract MockPyth {
+    int64 latestAnswer;
+
+    function setAnswer(int64 answer) external {
+        latestAnswer = answer;
+    }
+
+    function getPriceNoOlderThan(bytes32, uint256) external view returns (IPyth.Price memory price) {
+        price.price = latestAnswer;
+        price.expo = -8;
+    }
+}
+
 contract PriceFeedTest is Test {
     PriceFeed priceFeed;
 
     MockPriceFeed mockQuotePriceFeed;
-    MockPriceFeed mockBasePriceFeed;
+    MockPyth mockBasePriceFeed;
 
     function setUp() public {
         mockQuotePriceFeed = new MockPriceFeed();
-        mockBasePriceFeed = new MockPriceFeed();
+        mockBasePriceFeed = new MockPyth();
 
-        priceFeed = new PriceFeed(address(mockQuotePriceFeed), address(mockBasePriceFeed), 1e12);
+        priceFeed = new PriceFeed(address(mockQuotePriceFeed), address(mockBasePriceFeed), bytes32(0), 1e12);
     }
 
     function testGetSqrtPrice() public {
@@ -48,8 +62,8 @@ contract PriceFeedTest is Test {
         a = bound(a, 1, 1e14);
         b = bound(a, 1, 2 * 1e8);
 
-        mockBasePriceFeed.setAnswer(int256(a));
-        mockQuotePriceFeed.setAnswer(int256(b));
+        mockBasePriceFeed.setAnswer(int64(uint64(a)));
+        mockQuotePriceFeed.setAnswer(int64(uint64(b)));
 
         assertGt(priceFeed.getSqrtPrice(), 0);
     }
