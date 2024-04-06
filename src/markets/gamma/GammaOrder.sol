@@ -6,16 +6,59 @@ import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {ResolvedOrder} from "../../libraries/orders/ResolvedOrder.sol";
 
+struct GammaModifyInfo {
+    uint64 expiration;
+    uint256 lowerLimit;
+    uint256 upperLimit;
+    uint32 hedgeInterval;
+    uint64 sqrtPriceTrigger;
+    uint64 minSlippageTolerance;
+    uint64 maxSlippageTolerance;
+}
+
+library GammaModifyInfoLib {
+    bytes internal constant GAMMA_MODIFY_INFO_TYPE = abi.encodePacked(
+        "GammaModifyInfo(",
+        "uint64 expiration,",
+        "uint256 lowerLimit,",
+        "uint256 upperLimit,",
+        "uint32 hedgeInterval,",
+        "uint64 sqrtPriceTrigger,",
+        "uint64 minSlippageTolerance,",
+        "uint64 maxSlippageTolerance)"
+    );
+
+    bytes32 internal constant GAMMA_MODIFY_INFO_TYPE_HASH = keccak256(GAMMA_MODIFY_INFO_TYPE);
+
+    /// @notice hash an GammaModifyInfo object
+    /// @param info The GammaModifyInfo object to hash
+    function hash(GammaModifyInfo memory info) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                GAMMA_MODIFY_INFO_TYPE_HASH,
+                info.expiration,
+                info.lowerLimit,
+                info.upperLimit,
+                info.hedgeInterval,
+                info.sqrtPriceTrigger,
+                info.minSlippageTolerance,
+                info.maxSlippageTolerance
+            )
+        );
+    }
+}
+
 struct GammaOrder {
     OrderInfo info;
     uint64 pairId;
-    uint64 slotId;
+    uint256 positionId;
     address entryTokenAddress;
     int256 quantity;
     int256 quantitySqrt;
     int256 marginAmount;
     bool closePosition;
     int256 limitValue;
+    GammaModifyInfo modifyInfo;
 }
 
 /// @notice helpers for handling general order objects
@@ -26,17 +69,19 @@ library GammaOrderLib {
         "GammaOrder(",
         "OrderInfo info,",
         "uint64 pairId,",
-        "uint64 slotId,",
+        "uint256 positionId,",
         "address entryTokenAddress,",
         "int256 quantity,",
         "int256 quantitySqrt,",
         "int256 marginAmount,",
         "bool closePosition,",
-        "int256 limitValue)"
+        "int256 limitValue,",
+        "GammaModifyInfo modifyInfo)"
     );
 
     /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
-    bytes internal constant ORDER_TYPE = abi.encodePacked(GAMMA_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
+    bytes internal constant ORDER_TYPE =
+        abi.encodePacked(GAMMA_ORDER_TYPE, GammaModifyInfoLib.GAMMA_MODIFY_INFO_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
     bytes32 internal constant GAMMA_ORDER_TYPE_HASH = keccak256(ORDER_TYPE);
 
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
@@ -52,13 +97,14 @@ library GammaOrderLib {
                 GAMMA_ORDER_TYPE_HASH,
                 order.info.hash(),
                 order.pairId,
-                order.slotId,
+                order.positionId,
                 order.entryTokenAddress,
                 order.quantity,
                 order.quantitySqrt,
                 order.marginAmount,
                 order.closePosition,
-                order.limitValue
+                order.limitValue,
+                GammaModifyInfoLib.hash(order.modifyInfo)
             )
         );
     }

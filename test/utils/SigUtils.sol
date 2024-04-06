@@ -7,7 +7,6 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {PerpOrder} from "../../src/markets/perp/PerpOrder.sol";
 import {PerpOrderV3} from "../../src/markets/perp/PerpOrderV3.sol";
 import {GammaOrder} from "../../src/markets/gamma/GammaOrder.sol";
-import {GammaModifyOrder} from "../../src/markets/gamma/GammaModifyOrder.sol";
 import {SpotOrder} from "../../src/markets/spot/SpotOrder.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 
@@ -31,14 +30,6 @@ contract SigUtils is Test {
 
     function _toPermit(GammaOrder memory order) internal pure returns (ISignatureTransfer.PermitTransferFrom memory) {
         return _toPermit(order.entryTokenAddress, order.marginAmount, order.info);
-    }
-
-    function _toPermit(GammaModifyOrder memory order)
-        internal
-        pure
-        returns (ISignatureTransfer.PermitTransferFrom memory)
-    {
-        return _toPermit(address(0), 0, order.info);
     }
 
     function _toPermit(SpotOrder memory order) internal pure returns (ISignatureTransfer.PermitTransferFrom memory) {

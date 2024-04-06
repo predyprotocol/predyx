@@ -111,47 +111,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
             _revertTradeResult(tradeResult);
         } else if (callbackData.callbackSource == CallbackSource.QUOTE3) {
             _revertTradeResult(tradeResult);
-        } else if (callbackData.callbackSource == CallbackSource.TRADE) {
-            if (tradeResult.minMargin == 0) {
-                if (callbackData.marginAmountUpdate > 0) {
-                    // to avoid funds locked in this contract
-                    revert UpdateMarginMustNotBePositive();
-                }
-
-                DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
-
-                uint256 closeValue = uint256(vault.margin);
-
-                _predyPool.take(true, callbackData.trader, closeValue);
-
-                emit PerpTraded(
-                    callbackData.trader,
-                    tradeParams.pairId,
-                    tradeResult.vaultId,
-                    tradeParams.tradeAmount,
-                    tradeResult.payoff,
-                    tradeResult.fee,
-                    -closeValue.toInt256()
-                );
-            } else {
-                int256 marginAmountUpdate = callbackData.marginAmountUpdate;
-
-                if (marginAmountUpdate > 0) {
-                    quoteToken.safeTransfer(address(_predyPool), uint256(marginAmountUpdate));
-                } else if (marginAmountUpdate < 0) {
-                    _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
-                }
-
-                emit PerpTraded(
-                    callbackData.trader,
-                    tradeParams.pairId,
-                    tradeResult.vaultId,
-                    tradeParams.tradeAmount,
-                    tradeResult.payoff,
-                    tradeResult.fee,
-                    marginAmountUpdate
-                );
-            }
         } else if (callbackData.callbackSource == CallbackSource.TRADE3) {
             int256 marginAmountUpdate =
                 _calculateInitialMargin(tradeParams.vaultId, tradeParams.pairId, callbackData.leverage);
@@ -184,21 +143,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @notice Verifies signature of the order and executes trade
-     * @param order The order signed by trader
-     * @param settlementParams The route of settlement created by filler
-     */
-    function executeOrder(SignedOrder memory order, SettlementParamsV3 memory settlementParams)
-        external
-        nonReentrant
-        returns (IPredyPool.TradeResult memory)
-    {
-        PerpOrder memory perpOrder = abi.decode(order.order, (PerpOrder));
-
-        return _executeOrder(perpOrder, order.sig, settlementParams);
-    }
-
-    /**
      * @notice Verifies signature of the order_v3 and executes trade
      * @param order The order signed by trader
      * @param settlementParams The route of settlement created by filler
@@ -211,64 +155,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         PerpOrderV3 memory perpOrder = abi.decode(order.order, (PerpOrderV3));
 
         return _executeOrderV3(perpOrder, order.sig, settlementParams, 0);
-    }
-
-    function _executeOrder(PerpOrder memory perpOrder, bytes memory sig, SettlementParamsV3 memory settlementParams)
-        internal
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
-        ResolvedOrder memory resolvedOrder = PerpOrderLib.resolve(perpOrder, sig);
-
-        _validateQuoteTokenAddress(perpOrder.pairId, perpOrder.entryTokenAddress);
-
-        _verifyOrder(resolvedOrder, resolvedOrder.amount);
-
-        UserPosition storage userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
-
-        _saveUserPosition(userPosition, perpOrder);
-
-        if (perpOrder.tradeAmount == 0) {
-            revert AmountIsZero();
-        }
-
-        tradeResult = _predyPool.trade(
-            IPredyPool.TradeParams(
-                perpOrder.pairId,
-                userPosition.vaultId,
-                perpOrder.tradeAmount,
-                0,
-                abi.encode(
-                    CallbackData(
-                        CallbackSource.TRADE,
-                        perpOrder.info.trader,
-                        perpOrder.marginAmount,
-                        perpOrder.leverage,
-                        resolvedOrder,
-                        0
-                    )
-                )
-            ),
-            _getSettlementDataFromV3(settlementParams, msg.sender)
-        );
-
-        if (tradeResult.minMargin > 0) {
-            // only whitelisted filler can open position
-            if (msg.sender != whitelistFiller) {
-                revert CallerIsNotFiller();
-            }
-        }
-
-        if (userPosition.vaultId == 0) {
-            userPosition.vaultId = tradeResult.vaultId;
-
-            _predyPool.updateRecepient(tradeResult.vaultId, perpOrder.info.trader);
-        }
-
-        IOrderValidator(perpOrder.validatorAddress).validate(
-            perpOrder.tradeAmount, 0, perpOrder.validationData, tradeResult
-        );
-
-        return tradeResult;
     }
 
     function _executeOrderV3(

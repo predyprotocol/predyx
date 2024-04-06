@@ -7,15 +7,13 @@ import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
-import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
-import {GammaModifyOrder, GammaModifyOrderLib} from "../../../src/markets/gamma/GammaModifyOrder.sol";
+import "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
-    using GammaModifyOrderLib for GammaModifyOrder;
 
     GammaTradeMarket gammaTradeMarket;
     IPermit2 permit2;
@@ -44,14 +42,10 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
         limitOrderValidator = new LimitOrderValidator();
     }
 
-    function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
-        internal
-        view
-        returns (IFillerMarket.SignedOrder memory signedOrder)
-    {
+    function _sign(GammaOrder memory marketOrder, uint256 fromPrivateKey) internal view returns (bytes memory) {
         bytes32 witness = marketOrder.hash();
 
-        bytes memory sig = getPermitSignature(
+        return getPermitSignature(
             fromPrivateKey,
             _toPermit(marketOrder),
             address(gammaTradeMarket),
@@ -59,24 +53,42 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
             witness,
             DOMAIN_SEPARATOR
         );
-
-        signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
     }
 
-    function _sign(GammaModifyOrder memory modifyOrder, uint256 fromPrivateKey)
-        internal
-        view
-        returns (bytes memory sig)
-    {
-        bytes32 witness = modifyOrder.hash();
-
-        sig = getPermitSignature(
-            fromPrivateKey,
-            _toPermit(modifyOrder),
-            address(gammaTradeMarket),
-            GammaModifyOrderLib.PERMIT2_ORDER_TYPE,
-            witness,
-            DOMAIN_SEPARATOR
+    function _createOrder(
+        address trader,
+        uint256 nonce,
+        uint256 deadline,
+        uint64 pairId,
+        uint256 positionId,
+        int256 quantity,
+        int256 quantitySqrt,
+        int256 marginAmount,
+        bool closePosition,
+        int256 limitValue
+    ) internal view returns (GammaOrder memory order) {
+        order = GammaOrder(
+            OrderInfo(address(gammaTradeMarket), trader, nonce, deadline),
+            pairId,
+            positionId,
+            address(currency1),
+            quantity,
+            quantitySqrt,
+            marginAmount,
+            closePosition,
+            limitValue,
+            GammaModifyInfo(
+                // auto close
+                0,
+                0,
+                0,
+                // auto hedge
+                0,
+                0,
+                // slippage tolerance
+                0,
+                0
+            )
         );
     }
 }

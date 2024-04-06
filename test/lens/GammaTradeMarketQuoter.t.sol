@@ -44,7 +44,19 @@ contract TestGammaTradeMarketQuoter is TestLens {
             1000,
             2 * 1e6,
             false,
-            0
+            0,
+            GammaModifyInfo(
+                // auto close
+                0,
+                0,
+                0,
+                // auto hedge
+                0,
+                0,
+                // slippage tolerance
+                0,
+                0
+            )
         );
 
         IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
