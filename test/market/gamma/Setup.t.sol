@@ -8,12 +8,14 @@ import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
+import {GammaModifyOrder, GammaModifyOrderLib} from "../../../src/markets/gamma/GammaModifyOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
+    using GammaModifyOrderLib for GammaModifyOrder;
 
     GammaTradeMarket gammaTradeMarket;
     IPermit2 permit2;
@@ -59,5 +61,22 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
         );
 
         signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
+    }
+
+    function _sign(GammaModifyOrder memory modifyOrder, uint256 fromPrivateKey)
+        internal
+        view
+        returns (bytes memory sig)
+    {
+        bytes32 witness = modifyOrder.hash();
+
+        sig = getPermitSignature(
+            fromPrivateKey,
+            _toPermit(modifyOrder),
+            address(gammaTradeMarket),
+            GammaModifyOrderLib.PERMIT2_ORDER_TYPE,
+            witness,
+            DOMAIN_SEPARATOR
+        );
     }
 }

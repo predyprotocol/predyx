@@ -36,7 +36,7 @@ struct PerpOrderV3L2 {
  * Optimizing calldata size in this contract since L2 calldata is relatively expensive.
  */
 contract PerpMarket is PerpMarketV1 {
-    function executeOrderV2(PerpOrderV2 memory orderV2, bytes memory sig, SettlementParams memory settlementParams)
+    function executeOrderV2(PerpOrderV2 memory orderV2, bytes memory sig, SettlementParamsV3 memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory)
@@ -65,7 +65,7 @@ contract PerpMarket is PerpMarketV1 {
     function executeOrderV3L2(
         PerpOrderV3L2 memory compressedOrder,
         bytes memory sig,
-        SettlementParamsV2 memory settlementParams,
+        SettlementParamsV3 memory settlementParams,
         uint64 orderId
     ) external nonReentrant returns (IPredyPool.TradeResult memory) {
         (uint64 deadline, uint64 pairId, uint8 leverage, bool reduceOnly, bool closePosition, bool side) =

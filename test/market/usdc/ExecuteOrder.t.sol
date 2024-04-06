@@ -49,7 +49,7 @@ contract TestPerpMarketExecuteOrder is TestUSDCPerpMarket {
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, _fromPrivateKey);
 
         IPredyPool.TradeResult memory tradeResult =
-            perpMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96 * 2000 * 1e6 / 1e18));
+            perpMarket.executeOrder(signedOrder, _getSettlementDataV3(Constants.Q96 * 2000 * 1e6 / 1e18));
 
         assertEq(tradeResult.payoff.perpEntryUpdate, 199999999);
         assertEq(tradeResult.payoff.perpPayoff, 0);

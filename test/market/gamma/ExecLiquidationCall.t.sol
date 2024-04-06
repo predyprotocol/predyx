@@ -43,28 +43,25 @@ contract TestExecLiquidationCall is TestGammaMarket {
         GammaOrder memory order = GammaOrder(
             OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
+            0,
             address(currency1),
             -4 * 1e8,
             0,
             1e8,
-            12 hours,
-            0,
-            1000,
-            1000,
-            address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            false,
+            0
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
+        gammaTradeMarket.executeTrade(order, signedOrder.sig, _getSettlementDataV3(Constants.Q96));
 
         _movePrice(true, 6 * 1e16);
 
         vm.warp(block.timestamp + 30 minutes);
 
         uint256 beforeMargin = currency1.balanceOf(from1);
-        gammaTradeMarket.execLiquidationCall(1, 1e18, _getSettlementData(Constants.Q96));
+        gammaTradeMarket.execLiquidationCall(1, 1e18, _getSettlementDataV3(Constants.Q96));
         uint256 afterMargin = currency1.balanceOf(from1);
 
         assertGt(afterMargin - beforeMargin, 0);

@@ -188,7 +188,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
      * @param order The order signed by trader
      * @param settlementParams The route of settlement created by filler
      */
-    function executeOrder(SignedOrder memory order, SettlementParams memory settlementParams)
+    function executeOrder(SignedOrder memory order, SettlementParamsV3 memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory)
@@ -203,7 +203,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
      * @param order The order signed by trader
      * @param settlementParams The route of settlement created by filler
      */
-    function executeOrderV3(SignedOrder memory order, SettlementParamsV2 memory settlementParams)
+    function executeOrderV3(SignedOrder memory order, SettlementParamsV3 memory settlementParams)
         external
         nonReentrant
         returns (IPredyPool.TradeResult memory)
@@ -213,7 +213,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
         return _executeOrderV3(perpOrder, order.sig, settlementParams, 0);
     }
 
-    function _executeOrder(PerpOrder memory perpOrder, bytes memory sig, SettlementParams memory settlementParams)
+    function _executeOrder(PerpOrder memory perpOrder, bytes memory sig, SettlementParamsV3 memory settlementParams)
         internal
         returns (IPredyPool.TradeResult memory tradeResult)
     {
@@ -248,7 +248,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     )
                 )
             ),
-            _getSettlementData(settlementParams)
+            _getSettlementDataFromV3(settlementParams, msg.sender)
         );
 
         if (tradeResult.minMargin > 0) {
@@ -274,7 +274,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     function _executeOrderV3(
         PerpOrderV3 memory perpOrder,
         bytes memory sig,
-        SettlementParamsV2 memory settlementParams,
+        SettlementParamsV3 memory settlementParams,
         uint64 orderId
     ) internal returns (IPredyPool.TradeResult memory tradeResult) {
         ResolvedOrder memory resolvedOrder = PerpOrderV3Lib.resolve(perpOrder, sig);
@@ -309,7 +309,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     )
                 )
             ),
-            _getSettlementDataFromV2(settlementParams, msg.sender, tradeAmount)
+            _getSettlementDataFromV3(settlementParams, msg.sender)
         );
 
         if (tradeResult.minMargin > 0) {
@@ -414,7 +414,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     /// @notice Estimate transaction results and return with revert message
     function quoteExecuteOrderV3(
         PerpOrderV3 memory perpOrder,
-        SettlementParamsV2 memory settlementParams,
+        SettlementParamsV3 memory settlementParams,
         address filler
     ) external {
         UserPosition memory userPosition = userPositions[perpOrder.info.trader][perpOrder.pairId];
@@ -447,7 +447,7 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
                     )
                 )
             ),
-            _getSettlementDataFromV2(settlementParams, filler, tradeAmount)
+            _getSettlementDataFromV3(settlementParams, filler)
         );
     }
 

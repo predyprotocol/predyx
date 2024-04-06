@@ -52,7 +52,7 @@ contract TestPerpGetUserPosition is TestPerpMarket {
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        perpMarket.executeOrder(signedOrder, _getUniSettlementData(0));
+        perpMarket.executeOrder(signedOrder, _getUniSettlementDataV3(0));
     }
 
     function testGetUserPosition() public {

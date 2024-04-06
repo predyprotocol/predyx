@@ -9,6 +9,17 @@ import "../interfaces/IFillerMarket.sol";
 import "./SettlementCallbackLib.sol";
 
 abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgradable {
+    struct SettlementParamsV3Internal {
+        address filler;
+        address contractAddress;
+        bytes encodedData;
+        uint256 maxQuoteAmountPrice;
+        uint256 minQuoteAmountPrice;
+        uint256 price;
+        uint256 feePrice;
+        uint256 minFee;
+    }
+
     address public whitelistFiller;
 
     PredyPoolQuoter internal _quoter;
@@ -41,25 +52,54 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         bytes memory settlementData,
         int256 baseAmountDelta
     ) external onlyPredyPool {
-        SettlementCallbackLib.SettlementParams memory settlementParams =
-            SettlementCallbackLib.decodeParams(settlementData);
+        SettlementCallbackLib.SettlementParams memory settlementParams = decodeParamsV3(settlementData, baseAmountDelta);
+
         SettlementCallbackLib.validate(_whiteListedSettlements, settlementParams);
         SettlementCallbackLib.execSettlement(_predyPool, quoteToken, baseToken, settlementParams, baseAmountDelta);
     }
 
-    function reallocate(uint256 pairId, IFillerMarket.SettlementParams memory settlementParams)
+    function decodeParamsV3(bytes memory settlementData, int256 baseAmountDelta)
+        internal
+        pure
+        returns (SettlementCallbackLib.SettlementParams memory)
+    {
+        SettlementParamsV3Internal memory settlementParamsV3 = abi.decode(settlementData, (SettlementParamsV3Internal));
+
+        uint256 tradeAmountAbs = Math.abs(baseAmountDelta);
+
+        uint256 fee = settlementParamsV3.feePrice * tradeAmountAbs / Constants.Q96;
+
+        if (fee < settlementParamsV3.minFee) {
+            fee = settlementParamsV3.minFee;
+        }
+
+        uint256 maxQuoteAmount = settlementParamsV3.maxQuoteAmountPrice * tradeAmountAbs / Constants.Q96;
+        uint256 minQuoteAmount = settlementParamsV3.minQuoteAmountPrice * tradeAmountAbs / Constants.Q96;
+
+        return SettlementCallbackLib.SettlementParams(
+            settlementParamsV3.filler,
+            settlementParamsV3.contractAddress,
+            settlementParamsV3.encodedData,
+            baseAmountDelta > 0 ? minQuoteAmount : maxQuoteAmount,
+            settlementParamsV3.price,
+            int256(fee)
+        );
+    }
+
+    function reallocate(uint256 pairId, IFillerMarket.SettlementParamsV3 memory settlementParams)
         external
         returns (bool relocationOccurred)
     {
-        return _predyPool.reallocate(pairId, _getSettlementData(settlementParams));
+        return _predyPool.reallocate(pairId, _getSettlementDataFromV3(settlementParams, msg.sender));
     }
 
     function execLiquidationCall(
         uint256 vaultId,
         uint256 closeRatio,
-        IFillerMarket.SettlementParams memory settlementParams
+        IFillerMarket.SettlementParamsV3 memory settlementParams
     ) external returns (IPredyPool.TradeResult memory) {
-        return _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementData(settlementParams));
+        return
+            _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementDataFromV3(settlementParams, msg.sender));
     }
 
     function _getSettlementData(IFillerMarket.SettlementParams memory settlementParams)
@@ -108,6 +148,25 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
                 settlementParams.maxQuoteAmountPrice * tradeAmountAbs / Constants.Q96,
                 settlementParams.price,
                 int256(fee)
+            )
+        );
+    }
+
+    function _getSettlementDataFromV3(IFillerMarket.SettlementParamsV3 memory settlementParams, address filler)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encode(
+            SettlementParamsV3Internal(
+                filler,
+                settlementParams.contractAddress,
+                settlementParams.encodedData,
+                settlementParams.maxQuoteAmountPrice,
+                settlementParams.minQuoteAmountPrice,
+                settlementParams.price,
+                settlementParams.feePrice,
+                settlementParams.minFee
             )
         );
     }

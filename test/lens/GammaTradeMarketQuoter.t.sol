@@ -38,28 +38,21 @@ contract TestGammaTradeMarketQuoter is TestLens {
         GammaOrder memory order = GammaOrder(
             OrderInfo(address(0), from, 0, block.timestamp + 100),
             1,
+            0,
             address(currency1),
             -1000,
-            900,
+            1000,
             2 * 1e6,
-            12 hours,
-            0,
-            1000,
-            1000,
-            address(dutchOrderValidator),
-            abi.encode(
-                GeneralDutchOrderValidationData(
-                    Constants.Q96, Bps.ONE + 100000, Bps.ONE + 200000, 101488915, block.timestamp, block.timestamp + 60
-                )
-            )
+            false,
+            0
         );
 
         IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
 
-        IPredyPool.TradeResult memory tradeResult = _quoter.quoteExecuteOrder(order, settlementData);
+        IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(order, settlementData);
 
-        assertEq(tradeResult.payoff.perpEntryUpdate, 980);
-        assertEq(tradeResult.payoff.sqrtEntryUpdate, -1782);
+        assertEq(tradeResult.payoff.perpEntryUpdate, 1000);
+        assertEq(tradeResult.payoff.sqrtEntryUpdate, -2000);
         assertEq(tradeResult.payoff.perpPayoff, 0);
         assertEq(tradeResult.payoff.sqrtPayoff, 0);
     }
