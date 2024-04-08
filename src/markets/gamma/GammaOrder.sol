@@ -7,6 +7,7 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {ResolvedOrder} from "../../libraries/orders/ResolvedOrder.sol";
 
 struct GammaModifyInfo {
+    bool isEnabled;
     uint64 expiration;
     uint256 lowerLimit;
     uint256 upperLimit;
@@ -19,6 +20,7 @@ struct GammaModifyInfo {
 library GammaModifyInfoLib {
     bytes internal constant GAMMA_MODIFY_INFO_TYPE = abi.encodePacked(
         "GammaModifyInfo(",
+        "bool isEnabled,",
         "uint64 expiration,",
         "uint256 lowerLimit,",
         "uint256 upperLimit,",
@@ -36,6 +38,7 @@ library GammaModifyInfoLib {
         return keccak256(
             abi.encode(
                 GAMMA_MODIFY_INFO_TYPE_HASH,
+                info.isEnabled,
                 info.expiration,
                 info.lowerLimit,
                 info.upperLimit,

@@ -43,7 +43,30 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
 
-        GammaOrder memory order = _createOrder(from1, 0, block.timestamp + 100, 1, 0, -900, 1000, 2 * 1e6, false, -1100);
+        GammaOrder memory order = GammaOrder(
+            OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
+            1,
+            0,
+            address(currency1),
+            -900,
+            1000,
+            2 * 1e6,
+            false,
+            -1100,
+            GammaModifyInfo(
+                true,
+                // auto close
+                0,
+                0,
+                0,
+                // auto hedge
+                2 hours,
+                0,
+                // 30bps - 60bps
+                1e6 + 3000,
+                1e6 + 6000
+            )
+        );
 
         gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey1), _getSettlementDataV3(Constants.Q96));
     }
@@ -51,7 +74,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
     function testCannotExecuteDeltaHedgeByTime() public {
         mockPriceFeed.setSqrtPrice(2 ** 96);
 
-        vm.warp(block.timestamp + 10 hours);
+        vm.warp(block.timestamp + 1 hours);
 
         IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
 
@@ -62,35 +85,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
     function testSucceedsExecuteDeltaHedgeByTime() public {
         mockPriceFeed.setSqrtPrice(Constants.Q96);
 
-        vm.warp(block.timestamp + 2 hours);
-
-        {
-            GammaOrder memory order = GammaOrder(
-                OrderInfo(address(gammaTradeMarket), from1, 1, block.timestamp + 100),
-                1,
-                1,
-                address(0),
-                0,
-                0,
-                0,
-                false,
-                0,
-                GammaModifyInfo(
-                    // auto close
-                    0,
-                    0,
-                    0,
-                    // auto hedge
-                    1 hours,
-                    0,
-                    // 30bps - 60bps
-                    1e6 + 3000,
-                    1e6 + 6000
-                )
-            );
-
-            gammaTradeMarket.modifyAutoHedgeAndClose(order, _sign(order, fromPrivateKey1));
-        }
+        vm.warp(block.timestamp + 3 hours);
 
         gammaTradeMarket.autoHedge(from1, 1, _getSettlementDataV3(Constants.Q96));
     }

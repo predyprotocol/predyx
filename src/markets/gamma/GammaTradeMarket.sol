@@ -168,6 +168,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
         UserPosition storage userPosition = userPositions[tradeResult.vaultId];
 
+        _saveUserPosition(userPosition, gammaOrder.modifyInfo);
+
         if (userPosition.vaultId == 0) {
             userPosition.vaultId = tradeResult.vaultId;
             userPosition.owner = gammaOrder.info.trader;
@@ -193,6 +195,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
     // modify position (hedge or close)
     function modifyAutoHedgeAndClose(GammaOrder memory gammaOrder, bytes memory sig) external nonReentrant {
+        require(
+            gammaOrder.quantity == 0 && gammaOrder.quantitySqrt == 0 && gammaOrder.marginAmount == 0, "Invalid Order"
+        );
+
         ResolvedOrder memory resolvedOrder = GammaOrderLib.resolve(gammaOrder, sig);
 
         _verifyOrder(resolvedOrder);
@@ -403,6 +409,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     }
 
     function _saveUserPosition(UserPosition storage userPosition, GammaModifyInfo memory modifyInfo) internal {
+        if (!modifyInfo.isEnabled) {
+            return;
+        }
+
         if (1 hours > modifyInfo.hedgeInterval) {
             revert TooShortHedgeInterval();
         }
