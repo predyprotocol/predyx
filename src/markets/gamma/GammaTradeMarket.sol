@@ -41,6 +41,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         uint256 vaultId;
         address owner;
         uint64 pairId;
+        uint8 leverage;
         uint256 expiration;
         uint256 lowerLimit;
         uint256 upperLimit;
@@ -78,20 +79,9 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         address indexed trader,
         uint256 pairId,
         uint256 vaultId,
-        uint256 hedgeInterval,
-        uint256 sqrtPriceTrigger,
         IPredyPool.Payoff payoff,
         int256 fee,
         int256 marginAmount
-    );
-    event GammaPositionHedged(
-        address indexed trader,
-        uint256 pairId,
-        uint256 vaultId,
-        uint256 sqrtPrice,
-        int256 delta,
-        IPredyPool.Payoff payoff,
-        int256 fee
     );
 
     constructor() {}
@@ -123,6 +113,15 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
                 // remove position index
                 _removePosition(callbackData.trader, tradeParams.vaultId);
+
+                emit GammaPositionTraded(
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeParams.vaultId,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    -vault.margin
+                );
             } else {
                 int256 marginAmountUpdate = callbackData.marginAmountUpdate;
 
@@ -131,7 +130,31 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                 } else if (marginAmountUpdate < 0) {
                     _predyPool.take(true, callbackData.trader, uint256(-marginAmountUpdate));
                 }
+
+                emit GammaPositionTraded(
+                    callbackData.trader,
+                    tradeParams.pairId,
+                    tradeParams.vaultId,
+                    tradeResult.payoff,
+                    tradeResult.fee,
+                    marginAmountUpdate
+                );
             }
+        }
+    }
+
+    function execLiquidationCall(
+        uint256 vaultId,
+        uint256 closeRatio,
+        IFillerMarket.SettlementParamsV3 memory settlementParams
+    ) external override returns (IPredyPool.TradeResult memory tradeResult) {
+        tradeResult =
+            _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementDataFromV3(settlementParams, msg.sender));
+
+        if (closeRatio == 1e18) {
+            UserPosition memory userPosition = userPositions[vaultId];
+
+            _removePosition(userPosition.owner, userPosition.vaultId);
         }
     }
 
@@ -169,6 +192,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         UserPosition storage userPosition = userPositions[tradeResult.vaultId];
 
         _saveUserPosition(userPosition, gammaOrder.modifyInfo);
+
+        userPosition.leverage = gammaOrder.leverage;
 
         if (userPosition.vaultId == 0) {
             userPosition.vaultId = tradeResult.vaultId;
@@ -413,7 +438,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             return;
         }
 
-        if (1 hours > modifyInfo.hedgeInterval) {
+        if (0 < modifyInfo.hedgeInterval && 1 hours > modifyInfo.hedgeInterval) {
             revert TooShortHedgeInterval();
         }
 

@@ -97,7 +97,7 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         uint256 vaultId,
         uint256 closeRatio,
         IFillerMarket.SettlementParamsV3 memory settlementParams
-    ) external returns (IPredyPool.TradeResult memory) {
+    ) external virtual returns (IPredyPool.TradeResult memory) {
         return
             _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementDataFromV3(settlementParams, msg.sender));
     }

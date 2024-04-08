@@ -45,6 +45,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
             2 * 1e6,
             false,
             0,
+            2,
             GammaModifyInfo(
                 false,
                 // auto close

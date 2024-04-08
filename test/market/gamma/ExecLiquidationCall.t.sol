@@ -55,5 +55,9 @@ contract TestExecLiquidationCall is TestGammaMarket {
         uint256 afterMargin = currency1.balanceOf(from1);
 
         assertGt(afterMargin - beforeMargin, 0);
+
+        GammaTradeMarket.UserPositionResult[] memory results = gammaTradeMarket.getUserPositions(from1);
+
+        assertEq(results.length, 0);
     }
 }

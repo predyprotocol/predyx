@@ -7,8 +7,7 @@ import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../../src/libraries/Constants.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
 
-contract TestGammaExecuteDeltaHedge is TestGammaMarket {
-    bytes normalSwapRoute;
+contract TestGammaAutoClose is TestGammaMarket {
     uint256 fromPrivateKey1;
     address from1;
     uint256 fromPrivateKey2;
@@ -26,8 +25,6 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         predyPool.supply(1, true, 1e10);
         predyPool.supply(1, false, 1e10);
-
-        normalSwapRoute = abi.encodePacked(address(currency0), uint24(500), address(currency1));
 
         fromPrivateKey1 = 0x12341234;
         from1 = vm.addr(fromPrivateKey1);
@@ -57,11 +54,11 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
             GammaModifyInfo(
                 true,
                 // auto close
-                0,
+                uint64(block.timestamp + 2 hours),
                 0,
                 0,
                 // auto hedge
-                2 hours,
+                0,
                 0,
                 // 30bps - 60bps
                 1e6 + 3000,
@@ -72,22 +69,22 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey1), _getSettlementDataV3(Constants.Q96));
     }
 
-    function testCannotExecuteDeltaHedgeByTime() public {
+    function testCannotAutoClose() public {
         mockPriceFeed.setSqrtPrice(2 ** 96);
 
         vm.warp(block.timestamp + 1 hours);
 
         IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
 
-        vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
-        gammaTradeMarket.autoHedge(from1, 1, settlementParams);
+        vm.expectRevert(GammaTradeMarket.AutoCloseTriggerNotMatched.selector);
+        gammaTradeMarket.autoClose(from1, 1, settlementParams);
     }
 
-    function testSucceedsExecuteDeltaHedgeByTime() public {
+    function testSucceedsAutoClose() public {
         mockPriceFeed.setSqrtPrice(Constants.Q96);
 
         vm.warp(block.timestamp + 3 hours);
 
-        gammaTradeMarket.autoHedge(from1, 1, _getSettlementDataV3(Constants.Q96));
+        gammaTradeMarket.autoClose(from1, 1, _getSettlementDataV3(Constants.Q96));
     }
 }

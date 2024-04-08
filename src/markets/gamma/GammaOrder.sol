@@ -61,6 +61,7 @@ struct GammaOrder {
     int256 marginAmount;
     bool closePosition;
     int256 limitValue;
+    uint8 leverage;
     GammaModifyInfo modifyInfo;
 }
 
@@ -79,6 +80,7 @@ library GammaOrderLib {
         "int256 marginAmount,",
         "bool closePosition,",
         "int256 limitValue,",
+        "uint8 leverage,",
         "GammaModifyInfo modifyInfo)"
     );
 
@@ -107,6 +109,7 @@ library GammaOrderLib {
                 order.marginAmount,
                 order.closePosition,
                 order.limitValue,
+                order.leverage,
                 GammaModifyInfoLib.hash(order.modifyInfo)
             )
         );

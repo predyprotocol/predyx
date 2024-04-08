@@ -77,6 +77,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
             marginAmount,
             closePosition,
             limitValue,
+            2,
             GammaModifyInfo(
                 false,
                 // auto close
