@@ -6,8 +6,9 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../../src/libraries/Constants.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
+import {GammaModifyOrderL2} from "../../../src/markets/gamma/GammaTradeMarketL2.sol";
 
-contract TestGammaAutoClose is TestGammaMarket {
+contract TestGammaModify is TestGammaMarket {
     uint256 fromPrivateKey1;
     address from1;
     uint256 fromPrivateKey2;
@@ -71,22 +72,65 @@ contract TestGammaAutoClose is TestGammaMarket {
         gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey1), _getSettlementDataV3(Constants.Q96));
     }
 
-    function testCannotAutoClose() public {
-        mockPriceFeed.setSqrtPrice(2 ** 96);
+    function getModifyOrder(uint256 positionId)
+        internal
+        view
+        returns (GammaModifyOrderL2 memory orderL2, bytes memory signature)
+    {
+        GammaOrder memory order = GammaOrder(
+            OrderInfo(address(gammaTradeMarket), from1, 1, block.timestamp + 100),
+            1,
+            positionId,
+            address(currency1),
+            0,
+            0,
+            0,
+            false,
+            0,
+            0,
+            GammaModifyInfo(
+                true,
+                // auto close
+                uint64(block.timestamp + 2 hours),
+                0,
+                0,
+                // auto hedge
+                0,
+                0,
+                // 30bps - 60bps
+                1e6 + 3000,
+                1e6 + 6000,
+                10 minutes,
+                10000
+            )
+        );
 
-        vm.warp(block.timestamp + 1 hours);
+        orderL2 = GammaModifyOrderL2(
+            from1,
+            order.info.nonce,
+            order.info.deadline,
+            order.positionId,
+            encodeGammaModifyParams(
+                order.modifyInfo.isEnabled,
+                order.modifyInfo.expiration,
+                order.modifyInfo.hedgeInterval,
+                order.modifyInfo.sqrtPriceTrigger,
+                order.modifyInfo.minSlippageTolerance,
+                order.modifyInfo.maxSlippageTolerance,
+                order.modifyInfo.auctionPeriod,
+                order.modifyInfo.auctionRange
+            ),
+            order.modifyInfo.lowerLimit,
+            order.modifyInfo.upperLimit
+        );
 
-        IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
-
-        vm.expectRevert(GammaTradeMarket.AutoCloseTriggerNotMatched.selector);
-        gammaTradeMarket.autoClose(1, settlementParams);
+        signature = _sign(order, fromPrivateKey1);
     }
 
-    function testSucceedsAutoClose() public {
-        mockPriceFeed.setSqrtPrice(Constants.Q96);
+    function testModifyPosition() public {
+        (GammaModifyOrderL2 memory orderL2, bytes memory signature) = getModifyOrder(1);
 
-        vm.warp(block.timestamp + 3 hours);
-
-        gammaTradeMarket.autoClose(1, _getSettlementDataV3(Constants.Q96));
+        // vm.expectRevert(GammaTradeMarket.AutoCloseTriggerNotMatched.selector);
+        gammaTradeMarket.modifyAutoHedgeAndClose(orderL2, signature);
     }
 }

@@ -6,8 +6,9 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../../src/libraries/Constants.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
 
-contract TestGammaExecuteDeltaHedge is TestGammaMarket {
+contract TestGammaAutoHedge is TestGammaMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;
@@ -19,6 +20,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         TestGammaMarket.setUp();
 
         mockPriceFeed = new MockPriceFeed();
+        mockPriceFeed.setSqrtPrice(Constants.Q96);
 
         registerPair(address(currency1), address(mockPriceFeed));
 
@@ -48,11 +50,11 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
             1,
             0,
             address(currency1),
-            -900,
-            1000,
+            -9 * 1e6,
+            10 * 1e6,
             2 * 1e6,
             false,
-            -1100,
+            -11 * 1e6,
             2,
             GammaModifyInfo(
                 true,
@@ -62,10 +64,10 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
                 0,
                 // auto hedge
                 2 hours,
-                0,
+                1e6 + 12000, // +-1.2% range in sqrt
                 // 30bps - 60bps
-                1e6 + 3000,
-                1e6 + 6000,
+                Bps.ONE + 3000,
+                Bps.ONE + 6000,
                 10 minutes,
                 10000
             )
@@ -75,14 +77,14 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
     }
 
     function testCannotExecuteDeltaHedgeByTime() public {
-        mockPriceFeed.setSqrtPrice(2 ** 96);
+        mockPriceFeed.setSqrtPrice(Constants.Q96);
 
         vm.warp(block.timestamp + 1 hours);
 
         IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
 
         vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
-        gammaTradeMarket.autoHedge(from1, 1, settlementParams);
+        gammaTradeMarket.autoHedge(1, settlementParams);
     }
 
     function testSucceedsExecuteDeltaHedgeByTime() public {
@@ -90,6 +92,16 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
 
         vm.warp(block.timestamp + 3 hours);
 
-        gammaTradeMarket.autoHedge(from1, 1, _getSettlementDataV3(Constants.Q96));
+        gammaTradeMarket.autoHedge(1, _getSettlementDataV3(Constants.Q96));
+    }
+
+    function testExecuteDeltaHedgeByPrice() public {
+        mockPriceFeed.setSqrtPrice(Constants.Q96 * 1014 / 1000);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96 * 1028 / 1000);
+
+        gammaTradeMarket.autoHedge(1, settlementParams);
     }
 }

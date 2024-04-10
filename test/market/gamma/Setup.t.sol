@@ -5,8 +5,8 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
+import {GammaTradeMarketL2} from "../../../src/markets/gamma/GammaTradeMarketL2.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
-import "../../../src/markets/validators/LimitOrderValidator.sol";
 import "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -15,9 +15,8 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
-    GammaTradeMarket gammaTradeMarket;
+    GammaTradeMarketL2 gammaTradeMarket;
     IPermit2 permit2;
-    LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public virtual override(TestPool) {
@@ -27,7 +26,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        gammaTradeMarket = new GammaTradeMarket();
+        gammaTradeMarket = new GammaTradeMarketL2();
 
         gammaTradeMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
@@ -38,8 +37,6 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         currency0.approve(address(gammaTradeMarket), type(uint256).max);
         currency1.approve(address(gammaTradeMarket), type(uint256).max);
-
-        limitOrderValidator = new LimitOrderValidator();
     }
 
     function _sign(GammaOrder memory marketOrder, uint256 fromPrivateKey) internal view returns (bytes memory) {
