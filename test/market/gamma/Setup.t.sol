@@ -89,6 +89,8 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
                 0,
                 // slippage tolerance
                 0,
+                0,
+                0,
                 0
             )
         );

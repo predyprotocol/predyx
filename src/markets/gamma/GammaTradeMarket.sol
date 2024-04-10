@@ -6,31 +6,32 @@ import {ERC20} from "@solmate/src/tokens/ERC20.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
-import "../../interfaces/IFillerMarket.sol";
-import "../../interfaces/IOrderValidator.sol";
+import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
 import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
-import "../../libraries/orders/Permit2Lib.sol";
-import "../../libraries/orders/ResolvedOrder.sol";
-import "../../libraries/logic/LiquidationLogic.sol";
+import {Permit2Lib} from "../../libraries/orders/Permit2Lib.sol";
+import {ResolvedOrder, ResolvedOrderLib} from "../../libraries/orders/ResolvedOrder.sol";
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
-import "./GammaOrder.sol";
-import {PredyPoolQuoter} from "../../lens/PredyPoolQuoter.sol";
+import {DataType} from "../../libraries/DataType.sol";
+import {Constants} from "../../libraries/Constants.sol";
+import {GammaOrder, GammaOrderLib, GammaModifyInfo} from "./GammaOrder.sol";
+import {ArrayLib} from "./ArrayLib.sol";
+import {GammaTradeMarketLib} from "./GammaTradeMarketLib.sol";
 
 /**
  * @notice Gamma trade market contract
  */
 contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     using ResolvedOrderLib for ResolvedOrder;
-
+    using ArrayLib for uint256[];
     using GammaOrderLib for GammaOrder;
-
     using Permit2Lib for ResolvedOrder;
     using SafeTransferLib for ERC20;
 
     error PositionNotFound();
     error PositionIsNotClosed();
+    error InvalidOrder();
     error SignerISNotPositionOwner();
     error TooShortHedgeInterval();
     error HedgeTriggerNotMatched();
@@ -49,13 +50,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         uint256 hedgeInterval;
         uint256 lastHedgedSqrtPrice;
         uint256 sqrtPriceTrigger;
-        uint64 minSlippageTolerance;
-        uint64 maxSlippageTolerance;
+        GammaTradeMarketLib.AuctionParams auctionParams;
     }
 
     enum CallbackSource {
         TRADE,
-        HEDGE,
         QUOTE
     }
 
@@ -64,11 +63,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         address trader;
         int256 marginAmountUpdate;
     }
-
-    // The duration of dutch auction is 16 minutes
-    uint256 private constant _AUCTION_DURATION = 16 minutes;
-    // The range of auction price
-    uint256 private constant _AUCTION_RANGE = 100;
 
     IPermit2 private _permit2;
 
@@ -218,11 +212,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         }
     }
 
-    // modify position (hedge or close)
-    function modifyAutoHedgeAndClose(GammaOrder memory gammaOrder, bytes memory sig) external nonReentrant {
-        require(
-            gammaOrder.quantity == 0 && gammaOrder.quantitySqrt == 0 && gammaOrder.marginAmount == 0, "Invalid Order"
-        );
+    function _modifyAutoHedgeAndClose(GammaOrder memory gammaOrder, bytes memory sig) internal {
+        if (gammaOrder.quantity != 0 || gammaOrder.quantitySqrt != 0 || gammaOrder.marginAmount != 0) {
+            revert InvalidOrder();
+        }
 
         ResolvedOrder memory resolvedOrder = GammaOrderLib.resolve(gammaOrder, sig);
 
@@ -372,7 +365,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     }
 
     function _addPositionIndex(address trader, uint256 newPositionId) internal {
-        positionIDs[trader].push(newPositionId);
+        positionIDs[trader].addItem(newPositionId);
     }
 
     function removePosition(address trader, uint256 positionId) external {
@@ -388,31 +381,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     function _removePosition(address trader, uint256 positionId) internal {
         require(userPositions[positionId].owner == trader, "trader is not owner");
 
-        uint256 index = _getPositionIndex(positionIDs[trader], positionId);
-
-        _removePositionIndex(positionIDs[trader], index);
-    }
-
-    function _removePositionIndex(uint256[] storage traderPositionIDs, uint256 index) internal {
-        traderPositionIDs[index] = traderPositionIDs[traderPositionIDs.length - 1];
-        traderPositionIDs.pop();
-    }
-
-    function _getPositionIndex(uint256[] memory traderPositionIDs, uint256 positionId)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 index = type(uint256).max;
-
-        for (uint256 i = 0; i < traderPositionIDs.length; i++) {
-            if (traderPositionIDs[i] == positionId) {
-                index = i;
-                break;
-            }
-        }
-
-        return index;
+        positionIDs[trader].removeItem(positionId);
     }
 
     function _getPosition(address trader, uint256 positionId)
@@ -453,8 +422,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         // auto hedge condition
         userPosition.hedgeInterval = modifyInfo.hedgeInterval;
         userPosition.sqrtPriceTrigger = modifyInfo.sqrtPriceTrigger;
-        userPosition.minSlippageTolerance = modifyInfo.minSlippageTolerance;
-        userPosition.maxSlippageTolerance = modifyInfo.maxSlippageTolerance;
+        userPosition.auctionParams.minSlippageTolerance = modifyInfo.minSlippageTolerance;
+        userPosition.auctionParams.maxSlippageTolerance = modifyInfo.maxSlippageTolerance;
+        userPosition.auctionParams.auctionPeriod = modifyInfo.auctionPeriod;
+        userPosition.auctionParams.auctionRange = modifyInfo.auctionRange;
     }
 
     function _calculateDelta(uint256 _sqrtPrice, int256 _sqrtAmount, int256 perpAmount)
@@ -462,6 +433,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         pure
         returns (int256)
     {
+        // delta of 'x + 2 * sqrt(x)' is '1 + 1 / sqrt(x)'
         return perpAmount + _sqrtAmount * int256(Constants.Q96) / int256(_sqrtPrice);
     }
 
@@ -476,11 +448,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         ) {
             return (
                 true,
-                _calculateSlippageTolerance(
+                GammaTradeMarketLib.calculateSlippageTolerance(
                     userPosition.lastHedgedTime + userPosition.hedgeInterval,
                     block.timestamp,
-                    userPosition.minSlippageTolerance,
-                    userPosition.maxSlippageTolerance
+                    userPosition.auctionParams
                     )
             );
         }
@@ -496,8 +467,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         if (lowerThreshold >= sqrtIndexPrice) {
             return (
                 true,
-                _calculateSlippageToleranceByPrice(
-                    sqrtIndexPrice, lowerThreshold, userPosition.minSlippageTolerance, userPosition.maxSlippageTolerance
+                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
+                    sqrtIndexPrice, lowerThreshold, userPosition.auctionParams
                     )
             );
         }
@@ -505,8 +476,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         if (upperThreshold <= sqrtIndexPrice) {
             return (
                 true,
-                _calculateSlippageToleranceByPrice(
-                    upperThreshold, sqrtIndexPrice, userPosition.minSlippageTolerance, userPosition.maxSlippageTolerance
+                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
+                    upperThreshold, sqrtIndexPrice, userPosition.auctionParams
                     )
             );
         }
@@ -522,11 +493,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         if (userPosition.expiration <= block.timestamp) {
             return (
                 true,
-                _calculateSlippageTolerance(
-                    userPosition.expiration,
-                    block.timestamp,
-                    userPosition.minSlippageTolerance,
-                    userPosition.maxSlippageTolerance
+                GammaTradeMarketLib.calculateSlippageTolerance(
+                    userPosition.expiration, block.timestamp, userPosition.auctionParams
                     )
             );
         }
@@ -537,8 +505,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         if (lowerThreshold > 0 && lowerThreshold >= sqrtIndexPrice) {
             return (
                 true,
-                _calculateSlippageToleranceByPrice(
-                    sqrtIndexPrice, lowerThreshold, userPosition.minSlippageTolerance, userPosition.maxSlippageTolerance
+                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
+                    sqrtIndexPrice, lowerThreshold, userPosition.auctionParams
                     )
             );
         }
@@ -546,51 +514,13 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         if (upperThreshold > 0 && upperThreshold <= sqrtIndexPrice) {
             return (
                 true,
-                _calculateSlippageToleranceByPrice(
-                    upperThreshold, sqrtIndexPrice, userPosition.minSlippageTolerance, userPosition.maxSlippageTolerance
+                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
+                    upperThreshold, sqrtIndexPrice, userPosition.auctionParams
                     )
             );
         }
 
         return (false, 0);
-    }
-
-    function _calculateSlippageTolerance(
-        uint256 startTime,
-        uint256 currentTime,
-        uint256 minSlippageTolerance,
-        uint256 maxSlippageTolerance
-    ) internal pure returns (uint256) {
-        if (currentTime <= startTime) {
-            return minSlippageTolerance;
-        }
-
-        uint256 elapsed = (currentTime - startTime) * 1e4 / _AUCTION_DURATION;
-
-        if (elapsed > 1e4) {
-            return maxSlippageTolerance;
-        }
-
-        return (minSlippageTolerance + elapsed * (maxSlippageTolerance - minSlippageTolerance) / 1e4);
-    }
-
-    function _calculateSlippageToleranceByPrice(
-        uint256 price1,
-        uint256 price2,
-        uint256 minSlippageTolerance,
-        uint256 maxSlippageTolerance
-    ) internal pure returns (uint256) {
-        if (price2 <= price1) {
-            return minSlippageTolerance;
-        }
-
-        uint256 ratio = (price2 * 1e4 / price1 - 1e4);
-
-        if (ratio > _AUCTION_RANGE) {
-            return maxSlippageTolerance;
-        }
-
-        return (minSlippageTolerance + ratio * (maxSlippageTolerance - minSlippageTolerance) / _AUCTION_RANGE);
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {

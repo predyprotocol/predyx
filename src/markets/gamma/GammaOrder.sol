@@ -12,9 +12,11 @@ struct GammaModifyInfo {
     uint256 lowerLimit;
     uint256 upperLimit;
     uint32 hedgeInterval;
-    uint64 sqrtPriceTrigger;
-    uint64 minSlippageTolerance;
-    uint64 maxSlippageTolerance;
+    uint32 sqrtPriceTrigger;
+    uint32 minSlippageTolerance;
+    uint32 maxSlippageTolerance;
+    uint16 auctionPeriod;
+    uint32 auctionRange;
 }
 
 library GammaModifyInfoLib {
@@ -25,9 +27,11 @@ library GammaModifyInfoLib {
         "uint256 lowerLimit,",
         "uint256 upperLimit,",
         "uint32 hedgeInterval,",
-        "uint64 sqrtPriceTrigger,",
-        "uint64 minSlippageTolerance,",
-        "uint64 maxSlippageTolerance)"
+        "uint32 sqrtPriceTrigger,",
+        "uint32 minSlippageTolerance,",
+        "uint32 maxSlippageTolerance,",
+        "uint16 auctionPeriod,",
+        "uint32 auctionRange)"
     );
 
     bytes32 internal constant GAMMA_MODIFY_INFO_TYPE_HASH = keccak256(GAMMA_MODIFY_INFO_TYPE);
@@ -45,7 +49,9 @@ library GammaModifyInfoLib {
                 info.hedgeInterval,
                 info.sqrtPriceTrigger,
                 info.minSlippageTolerance,
-                info.maxSlippageTolerance
+                info.maxSlippageTolerance,
+                info.auctionPeriod,
+                info.auctionRange
             )
         );
     }

@@ -65,7 +65,9 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
                 0,
                 // 30bps - 60bps
                 1e6 + 3000,
-                1e6 + 6000
+                1e6 + 6000,
+                10 minutes,
+                10000
             )
         );
 
