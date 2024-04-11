@@ -77,12 +77,16 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     event GammaPositionTraded(
         address indexed trader,
         uint256 pairId,
-        uint256 vaultId,
+        uint256 positionId,
+        int256 quantity,
+        int256 quantitySqrt,
         IPredyPool.Payoff payoff,
         int256 fee,
         int256 marginAmount,
         CallbackType callbackType
     );
+
+    event GammaPositionModified(address indexed trader, uint256 pairId, uint256 positionId, GammaModifyInfo modifyInfo);
 
     constructor() {}
 
@@ -118,6 +122,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                     callbackData.trader,
                     tradeParams.pairId,
                     tradeParams.vaultId,
+                    tradeParams.tradeAmount,
+                    tradeParams.tradeAmountSqrt,
                     tradeResult.payoff,
                     tradeResult.fee,
                     -vault.margin,
@@ -136,6 +142,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                     callbackData.trader,
                     tradeParams.pairId,
                     tradeParams.vaultId,
+                    tradeParams.tradeAmount,
+                    tradeParams.tradeAmountSqrt,
                     tradeResult.payoff,
                     tradeResult.fee,
                     marginAmountUpdate,
@@ -442,6 +450,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         userPosition.auctionParams.maxSlippageTolerance = modifyInfo.maxSlippageTolerance;
         userPosition.auctionParams.auctionPeriod = modifyInfo.auctionPeriod;
         userPosition.auctionParams.auctionRange = modifyInfo.auctionRange;
+
+        emit GammaPositionModified(userPosition.owner, userPosition.pairId, userPosition.vaultId, modifyInfo);
     }
 
     function _calculateDelta(uint256 _sqrtPrice, int256 _sqrtAmount, int256 perpAmount)
