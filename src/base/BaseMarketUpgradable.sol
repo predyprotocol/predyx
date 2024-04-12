@@ -102,56 +102,6 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
             _predyPool.execLiquidationCall(vaultId, closeRatio, _getSettlementDataFromV3(settlementParams, msg.sender));
     }
 
-    function _getSettlementData(IFillerMarket.SettlementParams memory settlementParams)
-        internal
-        view
-        returns (bytes memory)
-    {
-        return _getSettlementData(settlementParams, msg.sender);
-    }
-
-    function _getSettlementData(IFillerMarket.SettlementParams memory settlementParams, address filler)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encode(
-            SettlementCallbackLib.SettlementParams(
-                filler,
-                settlementParams.contractAddress,
-                settlementParams.encodedData,
-                settlementParams.maxQuoteAmount,
-                settlementParams.price,
-                settlementParams.fee
-            )
-        );
-    }
-
-    function _getSettlementDataFromV2(
-        IFillerMarket.SettlementParamsV2 memory settlementParams,
-        address filler,
-        int256 tradeAmount
-    ) internal pure returns (bytes memory) {
-        uint256 tradeAmountAbs = Math.abs(tradeAmount);
-
-        uint256 fee = settlementParams.feePrice * tradeAmountAbs / Constants.Q96;
-
-        if (fee < settlementParams.minFee) {
-            fee = settlementParams.minFee;
-        }
-
-        return abi.encode(
-            SettlementCallbackLib.SettlementParams(
-                filler,
-                settlementParams.contractAddress,
-                settlementParams.encodedData,
-                settlementParams.maxQuoteAmountPrice * tradeAmountAbs / Constants.Q96,
-                settlementParams.price,
-                int256(fee)
-            )
-        );
-    }
-
     function _getSettlementDataFromV3(IFillerMarket.SettlementParamsV3 memory settlementParams, address filler)
         internal
         pure

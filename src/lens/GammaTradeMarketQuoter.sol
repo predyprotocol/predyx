@@ -17,7 +17,7 @@ contract GammaTradeMarketQuoter {
         gammaTradeMarket = _gammaTradeMarket;
     }
 
-    function quoteTrade(GammaOrder memory order, IFillerMarket.SettlementParams memory settlementData)
+    function quoteTrade(GammaOrder memory order, IFillerMarket.SettlementParamsV3 memory settlementData)
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {

@@ -63,7 +63,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
             )
         );
 
-        IFillerMarket.SettlementParams memory settlementData = _getUniSettlementData(0);
+        IFillerMarket.SettlementParamsV3 memory settlementData = _getUniSettlementDataV3(0);
 
         IPredyPool.TradeResult memory tradeResult = _quoter.quoteTrade(order, settlementData);
 

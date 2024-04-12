@@ -273,31 +273,6 @@ contract PerpMarketV1 is BaseMarketUpgradable, ReentrancyGuardUpgradeable {
     }
 
     /// @notice Estimate transaction results and return with revert message
-    function quoteExecuteOrder(PerpOrder memory perpOrder, SettlementParams memory settlementParams, address filler)
-        external
-    {
-        _predyPool.trade(
-            IPredyPool.TradeParams(
-                perpOrder.pairId,
-                userPositions[perpOrder.info.trader][perpOrder.pairId].vaultId,
-                perpOrder.tradeAmount,
-                0,
-                abi.encode(
-                    CallbackData(
-                        CallbackSource.QUOTE,
-                        perpOrder.info.trader,
-                        perpOrder.marginAmount,
-                        perpOrder.leverage,
-                        PerpOrderLib.resolve(perpOrder, bytes("")),
-                        0
-                    )
-                )
-            ),
-            _getSettlementData(settlementParams, filler)
-        );
-    }
-
-    /// @notice Estimate transaction results and return with revert message
     function quoteExecuteOrderV3(
         PerpOrderV3 memory perpOrder,
         SettlementParamsV3 memory settlementParams,
