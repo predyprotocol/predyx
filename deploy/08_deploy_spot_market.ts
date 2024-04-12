@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [Permit2]
   })
 
-  const SpotMarket = await deployments.get('SpotMarket')
+  const SpotMarket = await deployments.get('SpotMarketL2')
 
   await deploy('SpotMarketQuoter', {
     from: deployer,
