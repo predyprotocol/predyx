@@ -6,44 +6,94 @@ import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {ResolvedOrder} from "../../libraries/orders/ResolvedOrder.sol";
 
+struct GammaModifyInfo {
+    bool isEnabled;
+    uint64 expiration;
+    uint256 lowerLimit;
+    uint256 upperLimit;
+    uint32 hedgeInterval;
+    uint32 sqrtPriceTrigger;
+    uint32 minSlippageTolerance;
+    uint32 maxSlippageTolerance;
+    uint16 auctionPeriod;
+    uint32 auctionRange;
+}
+
+library GammaModifyInfoLib {
+    bytes internal constant GAMMA_MODIFY_INFO_TYPE = abi.encodePacked(
+        "GammaModifyInfo(",
+        "bool isEnabled,",
+        "uint64 expiration,",
+        "uint256 lowerLimit,",
+        "uint256 upperLimit,",
+        "uint32 hedgeInterval,",
+        "uint32 sqrtPriceTrigger,",
+        "uint32 minSlippageTolerance,",
+        "uint32 maxSlippageTolerance,",
+        "uint16 auctionPeriod,",
+        "uint32 auctionRange)"
+    );
+
+    bytes32 internal constant GAMMA_MODIFY_INFO_TYPE_HASH = keccak256(GAMMA_MODIFY_INFO_TYPE);
+
+    /// @notice hash an GammaModifyInfo object
+    /// @param info The GammaModifyInfo object to hash
+    function hash(GammaModifyInfo memory info) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                GAMMA_MODIFY_INFO_TYPE_HASH,
+                info.isEnabled,
+                info.expiration,
+                info.lowerLimit,
+                info.upperLimit,
+                info.hedgeInterval,
+                info.sqrtPriceTrigger,
+                info.minSlippageTolerance,
+                info.maxSlippageTolerance,
+                info.auctionPeriod,
+                info.auctionRange
+            )
+        );
+    }
+}
+
 struct GammaOrder {
     OrderInfo info;
     uint64 pairId;
+    uint256 positionId;
     address entryTokenAddress;
-    int256 tradeAmount;
-    int256 tradeAmountSqrt;
+    int256 quantity;
+    int256 quantitySqrt;
     int256 marginAmount;
-    uint256 hedgeInterval;
-    uint256 sqrtPriceTrigger;
-    uint64 minSlippageTolerance;
-    uint64 maxSlippageTolerance;
-    address validatorAddress;
-    bytes validationData;
+    bool closePosition;
+    int256 limitValue;
+    uint8 leverage;
+    GammaModifyInfo modifyInfo;
 }
 
 /// @notice helpers for handling general order objects
 library GammaOrderLib {
     using OrderInfoLib for OrderInfo;
 
-    bytes internal constant GENERAL_ORDER_TYPE = abi.encodePacked(
+    bytes internal constant GAMMA_ORDER_TYPE = abi.encodePacked(
         "GammaOrder(",
         "OrderInfo info,",
         "uint64 pairId,",
+        "uint256 positionId,",
         "address entryTokenAddress,",
-        "int256 tradeAmount,",
-        "int256 tradeAmountSqrt,",
+        "int256 quantity,",
+        "int256 quantitySqrt,",
         "int256 marginAmount,",
-        "uint256 hedgeInterval,",
-        "uint256 sqrtPriceTrigger,",
-        "uint64 minSlippageTolerance,",
-        "uint64 maxSlippageTolerance,",
-        "address validatorAddress,",
-        "bytes validationData)"
+        "bool closePosition,",
+        "int256 limitValue,",
+        "uint8 leverage,",
+        "GammaModifyInfo modifyInfo)"
     );
 
     /// @dev Note that sub-structs have to be defined in alphabetical order in the EIP-712 spec
-    bytes internal constant ORDER_TYPE = abi.encodePacked(GENERAL_ORDER_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
-    bytes32 internal constant GENERAL_ORDER_TYPE_HASH = keccak256(ORDER_TYPE);
+    bytes internal constant ORDER_TYPE =
+        abi.encodePacked(GAMMA_ORDER_TYPE, GammaModifyInfoLib.GAMMA_MODIFY_INFO_TYPE, OrderInfoLib.ORDER_INFO_TYPE);
+    bytes32 internal constant GAMMA_ORDER_TYPE_HASH = keccak256(ORDER_TYPE);
 
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
     string internal constant PERMIT2_ORDER_TYPE =
@@ -55,19 +105,18 @@ library GammaOrderLib {
     function hash(GammaOrder memory order) internal pure returns (bytes32) {
         return keccak256(
             abi.encode(
-                GENERAL_ORDER_TYPE_HASH,
+                GAMMA_ORDER_TYPE_HASH,
                 order.info.hash(),
                 order.pairId,
+                order.positionId,
                 order.entryTokenAddress,
-                order.tradeAmount,
-                order.tradeAmountSqrt,
+                order.quantity,
+                order.quantitySqrt,
                 order.marginAmount,
-                order.hedgeInterval,
-                order.sqrtPriceTrigger,
-                order.minSlippageTolerance,
-                order.maxSlippageTolerance,
-                order.validatorAddress,
-                keccak256(order.validationData)
+                order.closePosition,
+                order.limitValue,
+                order.leverage,
+                GammaModifyInfoLib.hash(order.modifyInfo)
             )
         );
     }

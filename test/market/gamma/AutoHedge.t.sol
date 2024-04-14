@@ -6,8 +6,9 @@ import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../../src/libraries/Constants.sol";
 import {MockPriceFeed} from "../../mocks/MockPriceFeed.sol";
+import {Bps} from "../../../src/libraries/math/Bps.sol";
 
-contract TestGammaExecuteDeltaHedge is TestGammaMarket {
+contract TestGammaAutoHedge is TestGammaMarket {
     bytes normalSwapRoute;
     uint256 fromPrivateKey1;
     address from1;
@@ -19,6 +20,7 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         TestGammaMarket.setUp();
 
         mockPriceFeed = new MockPriceFeed();
+        mockPriceFeed.setSqrtPrice(Constants.Q96);
 
         registerPair(address(currency1), address(mockPriceFeed));
 
@@ -46,39 +48,60 @@ contract TestGammaExecuteDeltaHedge is TestGammaMarket {
         GammaOrder memory order = GammaOrder(
             OrderInfo(address(gammaTradeMarket), from1, 0, block.timestamp + 100),
             1,
-            address(currency1),
-            -1000,
-            900,
-            2 * 1e6,
-            12 hours,
             0,
-            1000,
-            1000,
-            address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            address(currency1),
+            -9 * 1e6,
+            10 * 1e6,
+            2 * 1e6,
+            false,
+            -11 * 1e6,
+            2,
+            GammaModifyInfo(
+                true,
+                // auto close
+                0,
+                0,
+                0,
+                // auto hedge
+                2 hours,
+                1e6 + 12000, // +-1.2% range in sqrt
+                // 30bps - 60bps
+                Bps.ONE + 3000,
+                Bps.ONE + 6000,
+                10 minutes,
+                10000
+            )
         );
 
-        IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
-
-        gammaTradeMarket.executeOrder(signedOrder, _getSettlementData(Constants.Q96));
+        gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey1), _getSettlementDataV3(Constants.Q96));
     }
 
     function testCannotExecuteDeltaHedgeByTime() public {
-        mockPriceFeed.setSqrtPrice(2 ** 96);
+        mockPriceFeed.setSqrtPrice(Constants.Q96);
 
-        vm.warp(block.timestamp + 10 hours);
+        vm.warp(block.timestamp + 1 hours);
 
-        IFillerMarket.SettlementParams memory settlementParams = _getSettlementData(Constants.Q96);
+        IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
 
         vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
-        gammaTradeMarket.execDeltaHedge(from1, 1, settlementParams);
+        gammaTradeMarket.autoHedge(1, settlementParams);
     }
 
     function testSucceedsExecuteDeltaHedgeByTime() public {
-        mockPriceFeed.setSqrtPrice(2 ** 96);
+        mockPriceFeed.setSqrtPrice(Constants.Q96);
 
-        vm.warp(block.timestamp + 12 hours);
+        vm.warp(block.timestamp + 3 hours);
 
-        gammaTradeMarket.execDeltaHedge(from1, 1, _getSettlementData(Constants.Q96));
+        gammaTradeMarket.autoHedge(1, _getSettlementDataV3(Constants.Q96));
+    }
+
+    function testExecuteDeltaHedgeByPrice() public {
+        mockPriceFeed.setSqrtPrice(Constants.Q96 * 1014 / 1000);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96 * 1028 / 1000);
+
+        gammaTradeMarket.autoHedge(1, settlementParams);
     }
 }

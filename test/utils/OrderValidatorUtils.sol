@@ -63,4 +63,37 @@ contract OrderValidatorUtils {
             params2 := add(startAmount, shl(128, endAmount))
         }
     }
+
+    function encodeGammaModifyParams(
+        bool isEnabled,
+        uint64 expiration,
+        uint32 hedgeInterval,
+        uint32 sqrtPriceTrigger,
+        uint32 minSlippageTolerance,
+        uint32 maxSlippageTolerance,
+        uint16 auctionPeriod,
+        uint32 auctionRange
+    ) internal pure returns (bytes32 params) {
+        uint32 isEnabledUint = isEnabled ? 1 : 0;
+
+        assembly {
+            params :=
+                add(
+                    expiration,
+                    add(
+                        shl(64, hedgeInterval),
+                        add(
+                            shl(96, sqrtPriceTrigger),
+                            add(
+                                shl(128, minSlippageTolerance),
+                                add(
+                                    shl(160, maxSlippageTolerance),
+                                    add(shl(192, auctionRange), add(shl(224, isEnabledUint), shl(240, auctionPeriod)))
+                                )
+                            )
+                        )
+                    )
+                )
+        }
+    }
 }

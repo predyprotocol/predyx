@@ -11,7 +11,7 @@ import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PerpMarket} from "../../../src/markets/perp/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
 import "../../../src/markets/validators/LimitOrderValidator.sol";
-import {PerpOrder, PerpOrderLib} from "../../../src/markets/perp/PerpOrder.sol";
+import {PerpOrderV3, PerpOrderV3Lib} from "../../../src/markets/perp/PerpOrderV3.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import "../../mocks/MockPriceFeed.sol";
@@ -25,7 +25,7 @@ interface USDC {
 }
 
 contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
-    using PerpOrderLib for PerpOrder;
+    using PerpOrderV3Lib for PerpOrderV3;
 
     uint256 internal _arbitrumFork;
     string internal _arbitrumRPCURL = vm.envString("ARBITRUM_RPC_URL");
@@ -106,7 +106,7 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
         );
     }
 
-    function _createSignedOrder(PerpOrder memory order, uint256 fromPrivateKey)
+    function _createSignedOrder(PerpOrderV3 memory order, uint256 fromPrivateKey)
         internal
         view
         returns (IFillerMarket.SignedOrder memory signedOrder)
@@ -117,7 +117,7 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
             fromPrivateKey,
             _toPermit(order),
             address(perpMarket),
-            PerpOrderLib.PERMIT2_ORDER_TYPE,
+            PerpOrderV3Lib.PERMIT2_ORDER_TYPE,
             witness,
             DOMAIN_SEPARATOR
         );
@@ -125,7 +125,7 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
         signedOrder = IFillerMarket.SignedOrder(abi.encode(order), sig);
     }
 
-    function _getSettlementData(uint256 price) internal view returns (IFillerMarket.SettlementParams memory) {
-        return IFillerMarket.SettlementParams(address(0), bytes(""), 0, price, 0);
+    function _getSettlementDataV3(uint256 price) internal pure returns (IFillerMarket.SettlementParamsV3 memory) {
+        return IFillerMarket.SettlementParamsV3(address(0), bytes(""), 0, 0, price, 0, 0);
     }
 }

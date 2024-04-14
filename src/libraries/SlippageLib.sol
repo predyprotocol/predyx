@@ -9,7 +9,7 @@ library SlippageLib {
     using Bps for uint256;
 
     // 3% scaled by 1e8
-    uint256 constant _MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
+    uint256 public constant MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
 
     error InvalidAveragePrice();
 

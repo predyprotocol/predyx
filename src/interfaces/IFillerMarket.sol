@@ -21,10 +21,11 @@ interface IFillerMarket {
         int256 fee;
     }
 
-    struct SettlementParamsV2 {
+    struct SettlementParamsV3 {
         address contractAddress;
         bytes encodedData;
         uint256 maxQuoteAmountPrice;
+        uint256 minQuoteAmountPrice;
         uint256 price;
         uint256 feePrice;
         uint256 minFee;

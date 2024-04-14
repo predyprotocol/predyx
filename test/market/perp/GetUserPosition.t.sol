@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
+import {PerpMarketLib} from "../../../src/markets/perp/PerpMarketLib.sol";
 
 contract TestPerpGetUserPosition is TestPerpMarket {
     bytes normalSwapRoute;
@@ -36,23 +37,24 @@ contract TestPerpGetUserPosition is TestPerpMarket {
         vm.prank(from2);
         currency1.approve(address(permit2), type(uint256).max);
 
-        PerpOrder memory order = PerpOrder(
+        PerpOrderV3 memory order = PerpOrderV3(
             OrderInfo(address(perpMarket), from1, 0, block.timestamp + 100),
             1,
             address(currency1),
-            -4 * 1e8,
+            "Sell",
+            4 * 1e8,
             400000000,
             0,
             0,
-            0,
             2,
-            address(limitOrderValidator),
-            abi.encode(LimitOrderValidationData(0, 0, 0, 0))
+            false,
+            false,
+            abi.encode(PerpMarketLib.AuctionParams(Constants.Q96 / 2, Constants.Q96 / 2, 0, 0))
         );
 
         IFillerMarket.SignedOrder memory signedOrder = _createSignedOrder(order, fromPrivateKey1);
 
-        perpMarket.executeOrder(signedOrder, _getUniSettlementData(0));
+        perpMarket.executeOrderV3(signedOrder, _getUniSettlementDataV3(0));
     }
 
     function testGetUserPosition() public {

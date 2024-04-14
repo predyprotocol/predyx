@@ -5,9 +5,9 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
+import {GammaTradeMarketL2} from "../../../src/markets/gamma/GammaTradeMarketL2.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
-import "../../../src/markets/validators/LimitOrderValidator.sol";
-import {GammaOrder, GammaOrderLib} from "../../../src/markets/gamma/GammaOrder.sol";
+import "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
@@ -15,9 +15,8 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
-    GammaTradeMarket gammaTradeMarket;
+    GammaTradeMarketL2 gammaTradeMarket;
     IPermit2 permit2;
-    LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public virtual override(TestPool) {
@@ -27,7 +26,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        gammaTradeMarket = new GammaTradeMarket();
+        gammaTradeMarket = new GammaTradeMarketL2();
 
         gammaTradeMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
@@ -38,18 +37,12 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         currency0.approve(address(gammaTradeMarket), type(uint256).max);
         currency1.approve(address(gammaTradeMarket), type(uint256).max);
-
-        limitOrderValidator = new LimitOrderValidator();
     }
 
-    function _createSignedOrder(GammaOrder memory marketOrder, uint256 fromPrivateKey)
-        internal
-        view
-        returns (IFillerMarket.SignedOrder memory signedOrder)
-    {
+    function _sign(GammaOrder memory marketOrder, uint256 fromPrivateKey) internal view returns (bytes memory) {
         bytes32 witness = marketOrder.hash();
 
-        bytes memory sig = getPermitSignature(
+        return getPermitSignature(
             fromPrivateKey,
             _toPermit(marketOrder),
             address(gammaTradeMarket),
@@ -57,7 +50,46 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
             witness,
             DOMAIN_SEPARATOR
         );
+    }
 
-        signedOrder = IFillerMarket.SignedOrder(abi.encode(marketOrder), sig);
+    function _createOrder(
+        address trader,
+        uint256 nonce,
+        uint256 deadline,
+        uint64 pairId,
+        uint256 positionId,
+        int256 quantity,
+        int256 quantitySqrt,
+        int256 marginAmount,
+        bool closePosition,
+        int256 limitValue
+    ) internal view returns (GammaOrder memory order) {
+        order = GammaOrder(
+            OrderInfo(address(gammaTradeMarket), trader, nonce, deadline),
+            pairId,
+            positionId,
+            address(currency1),
+            quantity,
+            quantitySqrt,
+            marginAmount,
+            closePosition,
+            limitValue,
+            2,
+            GammaModifyInfo(
+                false,
+                // auto close
+                0,
+                0,
+                0,
+                // auto hedge
+                0,
+                0,
+                // slippage tolerance
+                0,
+                0,
+                0,
+                0
+            )
+        );
     }
 }
