@@ -27,6 +27,8 @@ library Trade {
         int256 averagePrice;
     }
 
+    event Swapped(uint256 pairId, int256 settledQuoteAmount, int256 settledBaseAmount);
+
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
@@ -99,6 +101,8 @@ library Trade {
         if (settledQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.QuoteTokenNotSettled();
         }
+
+        emit Swapped(pairId, settledQuoteAmount, settledBaseAmount);
 
         return divToStable(swapParams, totalBaseAmount, settledQuoteAmount, settledQuoteAmount);
     }
