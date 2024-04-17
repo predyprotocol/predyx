@@ -87,6 +87,11 @@ contract TestGammaAutoClose is TestGammaMarket {
 
         vm.warp(block.timestamp + 3 hours);
 
-        gammaTradeMarket.autoClose(1, _getSettlementDataV3(Constants.Q96));
+        IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
+
+        gammaTradeMarket.autoClose(1, settlementParams);
+
+        vm.expectRevert(GammaTradeMarket.AlreadyClosed.selector);
+        gammaTradeMarket.autoClose(1, settlementParams);
     }
 }

@@ -32,11 +32,14 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     error PositionNotFound();
     error PositionIsNotClosed();
     error InvalidOrder();
-    error SignerISNotPositionOwner();
+    error SignerIsNotPositionOwner();
     error TooShortHedgeInterval();
     error HedgeTriggerNotMatched();
+    error DeltaIsZero();
+    error AlreadyClosed();
     error AutoCloseTriggerNotMatched();
     error ValueIsLessThanLimit(int256 value);
+    error MarginUpdateMustBeZero();
 
     struct UserPosition {
         uint256 vaultId;
@@ -57,6 +60,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         NONE,
         QUOTE,
         TRADE,
+        CLOSE,
         HEDGE_BY_TIME,
         HEDGE_BY_PRICE,
         CLOSE_BY_TIME,
@@ -111,6 +115,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             _revertTradeResult(tradeResult);
         } else {
             if (tradeResult.minMargin == 0) {
+                if (callbackData.marginAmountUpdate != 0) {
+                    revert MarginUpdateMustBeZero();
+                }
+
                 DataType.Vault memory vault = _predyPool.getVault(tradeParams.vaultId);
 
                 _predyPool.take(true, callbackData.trader, uint256(vault.margin));
@@ -127,7 +135,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                     tradeResult.payoff,
                     tradeResult.fee,
                     -vault.margin,
-                    callbackData.callbackType
+                    callbackData.callbackType == CallbackType.TRADE ? CallbackType.CLOSE : callbackData.callbackType
                 );
             } else {
                 int256 marginAmountUpdate = callbackData.marginAmountUpdate;
@@ -223,7 +231,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             _predyPool.updateRecepient(tradeResult.vaultId, gammaOrder.info.trader);
         }
 
-        // TODO: check value >= gammaOrder.limitValue
         _checkTradeValue(tradeResult, gammaOrder.limitValue);
     }
 
@@ -253,7 +260,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
     function autoHedge(uint256 positionId, SettlementParamsV3 memory settlementParams)
         external
-        nonReentrant
+        onlyFiller
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         UserPosition storage userPosition = userPositions[positionId];
@@ -278,6 +285,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
         int256 delta = _calculateDelta(sqrtPrice, vault.openPosition.sqrtPerp.amount, vault.openPosition.perp.amount);
 
+        if (delta == 0) {
+            revert DeltaIsZero();
+        }
+
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
             userPosition.pairId,
             userPosition.vaultId,
@@ -293,7 +304,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
     function autoClose(uint256 positionId, SettlementParamsV3 memory settlementParams)
         external
-        nonReentrant
+        onlyFiller
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         // save user position
@@ -320,6 +331,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             abi.encode(CallbackData(triggerType, userPosition.owner, 0))
         );
 
+        if (tradeParams.tradeAmount == 0 && tradeParams.tradeAmountSqrt == 0) {
+            revert AlreadyClosed();
+        }
+
         tradeResult = _predyPool.trade(tradeParams, _getSettlementDataFromV3(settlementParams, msg.sender));
 
         SlippageLib.checkPrice(sqrtPrice, tradeResult, slippageTorelance, SlippageLib.MAX_ACCEPTABLE_SQRT_PRICE_RANGE);
@@ -342,7 +357,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     function checkAutoHedgeAndClose(uint256 positionId)
         external
         view
-        returns (bool hedgeRequired, bool closeRequired)
+        returns (bool hedgeRequired, bool closeRequired, uint256 resultPositionId)
     {
         UserPosition memory userPosition = userPositions[positionId];
 
@@ -351,6 +366,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         (hedgeRequired,,) = _validateHedgeCondition(userPosition, sqrtPrice);
 
         (closeRequired,,) = _validateCloseCondition(userPosition, sqrtPrice);
+
+        resultPositionId = positionId;
     }
 
     struct UserPositionResult {
@@ -423,7 +440,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         }
 
         if (userPosition.owner != trader) {
-            revert SignerISNotPositionOwner();
+            revert SignerIsNotPositionOwner();
         }
 
         return userPosition;
@@ -434,7 +451,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             return;
         }
 
-        if (0 < modifyInfo.hedgeInterval && 1 hours > modifyInfo.hedgeInterval) {
+        if (0 < modifyInfo.hedgeInterval && 10 minutes > modifyInfo.hedgeInterval) {
             revert TooShortHedgeInterval();
         }
 

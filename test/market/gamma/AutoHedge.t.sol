@@ -59,7 +59,7 @@ contract TestGammaAutoHedge is TestGammaMarket {
             GammaModifyInfo(
                 true,
                 // auto close
-                0,
+                uint64(block.timestamp + 2 hours),
                 0,
                 0,
                 // auto hedge
@@ -84,6 +84,19 @@ contract TestGammaAutoHedge is TestGammaMarket {
         IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
 
         vm.expectRevert(GammaTradeMarket.HedgeTriggerNotMatched.selector);
+        gammaTradeMarket.autoHedge(1, settlementParams);
+    }
+
+    function testCannotAutoHedgeAfterClosed() public {
+        mockPriceFeed.setSqrtPrice(Constants.Q96);
+
+        vm.warp(block.timestamp + 3 hours);
+
+        IFillerMarket.SettlementParamsV3 memory settlementParams = _getSettlementDataV3(Constants.Q96);
+
+        gammaTradeMarket.autoClose(1, settlementParams);
+
+        vm.expectRevert(GammaTradeMarket.DeltaIsZero.selector);
         gammaTradeMarket.autoHedge(1, settlementParams);
     }
 
