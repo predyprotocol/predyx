@@ -1,5 +1,5 @@
 {
-  "address": "0x90B7259Ae263141cda1c76e8c1143fA62E55b1a5",
+  "address": "0x92027Eb7caa12EC06f9Ba149c9521A1A48921514",
   "abi": [
     {
       "anonymous": false,
@@ -125,6 +125,16 @@
     },
     {
       "inputs": [],
+      "name": "AlreadyClosed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AutoCloseTriggerNotMatched",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "CallerIsNotFiller",
       "type": "error"
     },
@@ -136,6 +146,11 @@
     {
       "inputs": [],
       "name": "DeadlinePassed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DeltaIsZero",
       "type": "error"
     },
     {
@@ -155,12 +170,37 @@
     },
     {
       "inputs": [],
+      "name": "InvalidOrder",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "MarginUpdateMustBeZero",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "OutOfAcceptablePriceRange",
       "type": "error"
     },
     {
       "inputs": [],
+      "name": "PositionIsNotClosed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PositionNotFound",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "SettlementContractIsNotWhitelisted",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SignerIsNotPositionOwner",
       "type": "error"
     },
     {
@@ -176,6 +216,17 @@
     {
       "inputs": [],
       "name": "TooShortHedgeInterval",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "int256",
+          "name": "value",
+          "type": "int256"
+        }
+      ],
+      "name": "ValueIsLessThanLimit",
       "type": "error"
     },
     {
@@ -196,67 +247,69 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "vaultId",
+          "name": "positionId",
           "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "sqrtPrice",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "int256",
-          "name": "delta",
-          "type": "int256"
         },
         {
           "components": [
             {
-              "internalType": "int256",
-              "name": "perpEntryUpdate",
-              "type": "int256"
+              "internalType": "bool",
+              "name": "isEnabled",
+              "type": "bool"
             },
             {
-              "internalType": "int256",
-              "name": "sqrtEntryUpdate",
-              "type": "int256"
+              "internalType": "uint64",
+              "name": "expiration",
+              "type": "uint64"
             },
             {
-              "internalType": "int256",
-              "name": "sqrtRebalanceEntryUpdateUnderlying",
-              "type": "int256"
+              "internalType": "uint256",
+              "name": "lowerLimit",
+              "type": "uint256"
             },
             {
-              "internalType": "int256",
-              "name": "sqrtRebalanceEntryUpdateStable",
-              "type": "int256"
+              "internalType": "uint256",
+              "name": "upperLimit",
+              "type": "uint256"
             },
             {
-              "internalType": "int256",
-              "name": "perpPayoff",
-              "type": "int256"
+              "internalType": "uint32",
+              "name": "hedgeInterval",
+              "type": "uint32"
             },
             {
-              "internalType": "int256",
-              "name": "sqrtPayoff",
-              "type": "int256"
+              "internalType": "uint32",
+              "name": "sqrtPriceTrigger",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint32",
+              "name": "minSlippageTolerance",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint32",
+              "name": "maxSlippageTolerance",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "auctionPeriod",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint32",
+              "name": "auctionRange",
+              "type": "uint32"
             }
           ],
           "indexed": false,
-          "internalType": "struct IPredyPool.Payoff",
-          "name": "payoff",
+          "internalType": "struct GammaModifyInfo",
+          "name": "modifyInfo",
           "type": "tuple"
-        },
-        {
-          "indexed": false,
-          "internalType": "int256",
-          "name": "fee",
-          "type": "int256"
         }
       ],
-      "name": "GammaPositionHedged",
+      "name": "GammaPositionModified",
       "type": "event"
     },
     {
@@ -277,20 +330,20 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "vaultId",
+          "name": "positionId",
           "type": "uint256"
         },
         {
           "indexed": false,
-          "internalType": "uint256",
-          "name": "hedgeInterval",
-          "type": "uint256"
+          "internalType": "int256",
+          "name": "quantity",
+          "type": "int256"
         },
         {
           "indexed": false,
-          "internalType": "uint256",
-          "name": "sqrtPriceTrigger",
-          "type": "uint256"
+          "internalType": "int256",
+          "name": "quantitySqrt",
+          "type": "int256"
         },
         {
           "components": [
@@ -341,6 +394,12 @@
           "internalType": "int256",
           "name": "marginAmount",
           "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "enum GammaTradeMarket.CallbackType",
+          "name": "callbackType",
+          "type": "uint8"
         }
       ],
       "name": "GammaPositionTraded",
@@ -362,61 +421,54 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
           "internalType": "uint256",
-          "name": "pairId",
+          "name": "positionId",
           "type": "uint256"
         },
         {
           "components": [
+            {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
             {
               "internalType": "uint256",
               "name": "price",
               "type": "uint256"
             },
             {
-              "internalType": "int256",
-              "name": "fee",
-              "type": "int256"
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
             },
             {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "contractAddress",
-                  "type": "address"
-                },
-                {
-                  "internalType": "bytes",
-                  "name": "encodedData",
-                  "type": "bytes"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "maxQuoteAmount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "partialBaseAmount",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct IFillerMarket.SettlementParamsItem[]",
-              "name": "items",
-              "type": "tuple[]"
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
             }
           ],
-          "internalType": "struct IFillerMarket.SettlementParams",
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
           "name": "settlementParams",
           "type": "tuple"
         }
       ],
-      "name": "execDeltaHedge",
+      "name": "autoClose",
       "outputs": [
         {
           "components": [
@@ -500,6 +552,165 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "positionId",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
+          "name": "settlementParams",
+          "type": "tuple"
+        }
+      ],
+      "name": "autoHedge",
+      "outputs": [
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "int256",
+                  "name": "perpEntryUpdate",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtEntryUpdate",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtRebalanceEntryUpdateUnderlying",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtRebalanceEntryUpdateStable",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "perpPayoff",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtPayoff",
+                  "type": "int256"
+                }
+              ],
+              "internalType": "struct IPredyPool.Payoff",
+              "name": "payoff",
+              "type": "tuple"
+            },
+            {
+              "internalType": "uint256",
+              "name": "vaultId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "int256",
+              "name": "fee",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "minMargin",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "averagePrice",
+              "type": "int256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "sqrtTwap",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "sqrtPrice",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IPredyPool.TradeResult",
+          "name": "tradeResult",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "positionId",
+          "type": "uint256"
+        }
+      ],
+      "name": "checkAutoHedgeAndClose",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "hedgeRequired",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "closeRequired",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "resultPositionId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "vaultId",
           "type": "uint256"
         },
@@ -511,44 +722,42 @@
         {
           "components": [
             {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
               "internalType": "uint256",
               "name": "price",
               "type": "uint256"
             },
             {
-              "internalType": "int256",
-              "name": "fee",
-              "type": "int256"
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
             },
             {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "contractAddress",
-                  "type": "address"
-                },
-                {
-                  "internalType": "bytes",
-                  "name": "encodedData",
-                  "type": "bytes"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "maxQuoteAmount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "partialBaseAmount",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct IFillerMarket.SettlementParamsItem[]",
-              "name": "items",
-              "type": "tuple[]"
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
             }
           ],
-          "internalType": "struct IFillerMarket.SettlementParams",
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
           "name": "settlementParams",
           "type": "tuple"
         }
@@ -626,7 +835,7 @@
             }
           ],
           "internalType": "struct IPredyPool.TradeResult",
-          "name": "",
+          "name": "tradeResult",
           "type": "tuple"
         }
       ],
@@ -638,25 +847,231 @@
         {
           "components": [
             {
-              "internalType": "bytes",
-              "name": "order",
-              "type": "bytes"
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "market",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "trader",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "nonce",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "deadline",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct OrderInfo",
+              "name": "info",
+              "type": "tuple"
             },
             {
-              "internalType": "bytes",
-              "name": "sig",
-              "type": "bytes"
+              "internalType": "uint64",
+              "name": "pairId",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint256",
+              "name": "positionId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "entryTokenAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "int256",
+              "name": "quantity",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "quantitySqrt",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "marginAmount",
+              "type": "int256"
+            },
+            {
+              "internalType": "bool",
+              "name": "closePosition",
+              "type": "bool"
+            },
+            {
+              "internalType": "int256",
+              "name": "limitValue",
+              "type": "int256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "leverage",
+              "type": "uint8"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "isEnabled",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "expiration",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "lowerLimit",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "upperLimit",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "hedgeInterval",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "sqrtPriceTrigger",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "minSlippageTolerance",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "maxSlippageTolerance",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint16",
+                  "name": "auctionPeriod",
+                  "type": "uint16"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "auctionRange",
+                  "type": "uint32"
+                }
+              ],
+              "internalType": "struct GammaModifyInfo",
+              "name": "modifyInfo",
+              "type": "tuple"
             }
           ],
-          "internalType": "struct IFillerMarket.SignedOrder",
-          "name": "order",
+          "internalType": "struct GammaOrder",
+          "name": "gammaOrder",
           "type": "tuple"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sig",
+          "type": "bytes"
         },
         {
           "components": [
             {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
               "internalType": "uint256",
               "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
+          "name": "settlementParams",
+          "type": "tuple"
+        }
+      ],
+      "name": "executeTrade",
+      "outputs": [
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "int256",
+                  "name": "perpEntryUpdate",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtEntryUpdate",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtRebalanceEntryUpdateUnderlying",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtRebalanceEntryUpdateStable",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "perpPayoff",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "sqrtPayoff",
+                  "type": "int256"
+                }
+              ],
+              "internalType": "struct IPredyPool.Payoff",
+              "name": "payoff",
+              "type": "tuple"
+            },
+            {
+              "internalType": "uint256",
+              "name": "vaultId",
               "type": "uint256"
             },
             {
@@ -665,39 +1080,157 @@
               "type": "int256"
             },
             {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "contractAddress",
-                  "type": "address"
-                },
-                {
-                  "internalType": "bytes",
-                  "name": "encodedData",
-                  "type": "bytes"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "maxQuoteAmount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "partialBaseAmount",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct IFillerMarket.SettlementParamsItem[]",
-              "name": "items",
-              "type": "tuple[]"
+              "internalType": "int256",
+              "name": "minMargin",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "averagePrice",
+              "type": "int256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "sqrtTwap",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "sqrtPrice",
+              "type": "uint256"
             }
           ],
-          "internalType": "struct IFillerMarket.SettlementParams",
+          "internalType": "struct IPredyPool.TradeResult",
+          "name": "tradeResult",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "trader",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "positionId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "int256",
+              "name": "quantity",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "quantitySqrt",
+              "type": "int256"
+            },
+            {
+              "internalType": "int256",
+              "name": "marginAmount",
+              "type": "int256"
+            },
+            {
+              "internalType": "bool",
+              "name": "closePosition",
+              "type": "bool"
+            },
+            {
+              "internalType": "int256",
+              "name": "limitValue",
+              "type": "int256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "leverage",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "param",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lowerLimit",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "upperLimit",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct GammaOrderL2",
+          "name": "order",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sig",
+          "type": "bytes"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
           "name": "settlementParams",
           "type": "tuple"
         }
       ],
-      "name": "executeOrder",
+      "name": "executeTradeL2",
       "outputs": [
         {
           "components": [
@@ -783,274 +1316,323 @@
           "internalType": "address",
           "name": "owner",
           "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
         }
       ],
-      "name": "getUserPosition",
+      "name": "getUserPositions",
       "outputs": [
         {
           "components": [
             {
-              "internalType": "uint256",
-              "name": "vaultId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "lastHedgedTime",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "hedgeInterval",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "lastHedgedSqrtPrice",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "sqrtPriceTrigger",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint64",
-              "name": "minSlippageTolerance",
-              "type": "uint64"
-            },
-            {
-              "internalType": "uint64",
-              "name": "maxSlippageTolerance",
-              "type": "uint64"
-            }
-          ],
-          "internalType": "struct GammaTradeMarket.UserPosition",
-          "name": "userPosition",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "id",
-              "type": "uint256"
-            },
-            {
-              "internalType": "int256",
-              "name": "vaultValue",
-              "type": "int256"
-            },
-            {
-              "internalType": "int256",
-              "name": "minMargin",
-              "type": "int256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "oraclePrice",
-              "type": "uint256"
-            },
-            {
               "components": [
                 {
-                  "internalType": "int256",
-                  "name": "feeAmountBase",
-                  "type": "int256"
+                  "internalType": "uint256",
+                  "name": "vaultId",
+                  "type": "uint256"
                 },
                 {
-                  "internalType": "int256",
-                  "name": "feeAmountQuote",
-                  "type": "int256"
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "pairId",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "leverage",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "expiration",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "lowerLimit",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "upperLimit",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "lastHedgedTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "hedgeInterval",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "lastHedgedSqrtPrice",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "sqrtPriceTrigger",
+                  "type": "uint256"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "uint32",
+                      "name": "minSlippageTolerance",
+                      "type": "uint32"
+                    },
+                    {
+                      "internalType": "uint32",
+                      "name": "maxSlippageTolerance",
+                      "type": "uint32"
+                    },
+                    {
+                      "internalType": "uint16",
+                      "name": "auctionPeriod",
+                      "type": "uint16"
+                    },
+                    {
+                      "internalType": "uint32",
+                      "name": "auctionRange",
+                      "type": "uint32"
+                    }
+                  ],
+                  "internalType": "struct GammaTradeMarketLib.AuctionParams",
+                  "name": "auctionParams",
+                  "type": "tuple"
                 }
               ],
-              "internalType": "struct DataType.FeeAmount",
-              "name": "feeAmount",
+              "internalType": "struct GammaTradeMarket.UserPosition",
+              "name": "userPosition",
               "type": "tuple"
             },
             {
               "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "vaultValue",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "int256",
+                  "name": "minMargin",
+                  "type": "int256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "oraclePrice",
+                  "type": "uint256"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "int256",
+                      "name": "feeAmountBase",
+                      "type": "int256"
+                    },
+                    {
+                      "internalType": "int256",
+                      "name": "feeAmountQuote",
+                      "type": "int256"
+                    }
+                  ],
+                  "internalType": "struct DataType.FeeAmount",
+                  "name": "feeAmount",
+                  "type": "tuple"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "int256",
+                      "name": "margin",
+                      "type": "int256"
+                    },
+                    {
+                      "internalType": "int256",
+                      "name": "amountQuote",
+                      "type": "int256"
+                    },
+                    {
+                      "internalType": "int256",
+                      "name": "amountSqrt",
+                      "type": "int256"
+                    },
+                    {
+                      "internalType": "int256",
+                      "name": "amountBase",
+                      "type": "int256"
+                    }
+                  ],
+                  "internalType": "struct IPredyPool.Position",
+                  "name": "position",
+                  "type": "tuple"
+                }
+              ],
+              "internalType": "struct IPredyPool.VaultStatus",
+              "name": "vaultStatus",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "marginId",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "recipient",
+                  "type": "address"
+                },
                 {
                   "internalType": "int256",
                   "name": "margin",
                   "type": "int256"
                 },
                 {
-                  "internalType": "int256",
-                  "name": "amountQuote",
-                  "type": "int256"
-                },
-                {
-                  "internalType": "int256",
-                  "name": "amountSqrt",
-                  "type": "int256"
-                },
-                {
-                  "internalType": "int256",
-                  "name": "amountBase",
-                  "type": "int256"
-                }
-              ],
-              "internalType": "struct IPredyPool.Position",
-              "name": "position",
-              "type": "tuple"
-            }
-          ],
-          "internalType": "struct IPredyPool.VaultStatus",
-          "name": "",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "id",
-              "type": "uint256"
-            },
-            {
-              "internalType": "address",
-              "name": "marginId",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "owner",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "recipient",
-              "type": "address"
-            },
-            {
-              "internalType": "int256",
-              "name": "margin",
-              "type": "int256"
-            },
-            {
-              "components": [
-                {
-                  "internalType": "uint256",
-                  "name": "pairId",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "int24",
-                  "name": "rebalanceLastTickLower",
-                  "type": "int24"
-                },
-                {
-                  "internalType": "int24",
-                  "name": "rebalanceLastTickUpper",
-                  "type": "int24"
-                },
-                {
-                  "internalType": "uint64",
-                  "name": "lastNumRebalance",
-                  "type": "uint64"
-                },
-                {
                   "components": [
-                    {
-                      "internalType": "int256",
-                      "name": "amount",
-                      "type": "int256"
-                    },
-                    {
-                      "internalType": "int256",
-                      "name": "entryValue",
-                      "type": "int256"
-                    }
-                  ],
-                  "internalType": "struct Perp.PositionStatus",
-                  "name": "perp",
-                  "type": "tuple"
-                },
-                {
-                  "components": [
-                    {
-                      "internalType": "int256",
-                      "name": "amount",
-                      "type": "int256"
-                    },
-                    {
-                      "internalType": "int256",
-                      "name": "entryValue",
-                      "type": "int256"
-                    },
-                    {
-                      "internalType": "int256",
-                      "name": "quoteRebalanceEntryValue",
-                      "type": "int256"
-                    },
-                    {
-                      "internalType": "int256",
-                      "name": "baseRebalanceEntryValue",
-                      "type": "int256"
-                    },
                     {
                       "internalType": "uint256",
-                      "name": "entryTradeFee0",
+                      "name": "pairId",
                       "type": "uint256"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "entryTradeFee1",
-                      "type": "uint256"
-                    }
-                  ],
-                  "internalType": "struct Perp.SqrtPositionStatus",
-                  "name": "sqrtPerp",
-                  "type": "tuple"
-                },
-                {
-                  "components": [
-                    {
-                      "internalType": "int256",
-                      "name": "positionAmount",
-                      "type": "int256"
+                      "internalType": "int24",
+                      "name": "rebalanceLastTickLower",
+                      "type": "int24"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "lastFeeGrowth",
-                      "type": "uint256"
-                    }
-                  ],
-                  "internalType": "struct ScaledAsset.UserStatus",
-                  "name": "basePosition",
-                  "type": "tuple"
-                },
-                {
-                  "components": [
-                    {
-                      "internalType": "int256",
-                      "name": "positionAmount",
-                      "type": "int256"
+                      "internalType": "int24",
+                      "name": "rebalanceLastTickUpper",
+                      "type": "int24"
                     },
                     {
-                      "internalType": "uint256",
-                      "name": "lastFeeGrowth",
-                      "type": "uint256"
+                      "internalType": "uint64",
+                      "name": "lastNumRebalance",
+                      "type": "uint64"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "int256",
+                          "name": "amount",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "int256",
+                          "name": "entryValue",
+                          "type": "int256"
+                        }
+                      ],
+                      "internalType": "struct Perp.PositionStatus",
+                      "name": "perp",
+                      "type": "tuple"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "int256",
+                          "name": "amount",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "int256",
+                          "name": "entryValue",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "int256",
+                          "name": "quoteRebalanceEntryValue",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "int256",
+                          "name": "baseRebalanceEntryValue",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "uint256",
+                          "name": "entryTradeFee0",
+                          "type": "uint256"
+                        },
+                        {
+                          "internalType": "uint256",
+                          "name": "entryTradeFee1",
+                          "type": "uint256"
+                        }
+                      ],
+                      "internalType": "struct Perp.SqrtPositionStatus",
+                      "name": "sqrtPerp",
+                      "type": "tuple"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "int256",
+                          "name": "positionAmount",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "uint256",
+                          "name": "lastFeeGrowth",
+                          "type": "uint256"
+                        }
+                      ],
+                      "internalType": "struct ScaledAsset.UserStatus",
+                      "name": "basePosition",
+                      "type": "tuple"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "int256",
+                          "name": "positionAmount",
+                          "type": "int256"
+                        },
+                        {
+                          "internalType": "uint256",
+                          "name": "lastFeeGrowth",
+                          "type": "uint256"
+                        }
+                      ],
+                      "internalType": "struct ScaledAsset.UserStatus",
+                      "name": "stablePosition",
+                      "type": "tuple"
                     }
                   ],
-                  "internalType": "struct ScaledAsset.UserStatus",
-                  "name": "stablePosition",
+                  "internalType": "struct Perp.UserStatus",
+                  "name": "openPosition",
                   "type": "tuple"
                 }
               ],
-              "internalType": "struct Perp.UserStatus",
-              "name": "openPosition",
+              "internalType": "struct DataType.Vault",
+              "name": "vault",
               "type": "tuple"
             }
           ],
-          "internalType": "struct DataType.Vault",
+          "internalType": "struct GammaTradeMarket.UserPositionResult[]",
           "name": "",
-          "type": "tuple"
+          "type": "tuple[]"
         }
       ],
       "stateMutability": "nonpayable",
@@ -1082,6 +1664,85 @@
       "name": "initialize",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "trader",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "positionId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "param",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lowerLimit",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "upperLimit",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct GammaModifyOrderL2",
+          "name": "order",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sig",
+          "type": "bytes"
+        }
+      ],
+      "name": "modifyAutoHedgeAndClose",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "positionIDs",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1263,18 +1924,23 @@
               "type": "uint64"
             },
             {
+              "internalType": "uint256",
+              "name": "positionId",
+              "type": "uint256"
+            },
+            {
               "internalType": "address",
               "name": "entryTokenAddress",
               "type": "address"
             },
             {
               "internalType": "int256",
-              "name": "tradeAmount",
+              "name": "quantity",
               "type": "int256"
             },
             {
               "internalType": "int256",
-              "name": "tradeAmountSqrt",
+              "name": "quantitySqrt",
               "type": "int256"
             },
             {
@@ -1283,34 +1949,76 @@
               "type": "int256"
             },
             {
-              "internalType": "uint256",
-              "name": "hedgeInterval",
-              "type": "uint256"
+              "internalType": "bool",
+              "name": "closePosition",
+              "type": "bool"
             },
             {
-              "internalType": "uint256",
-              "name": "sqrtPriceTrigger",
-              "type": "uint256"
+              "internalType": "int256",
+              "name": "limitValue",
+              "type": "int256"
             },
             {
-              "internalType": "uint64",
-              "name": "minSlippageTolerance",
-              "type": "uint64"
+              "internalType": "uint8",
+              "name": "leverage",
+              "type": "uint8"
             },
             {
-              "internalType": "uint64",
-              "name": "maxSlippageTolerance",
-              "type": "uint64"
-            },
-            {
-              "internalType": "address",
-              "name": "validatorAddress",
-              "type": "address"
-            },
-            {
-              "internalType": "bytes",
-              "name": "validationData",
-              "type": "bytes"
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "isEnabled",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "expiration",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "lowerLimit",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "upperLimit",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "hedgeInterval",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "sqrtPriceTrigger",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "minSlippageTolerance",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "maxSlippageTolerance",
+                  "type": "uint32"
+                },
+                {
+                  "internalType": "uint16",
+                  "name": "auctionPeriod",
+                  "type": "uint16"
+                },
+                {
+                  "internalType": "uint32",
+                  "name": "auctionRange",
+                  "type": "uint32"
+                }
+              ],
+              "internalType": "struct GammaModifyInfo",
+              "name": "modifyInfo",
+              "type": "tuple"
             }
           ],
           "internalType": "struct GammaOrder",
@@ -1320,49 +2028,47 @@
         {
           "components": [
             {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
               "internalType": "uint256",
               "name": "price",
               "type": "uint256"
             },
             {
-              "internalType": "int256",
-              "name": "fee",
-              "type": "int256"
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
             },
             {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "contractAddress",
-                  "type": "address"
-                },
-                {
-                  "internalType": "bytes",
-                  "name": "encodedData",
-                  "type": "bytes"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "maxQuoteAmount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "partialBaseAmount",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct IFillerMarket.SettlementParamsItem[]",
-              "name": "items",
-              "type": "tuple[]"
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
             }
           ],
-          "internalType": "struct IFillerMarket.SettlementParams",
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
           "name": "settlementParams",
           "type": "tuple"
         }
       ],
-      "name": "quoteExecuteOrder",
+      "name": "quoteTrade",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1377,44 +2083,42 @@
         {
           "components": [
             {
+              "internalType": "address",
+              "name": "contractAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "encodedData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minQuoteAmountPrice",
+              "type": "uint256"
+            },
+            {
               "internalType": "uint256",
               "name": "price",
               "type": "uint256"
             },
             {
-              "internalType": "int256",
-              "name": "fee",
-              "type": "int256"
+              "internalType": "uint256",
+              "name": "feePrice",
+              "type": "uint256"
             },
             {
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "contractAddress",
-                  "type": "address"
-                },
-                {
-                  "internalType": "bytes",
-                  "name": "encodedData",
-                  "type": "bytes"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "maxQuoteAmount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "partialBaseAmount",
-                  "type": "uint256"
-                }
-              ],
-              "internalType": "struct IFillerMarket.SettlementParamsItem[]",
-              "name": "items",
-              "type": "tuple[]"
+              "internalType": "uint256",
+              "name": "minFee",
+              "type": "uint256"
             }
           ],
-          "internalType": "struct IFillerMarket.SettlementParams",
+          "internalType": "struct IFillerMarket.SettlementParamsV3",
           "name": "settlementParams",
           "type": "tuple"
         }
@@ -1427,6 +2131,19 @@
           "type": "bool"
         }
       ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "positionId",
+          "type": "uint256"
+        }
+      ],
+      "name": "removePosition",
+      "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
@@ -1477,13 +2194,8 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
           "internalType": "uint256",
-          "name": "pairId",
+          "name": "positionId",
           "type": "uint256"
         }
       ],
@@ -1492,6 +2204,36 @@
         {
           "internalType": "uint256",
           "name": "vaultId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "uint64",
+          "name": "pairId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint8",
+          "name": "leverage",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expiration",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lowerLimit",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "upperLimit",
           "type": "uint256"
         },
         {
@@ -1515,14 +2257,31 @@
           "type": "uint256"
         },
         {
-          "internalType": "uint64",
-          "name": "minSlippageTolerance",
-          "type": "uint64"
-        },
-        {
-          "internalType": "uint64",
-          "name": "maxSlippageTolerance",
-          "type": "uint64"
+          "components": [
+            {
+              "internalType": "uint32",
+              "name": "minSlippageTolerance",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint32",
+              "name": "maxSlippageTolerance",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "auctionPeriod",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint32",
+              "name": "auctionRange",
+              "type": "uint32"
+            }
+          ],
+          "internalType": "struct GammaTradeMarketLib.AuctionParams",
+          "name": "auctionParams",
+          "type": "tuple"
         }
       ],
       "stateMutability": "view",
@@ -1563,67 +2322,67 @@
       "type": "constructor"
     }
   ],
-  "transactionHash": "0x5927725867604e14f492289fe9c664369a21517942c68e7d2c4fe31193ba2d87",
+  "transactionHash": "0x0832b269e9211ef1f256ea939eccd5696c07947055bf3c26e8342c856239a761",
   "receipt": {
     "to": null,
     "from": "0x4f071924D66BBC71A5254217893CC7D49938B1c4",
-    "contractAddress": "0x90B7259Ae263141cda1c76e8c1143fA62E55b1a5",
-    "transactionIndex": 2,
-    "gasUsed": "9080890",
-    "logsBloom": "0x00000000000000000000000000000000000000000000000020800000000000000010000000000000000400000000000000000000000000000000000000000000000000010000000000000000000000000041020000000000000000000000000000000000020000000000000000000800000000000000000000000000000000400000000000000000000000000000000000800000000080001000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000020000000000000000000000400000000000000000000000080000000000010000000",
-    "blockHash": "0xf82a7ab0a9357840796814312a6c065ed189f6d270af4ed901955e6735e6a761",
-    "transactionHash": "0x5927725867604e14f492289fe9c664369a21517942c68e7d2c4fe31193ba2d87",
+    "contractAddress": "0x92027Eb7caa12EC06f9Ba149c9521A1A48921514",
+    "transactionIndex": 3,
+    "gasUsed": "1561525",
+    "logsBloom": "0x80000000000000000000000000000000000000000000000020800000000000000000000000000000000400000000000000000000000000000000000000000000000000010000000000000000000000000001040000000000000000000000000000000000020000000000000000000810000000000000000000000000000000400000000000000000000000000000000000000000000080001000000000000000000000000000000000000000000600000000000000000000000000020000000000000000000000000000000000040000000000080000000000000000000020000000000000000000000400001000000000000000000000000000000000000000",
+    "blockHash": "0x23c96c3541dbfa0e49e0a56e94b6c4b6961d12db4c4cf27eb09412af8e76f989",
+    "transactionHash": "0x0832b269e9211ef1f256ea939eccd5696c07947055bf3c26e8342c856239a761",
     "logs": [
       {
-        "transactionIndex": 2,
-        "blockNumber": 171222555,
-        "transactionHash": "0x5927725867604e14f492289fe9c664369a21517942c68e7d2c4fe31193ba2d87",
-        "address": "0x90B7259Ae263141cda1c76e8c1143fA62E55b1a5",
+        "transactionIndex": 3,
+        "blockNumber": 202013741,
+        "transactionHash": "0x0832b269e9211ef1f256ea939eccd5696c07947055bf3c26e8342c856239a761",
+        "address": "0x92027Eb7caa12EC06f9Ba149c9521A1A48921514",
         "topics": [
           "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
           "0x0000000000000000000000000000000000000000000000000000000000000000",
           "0x0000000000000000000000004f071924d66bbc71a5254217893cc7d49938b1c4"
         ],
         "data": "0x",
-        "logIndex": 2,
-        "blockHash": "0xf82a7ab0a9357840796814312a6c065ed189f6d270af4ed901955e6735e6a761"
+        "logIndex": 11,
+        "blockHash": "0x23c96c3541dbfa0e49e0a56e94b6c4b6961d12db4c4cf27eb09412af8e76f989"
       },
       {
-        "transactionIndex": 2,
-        "blockNumber": 171222555,
-        "transactionHash": "0x5927725867604e14f492289fe9c664369a21517942c68e7d2c4fe31193ba2d87",
-        "address": "0x90B7259Ae263141cda1c76e8c1143fA62E55b1a5",
+        "transactionIndex": 3,
+        "blockNumber": 202013741,
+        "transactionHash": "0x0832b269e9211ef1f256ea939eccd5696c07947055bf3c26e8342c856239a761",
+        "address": "0x92027Eb7caa12EC06f9Ba149c9521A1A48921514",
         "topics": [
           "0x5570d70a002632a7b0b3c9304cc89efb62d8da9eca0dbd7752c83b7379068296",
           "0x0000000000000000000000000000000000000000000000000000000000000000",
-          "0x000000000000000000000000eb71d43df82c644be3a6f68bcf527c64ae3d5e12"
+          "0x0000000000000000000000006f4d21d7770f09649fe7db267e16721fd0b6cdd4"
         ],
         "data": "0x",
-        "logIndex": 3,
-        "blockHash": "0xf82a7ab0a9357840796814312a6c065ed189f6d270af4ed901955e6735e6a761"
+        "logIndex": 12,
+        "blockHash": "0x23c96c3541dbfa0e49e0a56e94b6c4b6961d12db4c4cf27eb09412af8e76f989"
       },
       {
-        "transactionIndex": 2,
-        "blockNumber": 171222555,
-        "transactionHash": "0x5927725867604e14f492289fe9c664369a21517942c68e7d2c4fe31193ba2d87",
-        "address": "0x90B7259Ae263141cda1c76e8c1143fA62E55b1a5",
+        "transactionIndex": 3,
+        "blockNumber": 202013741,
+        "transactionHash": "0x0832b269e9211ef1f256ea939eccd5696c07947055bf3c26e8342c856239a761",
+        "address": "0x92027Eb7caa12EC06f9Ba149c9521A1A48921514",
         "topics": [
           "0x7f26b83ff96e1f2b6a682f133852f6798a09c465da95921460cefb3847402498"
         ],
         "data": "0x0000000000000000000000000000000000000000000000000000000000000001",
-        "logIndex": 4,
-        "blockHash": "0xf82a7ab0a9357840796814312a6c065ed189f6d270af4ed901955e6735e6a761"
+        "logIndex": 13,
+        "blockHash": "0x23c96c3541dbfa0e49e0a56e94b6c4b6961d12db4c4cf27eb09412af8e76f989"
       }
     ],
-    "blockNumber": 171222555,
-    "cumulativeGasUsed": "12098865",
+    "blockNumber": 202013741,
+    "cumulativeGasUsed": "2180243",
     "status": 1,
     "byzantium": true
   },
   "args": [
-    "0xEB71d43dF82C644be3a6F68bcF527C64AE3D5e12",
+    "0x6F4D21d7770f09649fe7DB267e16721FD0B6CDd4",
     "0x4f071924D66BBC71A5254217893CC7D49938B1c4",
-    "0xf8c8765e0000000000000000000000009215748657319b17fecb2b5d086a3147bfbc8613000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba300000000000000000000000051b89c499f3038756eff64a0ef52d753147ead750000000000000000000000005e5c35b730fa38f0d8a2b170db5bcecb1d407e49"
+    "0xf8c8765e0000000000000000000000009215748657319b17fecb2b5d086a3147bfbc8613000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba300000000000000000000000051b89c499f3038756eff64a0ef52d753147ead750000000000000000000000008f5c6140889131da1ea82284bbdd319b1d05cf5e"
   ],
   "numDeployments": 1,
   "solcInputHash": "4a46ee6c1a29be400c9fab1ecc28e172",
@@ -1636,10 +2395,10 @@
       "0x9215748657319B17fecb2b5D086A3147BFBC8613",
       "0x000000000022d473030f116ddee9f6b43ac78ba3",
       "0x51B89C499F3038756Eff64a0EF52d753147EAd75",
-      "0x5E5C35B730Fa38F0D8a2B170db5bceCB1D407e49"
+      "0x8F5C6140889131dA1eA82284Bbdd319B1D05cf5e"
     ]
   },
-  "implementation": "0xEB71d43dF82C644be3a6F68bcF527C64AE3D5e12",
+  "implementation": "0x6F4D21d7770f09649fe7DB267e16721FD0B6CDd4",
   "devdoc": {
     "kind": "dev",
     "methods": {},

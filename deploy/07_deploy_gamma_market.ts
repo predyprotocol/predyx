@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const PredyPool = await deployments.get('PredyPool')
   const PredyPoolQuoter = await deployments.get('PredyPoolQuoter')
 
-  await deploy('GammaTradeMarket', {
+  await deploy('GammaTradeMarketL2', {
     from: deployer,
     log: true,
     args: [],
@@ -28,12 +28,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   })
 
-  const GammaTradeMarket = await deployments.get('GammaTradeMarket')
+  const GammaTradeMarketL2 = await deployments.get('GammaTradeMarketL2')
 
   await deploy('GammaTradeMarketQuoter', {
     from: deployer,
     log: true,
-    args: [GammaTradeMarket.address]
+    args: [GammaTradeMarketL2.address]
   })
 
 }
