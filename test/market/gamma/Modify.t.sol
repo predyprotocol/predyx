@@ -49,8 +49,8 @@ contract TestGammaModify is TestGammaMarket {
             -900,
             1000,
             2 * 1e6,
-            false,
-            -1100,
+            Constants.Q96,
+            1e6 + 5000, // 0.5%
             2,
             GammaModifyInfo(
                 true,
@@ -85,7 +85,7 @@ contract TestGammaModify is TestGammaMarket {
             0,
             0,
             0,
-            false,
+            0,
             0,
             0,
             GammaModifyInfo(

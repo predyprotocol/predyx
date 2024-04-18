@@ -30,6 +30,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     using SafeTransferLib for ERC20;
 
     error PositionNotFound();
+    error PositionHasDifferentPairId();
     error PositionIsNotClosed();
     error InvalidOrder();
     error SignerIsNotPositionOwner();
@@ -38,7 +39,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     error DeltaIsZero();
     error AlreadyClosed();
     error AutoCloseTriggerNotMatched();
-    error ValueIsLessThanLimit(int256 value);
     error MarginUpdateMustBeZero();
 
     struct UserPosition {
@@ -73,10 +73,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         int256 marginAmountUpdate;
     }
 
-    IPermit2 private _permit2;
+    IPermit2 internal _permit2;
 
     mapping(address owner => uint256[]) public positionIDs;
-    mapping(uint256 positionId => UserPosition) public userPositions;
+    mapping(uint256 positionId => UserPosition) internal userPositions;
 
     event GammaPositionTraded(
         address indexed trader,
@@ -175,14 +175,6 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     }
 
     // open position
-    function executeTrade(GammaOrder memory gammaOrder, bytes memory sig, SettlementParamsV3 memory settlementParams)
-        external
-        nonReentrant
-        returns (IPredyPool.TradeResult memory tradeResult)
-    {
-        return _executeTrade(gammaOrder, sig, settlementParams);
-    }
-
     function _executeTrade(GammaOrder memory gammaOrder, bytes memory sig, SettlementParamsV3 memory settlementParams)
         internal
         returns (IPredyPool.TradeResult memory tradeResult)
@@ -212,8 +204,9 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             }
         }
 
-        UserPosition storage userPosition =
-            _getOrInitPosition(tradeResult.vaultId, gammaOrder.positionId == 0, gammaOrder.info.trader);
+        UserPosition storage userPosition = _getOrInitPosition(
+            tradeResult.vaultId, gammaOrder.positionId == 0, gammaOrder.info.trader, gammaOrder.pairId
+        );
 
         _saveUserPosition(userPosition, gammaOrder.modifyInfo);
 
@@ -224,23 +217,17 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         userPosition.lastHedgedTime = block.timestamp;
 
         if (gammaOrder.positionId == 0) {
-            userPosition.pairId = gammaOrder.pairId;
-
             _addPositionIndex(gammaOrder.info.trader, userPosition.vaultId);
 
             _predyPool.updateRecepient(tradeResult.vaultId, gammaOrder.info.trader);
         }
 
-        _checkTradeValue(tradeResult, gammaOrder.limitValue);
-    }
-
-    function _checkTradeValue(IPredyPool.TradeResult memory tradeResult, int256 limitValue) internal pure {
-        int256 tradeValue = tradeResult.payoff.perpEntryUpdate + tradeResult.payoff.perpPayoff
-            + tradeResult.payoff.sqrtEntryUpdate + tradeResult.payoff.sqrtPayoff;
-
-        if (tradeValue < limitValue) {
-            revert ValueIsLessThanLimit(tradeValue);
-        }
+        SlippageLib.checkPrice(
+            gammaOrder.baseSqrtPrice,
+            tradeResult,
+            gammaOrder.slippageTolerance,
+            SlippageLib.MAX_ACCEPTABLE_SQRT_PRICE_RANGE
+        );
     }
 
     function _modifyAutoHedgeAndClose(GammaOrder memory gammaOrder, bytes memory sig) internal {
@@ -253,7 +240,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         _verifyOrder(resolvedOrder);
 
         // save user position
-        UserPosition storage userPosition = _getOrInitPosition(gammaOrder.positionId, false, gammaOrder.info.trader);
+        UserPosition storage userPosition =
+            _getOrInitPosition(gammaOrder.positionId, false, gammaOrder.info.trader, gammaOrder.pairId);
 
         _saveUserPosition(userPosition, gammaOrder.modifyInfo);
     }
@@ -423,7 +411,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         positionIDs[trader].removeItem(positionId);
     }
 
-    function _getOrInitPosition(uint256 positionId, bool isCreatedNew, address trader)
+    function _getOrInitPosition(uint256 positionId, bool isCreatedNew, address trader, uint64 pairId)
         internal
         returns (UserPosition storage userPosition)
     {
@@ -432,6 +420,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         if (isCreatedNew) {
             userPosition.vaultId = positionId;
             userPosition.owner = trader;
+            userPosition.pairId = pairId;
             return userPosition;
         }
 
@@ -441,6 +430,10 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
         if (userPosition.owner != trader) {
             revert SignerIsNotPositionOwner();
+        }
+
+        if (userPosition.pairId != pairId) {
+            revert PositionHasDifferentPairId();
         }
 
         return userPosition;

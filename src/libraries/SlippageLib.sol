@@ -4,12 +4,13 @@ pragma solidity ^0.8.17;
 import {IPredyPool} from "../interfaces/IPredyPool.sol";
 import {Constants} from "./Constants.sol";
 import {Bps} from "./math/Bps.sol";
+import {Math} from "./math/Math.sol";
 
 library SlippageLib {
     using Bps for uint256;
 
-    // 3% scaled by 1e8
-    uint256 public constant MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 101488915;
+    // 1.5% scaled by 1e8
+    uint256 public constant MAX_ACCEPTABLE_SQRT_PRICE_RANGE = 100747209;
 
     error InvalidAveragePrice();
 
@@ -23,7 +24,7 @@ library SlippageLib {
         uint256 slippageTolerance,
         uint256 maxAcceptableSqrtPriceRange
     ) internal pure {
-        uint256 basePrice = (sqrtBasePrice * sqrtBasePrice) >> Constants.RESOLUTION;
+        uint256 basePrice = Math.calSqrtPriceToPrice(sqrtBasePrice);
 
         if (tradeResult.averagePrice == 0) {
             revert InvalidAveragePrice();

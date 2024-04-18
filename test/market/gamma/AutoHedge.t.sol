@@ -53,8 +53,8 @@ contract TestGammaAutoHedge is TestGammaMarket {
             -9 * 1e6,
             10 * 1e6,
             2 * 1e6,
-            false,
-            -11 * 1e6,
+            Constants.Q96,
+            1e6 + 5000, // 0.5%
             2,
             GammaModifyInfo(
                 true,
@@ -110,6 +110,8 @@ contract TestGammaAutoHedge is TestGammaMarket {
 
     function testExecuteDeltaHedgeByPrice() public {
         mockPriceFeed.setSqrtPrice(Constants.Q96 * 1014 / 1000);
+
+        _movePrice(true, 1e16);
 
         vm.warp(block.timestamp + 1 hours);
 

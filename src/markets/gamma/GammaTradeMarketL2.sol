@@ -10,15 +10,13 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 struct GammaOrderL2 {
     address trader;
     uint256 nonce;
-    uint256 deadline;
     uint256 positionId;
     int256 quantity;
     int256 quantitySqrt;
     int256 marginAmount;
-    bool closePosition;
-    int256 limitValue;
-    uint8 leverage;
+    uint256 baseSqrtPrice;
     bytes32 param;
+    bytes32 modifyParam;
     uint256 lowerLimit;
     uint256 upperLimit;
 }
@@ -45,22 +43,22 @@ contract GammaTradeMarketL2 is GammaTradeMarket {
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         GammaModifyInfo memory modifyInfo =
-            L2GammaDecoder.decodeGammaModifyInfo(order.param, order.lowerLimit, order.upperLimit);
-
-        uint64 pairId = userPositions[order.positionId].pairId;
+            L2GammaDecoder.decodeGammaModifyInfo(order.modifyParam, order.lowerLimit, order.upperLimit);
+        (uint64 deadline, uint64 pairId, uint32 slippageTolerance, uint8 leverage) =
+            L2GammaDecoder.decodeGammaParam(order.param);
 
         return _executeTrade(
             GammaOrder(
-                OrderInfo(address(this), order.trader, order.nonce, order.deadline),
+                OrderInfo(address(this), order.trader, order.nonce, deadline),
                 pairId,
                 order.positionId,
                 _quoteTokenMap[pairId],
                 order.quantity,
                 order.quantitySqrt,
                 order.marginAmount,
-                order.closePosition,
-                order.limitValue,
-                order.leverage,
+                order.baseSqrtPrice,
+                slippageTolerance,
+                leverage,
                 modifyInfo
             ),
             sig,
@@ -84,7 +82,7 @@ contract GammaTradeMarketL2 is GammaTradeMarket {
                 0,
                 0,
                 0,
-                false,
+                0,
                 0,
                 0,
                 modifyInfo
