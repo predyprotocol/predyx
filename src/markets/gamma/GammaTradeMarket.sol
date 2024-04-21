@@ -248,12 +248,13 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
     function autoHedge(uint256 positionId, SettlementParamsV3 memory settlementParams)
         external
-        onlyFiller
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         UserPosition storage userPosition = userPositions[positionId];
 
-        require(userPosition.vaultId == positionId, "positionId is not valid");
+        if (userPosition.vaultId == 0 || positionId != userPosition.vaultId) {
+            revert PositionNotFound();
+        }
 
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
 
@@ -292,11 +293,14 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
     function autoClose(uint256 positionId, SettlementParamsV3 memory settlementParams)
         external
-        onlyFiller
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         // save user position
         UserPosition memory userPosition = userPositions[positionId];
+
+        if (userPosition.vaultId == 0 || positionId != userPosition.vaultId) {
+            revert PositionNotFound();
+        }
 
         // check auto close condition
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
