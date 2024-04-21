@@ -353,6 +353,12 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     {
         UserPosition memory userPosition = userPositions[positionId];
 
+        DataType.Vault memory vault = _predyPool.getVault(userPosition.vaultId);
+
+        if (vault.openPosition.perp.amount == 0 && vault.openPosition.sqrtPerp.amount == 0) {
+            return (false, false, positionId);
+        }
+
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
 
         (hedgeRequired,,) = _validateHedgeCondition(userPosition, sqrtPrice);
