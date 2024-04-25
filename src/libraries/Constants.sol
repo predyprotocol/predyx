@@ -19,8 +19,8 @@ library Constants {
     uint256 internal constant Q96 = 0x1000000000000000000000000;
     uint256 internal constant Q128 = 0x100000000000000000000000000000000;
 
-    // 0.2%
-    uint256 internal constant BASE_MIN_COLLATERAL_WITH_DEBT = 2000;
+    // 0.1%
+    uint256 internal constant BASE_MIN_COLLATERAL_WITH_DEBT = 1000;
     // 2.5% scaled by 1e6
     uint256 internal constant BASE_LIQ_SLIPPAGE_SQRT_TOLERANCE = 12422;
     // 5.0% scaled by 1e6

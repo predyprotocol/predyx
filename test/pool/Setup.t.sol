@@ -25,7 +25,8 @@ contract TestPool is Test {
 
     IUniswapV3Pool internal uniswapPool;
 
-    uint256 internal constant RISK_RATIO = 109544511;
+    uint128 internal constant RISK_RATIO = 109544511;
+    uint128 internal constant BASE_MIN_COLLATERAL_WITH_DEBT = 2000;
 
     address uniswapFactory;
 
@@ -128,7 +129,7 @@ contract TestPool is Test {
                 priceFeed,
                 isWhitelistEnabled,
                 0,
-                Perp.AssetRiskParams(RISK_RATIO, 1000, 500, 1005000, 1050000),
+                Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 1005000, 1050000),
                 irmParams,
                 irmParams
             )

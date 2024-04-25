@@ -29,7 +29,7 @@ contract TestRegisterPair is TestPool {
                 address(0),
                 false,
                 0,
-                Perp.AssetRiskParams(RISK_RATIO, 1000, 500, 10050, 10500),
+                Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 10050, 10500),
                 irmParams,
                 irmParams
             )
@@ -49,7 +49,7 @@ contract TestRegisterPair is TestPool {
                 address(0),
                 false,
                 0,
-                Perp.AssetRiskParams(RISK_RATIO, 1000, 500, 10050, 10500),
+                Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 10050, 10500),
                 irmParams,
                 irmParams
             )

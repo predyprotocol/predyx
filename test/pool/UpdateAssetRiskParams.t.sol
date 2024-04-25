@@ -29,7 +29,7 @@ contract TestPoolUpdateAssetRiskParams is TestPool {
                 address(0),
                 false,
                 0,
-                Perp.AssetRiskParams(RISK_RATIO, 1000, 500, 1005000, 1050000),
+                Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 1005000, 1050000),
                 irmParams,
                 irmParams
             )
@@ -38,7 +38,7 @@ contract TestPoolUpdateAssetRiskParams is TestPool {
 
     function testUpdateAssetRiskParams() public {
         vm.prank(poolOwner);
-        predyPool.updateAssetRiskParams(pairId, Perp.AssetRiskParams(110020500, 1000, 500, 1005000, 1050000));
+        predyPool.updateAssetRiskParams(pairId, Perp.AssetRiskParams(110020500, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 1005000, 1050000));
 
         DataType.PairStatus memory pairStatus = predyPool.getPairStatus(pairId);
 
@@ -49,7 +49,7 @@ contract TestPoolUpdateAssetRiskParams is TestPool {
         vm.startPrank(notPoolOwner);
 
         vm.expectRevert(IPredyPool.CallerIsNotPoolCreator.selector);
-        predyPool.updateAssetRiskParams(pairId, Perp.AssetRiskParams(RISK_RATIO, 1000, 500, 1005000, 1050000));
+        predyPool.updateAssetRiskParams(pairId, Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 1005000, 1050000));
 
         vm.stopPrank();
     }

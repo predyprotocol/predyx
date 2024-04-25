@@ -120,9 +120,7 @@ library AddPairLogic {
     {
         validateRiskParams(_riskParams);
 
-        _pairStatus.riskParams.riskRatio = _riskParams.riskRatio;
-        _pairStatus.riskParams.rangeSize = _riskParams.rangeSize;
-        _pairStatus.riskParams.rebalanceThreshold = _riskParams.rebalanceThreshold;
+        _pairStatus.riskParams = _riskParams;
 
         emit AssetRiskParamsUpdated(_pairStatus.id, _riskParams);
     }

@@ -84,7 +84,7 @@ library PositionCalculator {
             vault.margin, getPositionWithFeeAmount(vault.openPosition, feeAmount), twap, pairStatus.riskParams.riskRatio
         );
 
-        int256 minMinValue = (calculateRequiredCollateralWithDebt() * debtValue).toInt256() / 1e6;
+        int256 minMinValue = (calculateRequiredCollateralWithDebt(pairStatus.riskParams.debtRiskRatio) * debtValue).toInt256() / 1e6;
 
         minMargin = vaultValue - minValue + minMinValue;
 
@@ -93,8 +93,12 @@ library PositionCalculator {
         }
     }
 
-    function calculateRequiredCollateralWithDebt() internal pure returns (uint256) {
-        return Constants.BASE_MIN_COLLATERAL_WITH_DEBT;
+    function calculateRequiredCollateralWithDebt(uint128 debtRiskRatio) internal pure returns (uint256) {
+        if(debtRiskRatio == 0) {
+            return Constants.BASE_MIN_COLLATERAL_WITH_DEBT;
+        } else {
+            return debtRiskRatio;
+        }
     }
 
     /**

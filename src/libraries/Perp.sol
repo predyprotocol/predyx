@@ -43,7 +43,8 @@ library Perp {
     }
 
     struct AssetRiskParams {
-        uint256 riskRatio;
+        uint128 riskRatio;
+        uint128 debtRiskRatio;
         int24 rangeSize;
         int24 rebalanceThreshold;
         uint64 minSlippage;
