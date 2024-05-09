@@ -34,6 +34,19 @@ library L2GammaDecoder {
         );
     }
 
+    function decodeGammaParam(bytes32 args)
+        internal
+        pure
+        returns (uint64 deadline, uint64 pairId, uint32 slippageTolerance, uint8 leverage)
+    {
+        assembly {
+            deadline := and(args, 0xFFFFFFFFFFFFFFFF)
+            pairId := and(shr(64, args), 0xFFFFFFFFFFFFFFFF)
+            slippageTolerance := and(shr(128, args), 0xFFFFFFFF)
+            leverage := and(shr(160, args), 0xFF)
+        }
+    }
+
     function decodeGammaModifyParam(bytes32 args)
         internal
         pure

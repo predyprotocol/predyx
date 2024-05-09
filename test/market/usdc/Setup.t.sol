@@ -30,7 +30,8 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
     uint256 internal _arbitrumFork;
     string internal _arbitrumRPCURL = vm.envString("ARBITRUM_RPC_URL");
 
-    uint256 internal constant RISK_RATIO = 109544511;
+    uint128 internal constant RISK_RATIO = 109544511;
+    uint128 internal constant BASE_MIN_COLLATERAL_WITH_DEBT = 2000;
 
     IPermit2 internal _permit2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     IUniswapV3Factory internal _uniswapFactory = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
@@ -99,7 +100,7 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
                 priceFeed,
                 false,
                 0,
-                Perp.AssetRiskParams(RISK_RATIO, 1000, 500, 10050, 10500),
+                Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 10050, 10500),
                 irmParams,
                 irmParams
             )

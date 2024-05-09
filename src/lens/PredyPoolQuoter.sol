@@ -130,7 +130,7 @@ contract PredyPoolQuoter is BaseHookCallback {
         pure
         returns (DataType.PairStatus memory pairStatus)
     {
-        if (reason.length != 1920) {
+        if (reason.length != 1952) {
             assembly {
                 revert(add(32, reason), mload(reason))
             }

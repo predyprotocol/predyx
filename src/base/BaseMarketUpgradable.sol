@@ -129,6 +129,10 @@ abstract contract BaseMarketUpgradable is IFillerMarket, BaseHookCallbackUpgrada
         whitelistFiller = newWhitelistFiller;
     }
 
+    function updateQuoter(address newQuoter) external onlyFiller {
+        _quoter = PredyPoolQuoter(newQuoter);
+    }
+
     /**
      * @notice Updates the whitelist settlement address
      * @dev only owner can call this function

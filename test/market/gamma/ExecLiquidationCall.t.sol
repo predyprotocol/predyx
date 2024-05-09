@@ -40,7 +40,7 @@ contract TestExecLiquidationCall is TestGammaMarket {
 
     // liquidate succeeds if the vault is danger
     function testLiquidateSucceedsIfVaultIsDanger() public {
-        GammaOrder memory order = _createOrder(from1, 0, block.timestamp + 100, 1, 0, -4 * 1e8, 0, 1e8, false, 0);
+        GammaOrder memory order = _createOrder(from1, 0, block.timestamp + 100, 1, 0, -4 * 1e8, 0, 1e8, Constants.Q96);
 
         bytes memory signature = _sign(order, fromPrivateKey1);
 

@@ -27,6 +27,8 @@ library Trade {
         int256 averagePrice;
     }
 
+    event Swapped(uint256 pairId, uint256 vaultId, address owner, int256 settledQuoteAmount, int256 settledBaseAmount);
+
     function trade(
         GlobalDataLibrary.GlobalData storage globalData,
         IPredyPool.TradeParams memory tradeParams,
@@ -53,7 +55,8 @@ library Trade {
             tradeParams.pairId,
             SwapStableResult(-tradeParams.tradeAmount, underlyingAmountForSqrt, realizedFee.feeAmountBase, 0),
             settlementData,
-            tradeResult.sqrtPrice
+            tradeResult.sqrtPrice,
+            tradeParams.vaultId
         );
 
         tradeResult.averagePrice = swapResult.averagePrice;
@@ -75,7 +78,8 @@ library Trade {
         uint256 pairId,
         SwapStableResult memory swapParams,
         bytes memory settlementData,
-        uint256 sqrtPrice
+        uint256 sqrtPrice,
+        uint256 vaultId
     ) internal returns (SwapStableResult memory) {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
@@ -99,6 +103,8 @@ library Trade {
         if (settledQuoteAmount * totalBaseAmount <= 0) {
             revert IPredyPool.QuoteTokenNotSettled();
         }
+
+        emit Swapped(pairId, vaultId, msg.sender, settledQuoteAmount, settledBaseAmount);
 
         return divToStable(swapParams, totalBaseAmount, settledQuoteAmount, settledQuoteAmount);
     }

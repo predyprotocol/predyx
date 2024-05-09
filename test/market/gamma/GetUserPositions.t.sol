@@ -30,7 +30,8 @@ contract TestGammaGetUserPositions is TestGammaMarket {
     }
 
     function testGetUserPositions() public {
-        GammaOrder memory order = _createOrder(from, 0, block.timestamp + 100, 1, 0, -1000, 1000, 2 * 1e6, false, -1000);
+        GammaOrder memory order =
+            _createOrder(from, 0, block.timestamp + 100, 1, 0, -1000, 1000, 2 * 1e6, Constants.Q96);
 
         gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey), _getSettlementDataV3(Constants.Q96));
 
@@ -38,7 +39,7 @@ contract TestGammaGetUserPositions is TestGammaMarket {
 
         assertEq(results.length, 1);
 
-        GammaOrder memory order2 = _createOrder(from, 1, block.timestamp + 100, 1, 1, 1000, -1000, 0, false, 0);
+        GammaOrder memory order2 = _createOrder(from, 1, block.timestamp + 100, 1, 1, 1000, -1000, 0, Constants.Q96);
 
         gammaTradeMarket.executeTrade(order2, _sign(order2, fromPrivateKey), _getSettlementDataV3(Constants.Q96));
 

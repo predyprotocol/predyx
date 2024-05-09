@@ -6,6 +6,7 @@ import {SignatureVerification} from "@uniswap/permit2/src/libraries/SignatureVer
 import {ISettlement} from "../../../src/interfaces/ISettlement.sol";
 import {OrderInfo} from "../../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../../src/libraries/Constants.sol";
+import {SlippageLib} from "../../../src/libraries/SlippageLib.sol";
 
 contract TestGammaExecuteOrder is TestGammaMarket {
     bytes normalSwapRoute;
@@ -43,7 +44,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
     // executeTrade succeeds for open(pnl, interest, premium, borrow fee)
     function testExecuteOrderSucceedsForOpen() public {
         GammaOrder memory order =
-            _createOrder(from1, 0, block.timestamp + 100, 1, 0, -1000, 1000, 2 * 1e6, false, -1000);
+            _createOrder(from1, 0, block.timestamp + 100, 1, 0, -1000, 1000, 2 * 1e6, Constants.Q96);
 
         IPredyPool.TradeResult memory tradeResult =
             gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey1), _getSettlementDataV3(Constants.Q96));
@@ -56,7 +57,7 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
     // executeTrade fails if deadline passed
     function testExecuteOrderFails_IfDeadlinePassed() public {
-        GammaOrder memory order = _createOrder(from1, 0, 1, 1, 0, 1000, 0, 2 * 1e6, false, 0);
+        GammaOrder memory order = _createOrder(from1, 0, 1, 1, 0, 1000, 0, 2 * 1e6, Constants.Q96);
 
         bytes memory signature = _sign(order, fromPrivateKey1);
 
@@ -71,13 +72,13 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         IFillerMarket.SettlementParamsV3 memory settlementData = _getSettlementDataV3(Constants.Q96);
 
         {
-            GammaOrder memory order = _createOrder(from1, 0, block.timestamp, 1, 0, -1000, 1000, 2 * 1e6, false, -1000);
+            GammaOrder memory order = _createOrder(from1, 0, block.timestamp, 1, 0, -1000, 1000, 2 * 1e6, Constants.Q96);
 
             gammaTradeMarket.executeTrade(order, _sign(order, fromPrivateKey1), settlementData);
         }
 
         {
-            GammaOrder memory order = _createOrder(from1, 1, block.timestamp, 1, 0, 1000, -1000, 0, false, 0);
+            GammaOrder memory order = _createOrder(from1, 1, block.timestamp, 1, 0, 1000, -1000, 0, Constants.Q96);
 
             bytes memory signature = _sign(order, fromPrivateKey2);
 
@@ -88,20 +89,21 @@ contract TestGammaExecuteOrder is TestGammaMarket {
 
     // executeTrade fails if price is greater than limit
     function testOpenFails_IfValueISLessThanLimit() public {
-        GammaOrder memory order = _createOrder(from1, 0, block.timestamp + 100, 1, 0, -1000, 1000, 2 * 1e6, false, 0);
+        GammaOrder memory order =
+            _createOrder(from1, 0, block.timestamp + 100, 1, 0, -1000, 1000, 2 * 1e6, Constants.Q96 * 10 / 9);
 
         bytes memory signature = _sign(order, fromPrivateKey1);
 
         IFillerMarket.SettlementParamsV3 memory settlementData = _getSettlementDataV3(Constants.Q96);
 
-        vm.expectRevert(abi.encodeWithSelector(GammaTradeMarket.ValueIsLessThanLimit.selector, -1000));
+        vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
         gammaTradeMarket.executeTrade(order, signature, settlementData);
     }
 
     // executeTrade fails if price is less than limit
     function testCloseFails_IfValueISLessThanLimit() public {
         {
-            GammaOrder memory order = _createOrder(from1, 0, block.timestamp, 1, 0, -1000, 1000, 2 * 1e6, false, -1000);
+            GammaOrder memory order = _createOrder(from1, 0, block.timestamp, 1, 0, -1000, 1000, 2 * 1e6, Constants.Q96);
 
             bytes memory signature = _sign(order, fromPrivateKey1);
 
@@ -111,13 +113,14 @@ contract TestGammaExecuteOrder is TestGammaMarket {
         }
 
         {
-            GammaOrder memory order = _createOrder(from1, 1, block.timestamp + 100, 1, 1, 1000, -1000, 0, false, 1000);
+            GammaOrder memory order =
+                _createOrder(from1, 1, block.timestamp + 100, 1, 1, 1000, -1000, 0, Constants.Q96 * 9 / 10);
 
             bytes memory signature = _sign(order, fromPrivateKey1);
 
             IFillerMarket.SettlementParamsV3 memory settlementData = _getSettlementDataV3(Constants.Q96);
 
-            vm.expectRevert(abi.encodeWithSelector(GammaTradeMarket.ValueIsLessThanLimit.selector, 998));
+            vm.expectRevert(SlippageLib.SlippageTooLarge.selector);
             gammaTradeMarket.executeTrade(order, signature, settlementData);
         }
     }

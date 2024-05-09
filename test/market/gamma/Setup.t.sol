@@ -5,7 +5,7 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import "../../pool/Setup.t.sol";
 import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
-import {GammaTradeMarketL2} from "../../../src/markets/gamma/GammaTradeMarketL2.sol";
+import {GammaTradeMarketWrapper} from "../../../src/markets/gamma/GammaTradeMarketWrapper.sol";
 import {GammaTradeMarket} from "../../../src/markets/gamma/GammaTradeMarket.sol";
 import "../../../src/markets/gamma/GammaOrder.sol";
 import "../../../src/libraries/Constants.sol";
@@ -15,7 +15,7 @@ import {OrderValidatorUtils} from "../../utils/OrderValidatorUtils.sol";
 contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
     using GammaOrderLib for GammaOrder;
 
-    GammaTradeMarketL2 gammaTradeMarket;
+    GammaTradeMarketWrapper gammaTradeMarket;
     IPermit2 permit2;
     bytes32 DOMAIN_SEPARATOR;
 
@@ -26,7 +26,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
-        gammaTradeMarket = new GammaTradeMarketL2();
+        gammaTradeMarket = new GammaTradeMarketWrapper();
 
         gammaTradeMarket.initialize(predyPool, address(permit2), address(this), address(_predyPoolQuoter));
 
@@ -61,8 +61,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
         int256 quantity,
         int256 quantitySqrt,
         int256 marginAmount,
-        bool closePosition,
-        int256 limitValue
+        uint256 baseSqrtPrice
     ) internal view returns (GammaOrder memory order) {
         order = GammaOrder(
             OrderInfo(address(gammaTradeMarket), trader, nonce, deadline),
@@ -72,8 +71,8 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
             quantity,
             quantitySqrt,
             marginAmount,
-            closePosition,
-            limitValue,
+            baseSqrtPrice,
+            1e6 + 5000, // 0.5%
             2,
             GammaModifyInfo(
                 false,

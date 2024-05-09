@@ -43,7 +43,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
             -1000,
             1000,
             2 * 1e6,
-            false,
+            0,
             0,
             2,
             GammaModifyInfo(

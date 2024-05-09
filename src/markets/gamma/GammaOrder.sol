@@ -65,8 +65,8 @@ struct GammaOrder {
     int256 quantity;
     int256 quantitySqrt;
     int256 marginAmount;
-    bool closePosition;
-    int256 limitValue;
+    uint256 baseSqrtPrice;
+    uint32 slippageTolerance;
     uint8 leverage;
     GammaModifyInfo modifyInfo;
 }
@@ -84,8 +84,8 @@ library GammaOrderLib {
         "int256 quantity,",
         "int256 quantitySqrt,",
         "int256 marginAmount,",
-        "bool closePosition,",
-        "int256 limitValue,",
+        "uint256 baseSqrtPrice,",
+        "uint32 slippageTolerance,",
         "uint8 leverage,",
         "GammaModifyInfo modifyInfo)"
     );
@@ -96,8 +96,15 @@ library GammaOrderLib {
     bytes32 internal constant GAMMA_ORDER_TYPE_HASH = keccak256(ORDER_TYPE);
 
     string internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
-    string internal constant PERMIT2_ORDER_TYPE =
-        string(abi.encodePacked("GammaOrder witness)", ORDER_TYPE, TOKEN_PERMISSIONS_TYPE));
+    string internal constant PERMIT2_ORDER_TYPE = string(
+        abi.encodePacked(
+            "GammaOrder witness)",
+            GammaModifyInfoLib.GAMMA_MODIFY_INFO_TYPE,
+            GAMMA_ORDER_TYPE,
+            OrderInfoLib.ORDER_INFO_TYPE,
+            TOKEN_PERMISSIONS_TYPE
+        )
+    );
 
     /// @notice hash the given order
     /// @param order the order to hash
@@ -113,8 +120,8 @@ library GammaOrderLib {
                 order.quantity,
                 order.quantitySqrt,
                 order.marginAmount,
-                order.closePosition,
-                order.limitValue,
+                order.baseSqrtPrice,
+                order.slippageTolerance,
                 order.leverage,
                 GammaModifyInfoLib.hash(order.modifyInfo)
             )
