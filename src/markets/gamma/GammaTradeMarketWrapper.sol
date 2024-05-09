@@ -6,11 +6,11 @@ import {IPredyPool} from "../../interfaces/IPredyPool.sol";
 import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {GammaOrder} from "./GammaOrder.sol";
 
+/// @dev for testing purpose
 contract GammaTradeMarketWrapper is GammaTradeMarketL2 {
     // execute trade
     function executeTrade(GammaOrder memory gammaOrder, bytes memory sig, SettlementParamsV3 memory settlementParams)
         external
-        nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         return _executeTrade(gammaOrder, sig, settlementParams);

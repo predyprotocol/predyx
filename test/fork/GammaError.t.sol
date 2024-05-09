@@ -31,20 +31,11 @@ contract TestFork is Test {
 
         DataType.PairStatus memory pairStatus = _predyPool.getPairStatus(2);
 
-        assertEq(
-            pairStatus.riskParams.riskRatio,
-            100995049
-        );
+        assertEq(pairStatus.riskParams.riskRatio, 100995049);
 
-        assertEq(
-            pairStatus.riskParams.debtRiskRatio,
-            0
-        );
+        assertEq(pairStatus.riskParams.debtRiskRatio, 0);
 
-        assertEq(
-            pairStatus.riskParams.rangeSize,
-            600
-        );
+        assertEq(pairStatus.riskParams.rangeSize, 600);
 
         vm.startPrank(0x4b748969Ab77C9d09AE07b4282A151B82F96311B);
         _predyPool.updateAssetRiskParams(2, Perp.AssetRiskParams(100995049, 1000, 600, 300, 1005000, 1016000));
@@ -52,32 +43,14 @@ contract TestFork is Test {
 
         DataType.PairStatus memory pairStatus2 = _predyPool.getPairStatus(2);
 
-        assertEq(
-            pairStatus2.riskParams.riskRatio,
-            100995049
-        );
+        assertEq(pairStatus2.riskParams.riskRatio, 100995049);
 
-        assertEq(
-            pairStatus2.riskParams.debtRiskRatio,
-            1000
-        );
+        assertEq(pairStatus2.riskParams.debtRiskRatio, 1000);
 
-        assertEq(
-            pairStatus2.riskParams.rangeSize,
-            600
-        );
-        assertEq(
-            pairStatus2.riskParams.rebalanceThreshold,
-            300
-        );
-        assertEq(
-            pairStatus2.riskParams.minSlippage,
-            1005000
-        );
-        assertEq(
-            pairStatus2.riskParams.maxSlippage,
-            1016000
-        );
+        assertEq(pairStatus2.riskParams.rangeSize, 600);
+        assertEq(pairStatus2.riskParams.rebalanceThreshold, 300);
+        assertEq(pairStatus2.riskParams.minSlippage, 1005000);
+        assertEq(pairStatus2.riskParams.maxSlippage, 1016000);
     }
 
     /*
