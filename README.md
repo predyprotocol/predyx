@@ -20,11 +20,7 @@ forge test
 
 ## Architecture
 
-This project centers around 1 key smart contract and three types of smart contracts: PredyPool, Settlement, Market, and Order Validator.
-The Settlement contract defines how to swap tokens, while the Market and Order Validator contracts define financial products and order types.
-Markets can leverage positions by utilizing PredyPool for token lending and borrowing. 
-
-This architecture is very scalable. For example, developers can create new futures exchanges with minimal code. Specifically, they gain leverage by connecting to PredyPool. By leveraging existing settlement contracts, they can access many liquidity sources and support multiple order types through order validators.
+This project features multiple market contracts centered around PredyPool. The market contracts define financial products and order types. Markets can leverage positions by utilizing PredyPool for token lending and borrowing. This architecture is highly scalable. For example, developers can create new futures exchanges with minimal code and gain leverage by connecting to PredyPool.
 
 ### PredyPool.sol
 
@@ -77,10 +73,6 @@ autonumber
   activate PredyPool
   PredyPool-->>PerpMarket: returns tradeResult
   deactivate PredyPool
-  PerpMarket->>LimitOrderValidator: validate(tradeAmount, tradeAmountSqrt, tradeResult)
-  activate LimitOrderValidator
-  LimitOrderValidator-->>PerpMarket: 
-  deactivate LimitOrderValidator
   PerpMarket-->>Filler: tradeResult
   deactivate PerpMarket
   Filler-->>Trader: 
@@ -106,10 +98,6 @@ autonumber
   activate Settlement
   Settlement -->> SpotMarket: 
   deactivate Settlement
-  SpotMarket ->> DutchOrderValidator: validate(baseTradeAmount, quoteTokenAmount, validationData)
-  activate DutchOrderValidator
-  DutchOrderValidator -->> SpotMarket: 
-  deactivate DutchOrderValidator
   SpotMarket -->> Filler: 
   deactivate SpotMarket
   Filler-->>Trader: 
