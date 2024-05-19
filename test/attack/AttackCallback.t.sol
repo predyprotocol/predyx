@@ -20,8 +20,13 @@ contract TestAttackCallback is TestPool {
     }
 
     function testAttackCallback() public {
+        assertEq(currency1.balanceOf(address(_attackCountract)), 0);
+
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(pairId, 0, 0, 0, bytes("0x"));
 
+        vm.expectRevert(bytes("ReentrancyGuard: reentrant call"));
         _attackCountract.trade(tradeParams);
+
+        assertEq(currency1.balanceOf(address(_attackCountract)), 0);
     }
 }
