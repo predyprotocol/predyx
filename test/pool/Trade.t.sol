@@ -263,7 +263,7 @@ contract TestTrade is TestPool {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSelector(IPredyPool.LockedBy.selector, address(testSettlementReentrant)));
+        vm.expectRevert(bytes("ReentrancyGuard: reentrant call"));
         testSettlementReentrant.trade(tradeParams, settlementData);
     }
 }

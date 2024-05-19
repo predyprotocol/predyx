@@ -106,7 +106,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
      * @param addPairParam AddPairParams struct containing pair information.
      * @return pairId The id of the pair.
      */
-    function registerPair(AddPairLogic.AddPairParams memory addPairParam) external returns (uint256) {
+    function registerPair(AddPairLogic.AddPairParams memory addPairParam) external onlyOperator returns (uint256) {
         return AddPairLogic.addPair(globalData, allowedUniswapPools, addPairParam);
     }
 
@@ -250,6 +250,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
      */
     function trade(TradeParams memory tradeParams, bytes memory settlementData)
         external
+        nonReentrant
         returns (TradeResult memory tradeResult)
     {
         globalData.validate(tradeParams.pairId);
