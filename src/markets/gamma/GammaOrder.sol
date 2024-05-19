@@ -9,6 +9,7 @@ import {ResolvedOrder} from "../../libraries/orders/ResolvedOrder.sol";
 struct GammaModifyInfo {
     bool isEnabled;
     uint64 expiration;
+    int64 maximaDeviation;
     uint256 lowerLimit;
     uint256 upperLimit;
     uint32 hedgeInterval;
@@ -24,6 +25,7 @@ library GammaModifyInfoLib {
         "GammaModifyInfo(",
         "bool isEnabled,",
         "uint64 expiration,",
+        "int64 maximaDeviation,",
         "uint256 lowerLimit,",
         "uint256 upperLimit,",
         "uint32 hedgeInterval,",
@@ -44,6 +46,7 @@ library GammaModifyInfoLib {
                 GAMMA_MODIFY_INFO_TYPE_HASH,
                 info.isEnabled,
                 info.expiration,
+                info.maximaDeviation,
                 info.lowerLimit,
                 info.upperLimit,
                 info.hedgeInterval,

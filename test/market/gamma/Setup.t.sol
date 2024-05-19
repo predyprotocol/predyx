@@ -80,6 +80,7 @@ contract TestGammaMarket is TestPool, SigUtils, OrderValidatorUtils {
                 0,
                 0,
                 0,
+                0,
                 // auto hedge
                 0,
                 0,

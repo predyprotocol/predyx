@@ -62,6 +62,7 @@ contract TestGammaAutoHedge is TestGammaMarket {
                 uint64(block.timestamp + 2 hours),
                 0,
                 0,
+                0,
                 // auto hedge
                 2 hours,
                 1e6 + 12000, // +-1.2% range in sqrt
