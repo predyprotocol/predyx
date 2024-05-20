@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import {GammaModifyInfo} from "./GammaOrder.sol";
 
 library L2GammaDecoder {
-    function decodeGammaModifyInfo(bytes32 args, uint256 lowerLimit, uint256 upperLimit)
+    function decodeGammaModifyInfo(bytes32 args, uint256 lowerLimit, uint256 upperLimit, int64 maximaDeviation)
         internal
         pure
         returns (GammaModifyInfo memory)
@@ -23,6 +23,7 @@ library L2GammaDecoder {
         return GammaModifyInfo(
             isEnabled,
             expiration,
+            maximaDeviation,
             lowerLimit,
             upperLimit,
             hedgeInterval,

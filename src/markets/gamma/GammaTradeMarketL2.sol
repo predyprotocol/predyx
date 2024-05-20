@@ -19,6 +19,7 @@ struct GammaOrderL2 {
     bytes32 modifyParam;
     uint256 lowerLimit;
     uint256 upperLimit;
+    int64 maximaDeviation;
 }
 
 struct GammaModifyOrderL2 {
@@ -29,6 +30,7 @@ struct GammaModifyOrderL2 {
     bytes32 param;
     uint256 lowerLimit;
     uint256 upperLimit;
+    int64 maximaDeviation;
 }
 
 /**
@@ -42,8 +44,9 @@ contract GammaTradeMarketL2 is GammaTradeMarket {
         nonReentrant
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        GammaModifyInfo memory modifyInfo =
-            L2GammaDecoder.decodeGammaModifyInfo(order.modifyParam, order.lowerLimit, order.upperLimit);
+        GammaModifyInfo memory modifyInfo = L2GammaDecoder.decodeGammaModifyInfo(
+            order.modifyParam, order.lowerLimit, order.upperLimit, order.maximaDeviation
+        );
         (uint64 deadline, uint64 pairId, uint32 slippageTolerance, uint8 leverage) =
             L2GammaDecoder.decodeGammaParam(order.param);
 
@@ -69,7 +72,7 @@ contract GammaTradeMarketL2 is GammaTradeMarket {
     // modify position (hedge or close)
     function modifyAutoHedgeAndClose(GammaModifyOrderL2 memory order, bytes memory sig) external {
         GammaModifyInfo memory modifyInfo =
-            L2GammaDecoder.decodeGammaModifyInfo(order.param, order.lowerLimit, order.upperLimit);
+            L2GammaDecoder.decodeGammaModifyInfo(order.param, order.lowerLimit, order.upperLimit, order.maximaDeviation);
 
         uint64 pairId = userPositions[order.positionId].pairId;
 

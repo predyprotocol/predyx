@@ -11,10 +11,12 @@ library ApplyInterestLib {
     /// @notice Emitted when interest growth is updated
     event InterestGrowthUpdated(
         uint256 indexed pairId,
-        ScaledAsset.AssetStatus stableStatus,
-        ScaledAsset.AssetStatus underlyingStatus,
-        uint256 interestRateStable,
-        uint256 interestRateUnderlying
+        ScaledAsset.AssetStatus quoteStatus,
+        ScaledAsset.AssetStatus baseStatus,
+        uint256 interestRateQuote,
+        uint256 interestRateBase,
+        uint256 protocolFeeQuote,
+        uint256 protocolFeeBase
     );
 
     /// @notice Each time the user touches the contract, the interest rate is applied
@@ -28,40 +30,40 @@ library ApplyInterestLib {
             return;
         }
 
-        uint256 interestRateStable =
+        (uint256 interestRateQuote, uint256 protocolFeeQuote) =
             applyInterestForPoolStatus(pairStatus.quotePool, pairStatus.lastUpdateTimestamp, pairStatus.feeRatio);
 
-        uint256 interestRateUnderlying =
+        (uint256 interestRateBase, uint256 protocolFeeBase) =
             applyInterestForPoolStatus(pairStatus.basePool, pairStatus.lastUpdateTimestamp, pairStatus.feeRatio);
 
         // Update last update timestamp
         pairStatus.lastUpdateTimestamp = block.timestamp;
 
-        if (interestRateStable > 0 || interestRateUnderlying > 0) {
-            emitInterestGrowthEvent(pairStatus, interestRateStable, interestRateUnderlying);
+        if (interestRateQuote > 0 || interestRateBase > 0) {
+            emitInterestGrowthEvent(pairStatus, interestRateQuote, interestRateBase, protocolFeeQuote, protocolFeeBase);
         }
     }
 
     function applyInterestForPoolStatus(Perp.AssetPoolStatus storage poolStatus, uint256 lastUpdateTimestamp, uint8 fee)
         internal
-        returns (uint256 interestRate)
+        returns (uint256 interestRate, uint256 totalProtocolFee)
     {
         if (block.timestamp <= lastUpdateTimestamp) {
-            return 0;
+            return (0, 0);
         }
 
         uint256 utilizationRatio = poolStatus.tokenStatus.getUtilizationRatio();
 
         // Skip calculating interest if utilization ratio is 0
         if (utilizationRatio == 0) {
-            return 0;
+            return (0, 0);
         }
 
         // Calculates interest rate
         interestRate = InterestRateModel.calculateInterestRate(poolStatus.irmParams, utilizationRatio)
             * (block.timestamp - lastUpdateTimestamp) / 365 days;
 
-        uint256 totalProtocolFee = poolStatus.tokenStatus.updateScaler(interestRate, fee);
+        totalProtocolFee = poolStatus.tokenStatus.updateScaler(interestRate, fee);
 
         poolStatus.accumulatedProtocolRevenue += totalProtocolFee / 2;
         poolStatus.accumulatedCreatorRevenue += totalProtocolFee / 2;
@@ -69,15 +71,19 @@ library ApplyInterestLib {
 
     function emitInterestGrowthEvent(
         DataType.PairStatus memory assetStatus,
-        uint256 interestRatioStable,
-        uint256 interestRatioUnderlying
+        uint256 interestRateQuote,
+        uint256 interestRateBase,
+        uint256 totalProtocolFeeQuote,
+        uint256 totalProtocolFeeBase
     ) internal {
         emit InterestGrowthUpdated(
             assetStatus.id,
             assetStatus.quotePool.tokenStatus,
             assetStatus.basePool.tokenStatus,
-            interestRatioStable,
-            interestRatioUnderlying
+            interestRateQuote,
+            interestRateBase,
+            totalProtocolFeeQuote,
+            totalProtocolFeeBase
         );
     }
 }

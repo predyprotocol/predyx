@@ -14,7 +14,6 @@ import {ResolvedOrder, ResolvedOrderLib} from "../../libraries/orders/ResolvedOr
 import {SlippageLib} from "../../libraries/SlippageLib.sol";
 import {Bps} from "../../libraries/math/Bps.sol";
 import {DataType} from "../../libraries/DataType.sol";
-import {Constants} from "../../libraries/Constants.sol";
 import {GammaOrder, GammaOrderLib, GammaModifyInfo} from "./GammaOrder.sol";
 import {ArrayLib} from "./ArrayLib.sol";
 import {GammaTradeMarketLib} from "./GammaTradeMarketLib.sol";
@@ -34,49 +33,22 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     error PositionIsNotClosed();
     error InvalidOrder();
     error SignerIsNotPositionOwner();
-    error TooShortHedgeInterval();
     error HedgeTriggerNotMatched();
     error DeltaIsZero();
     error AlreadyClosed();
     error AutoCloseTriggerNotMatched();
     error MarginUpdateMustBeZero();
 
-    struct UserPosition {
-        uint256 vaultId;
-        address owner;
-        uint64 pairId;
-        uint8 leverage;
-        uint256 expiration;
-        uint256 lowerLimit;
-        uint256 upperLimit;
-        uint256 lastHedgedTime;
-        uint256 hedgeInterval;
-        uint256 lastHedgedSqrtPrice;
-        uint256 sqrtPriceTrigger;
-        GammaTradeMarketLib.AuctionParams auctionParams;
-    }
-
-    enum CallbackType {
-        NONE,
-        QUOTE,
-        TRADE,
-        CLOSE,
-        HEDGE_BY_TIME,
-        HEDGE_BY_PRICE,
-        CLOSE_BY_TIME,
-        CLOSE_BY_PRICE
-    }
-
     struct CallbackData {
-        CallbackType callbackType;
+        GammaTradeMarketLib.CallbackType callbackType;
         address trader;
         int256 marginAmountUpdate;
     }
 
     IPermit2 internal _permit2;
 
-    mapping(address owner => uint256[]) public positionIDs;
-    mapping(uint256 positionId => UserPosition) internal userPositions;
+    mapping(address owner => uint256[]) internal positionIDs;
+    mapping(uint256 positionId => GammaTradeMarketLib.UserPosition) internal userPositions;
 
     event GammaPositionTraded(
         address indexed trader,
@@ -87,7 +59,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         IPredyPool.Payoff payoff,
         int256 fee,
         int256 marginAmount,
-        CallbackType callbackType
+        GammaTradeMarketLib.CallbackType callbackType
     );
 
     event GammaPositionModified(address indexed trader, uint256 pairId, uint256 positionId, GammaModifyInfo modifyInfo);
@@ -111,7 +83,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         CallbackData memory callbackData = abi.decode(tradeParams.extraData, (CallbackData));
         ERC20 quoteToken = ERC20(_getQuoteTokenAddress(tradeParams.pairId));
 
-        if (callbackData.callbackType == CallbackType.QUOTE) {
+        if (callbackData.callbackType == GammaTradeMarketLib.CallbackType.QUOTE) {
             _revertTradeResult(tradeResult);
         } else {
             if (tradeResult.minMargin == 0) {
@@ -135,7 +107,9 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                     tradeResult.payoff,
                     tradeResult.fee,
                     -vault.margin,
-                    callbackData.callbackType == CallbackType.TRADE ? CallbackType.CLOSE : callbackData.callbackType
+                    callbackData.callbackType == GammaTradeMarketLib.CallbackType.TRADE
+                        ? GammaTradeMarketLib.CallbackType.CLOSE
+                        : callbackData.callbackType
                 );
             } else {
                 int256 marginAmountUpdate = callbackData.marginAmountUpdate;
@@ -192,7 +166,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                 gammaOrder.positionId,
                 gammaOrder.quantity,
                 gammaOrder.quantitySqrt,
-                abi.encode(CallbackData(CallbackType.TRADE, gammaOrder.info.trader, gammaOrder.marginAmount))
+                abi.encode(
+                    CallbackData(
+                        GammaTradeMarketLib.CallbackType.TRADE, gammaOrder.info.trader, gammaOrder.marginAmount
+                    )
+                )
             ),
             _getSettlementDataFromV3(settlementParams, msg.sender)
         );
@@ -204,7 +182,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             }
         }
 
-        UserPosition storage userPosition = _getOrInitPosition(
+        GammaTradeMarketLib.UserPosition storage userPosition = _getOrInitPosition(
             tradeResult.vaultId, gammaOrder.positionId == 0, gammaOrder.info.trader, gammaOrder.pairId
         );
 
@@ -240,7 +218,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         _verifyOrder(resolvedOrder);
 
         // save user position
-        UserPosition storage userPosition =
+        GammaTradeMarketLib.UserPosition storage userPosition =
             _getOrInitPosition(gammaOrder.positionId, false, gammaOrder.info.trader, gammaOrder.pairId);
 
         _saveUserPosition(userPosition, gammaOrder.modifyInfo);
@@ -250,7 +228,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         external
         returns (IPredyPool.TradeResult memory tradeResult)
     {
-        UserPosition storage userPosition = userPositions[positionId];
+        GammaTradeMarketLib.UserPosition storage userPosition = userPositions[positionId];
 
         if (userPosition.vaultId == 0 || positionId != userPosition.vaultId) {
             revert PositionNotFound();
@@ -259,8 +237,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
 
         // check auto hedge condition
-        (bool hedgeRequired, uint256 slippageTorelance, CallbackType triggerType) =
-            _validateHedgeCondition(userPosition, sqrtPrice);
+        (bool hedgeRequired, uint256 slippageTorelance, GammaTradeMarketLib.CallbackType triggerType) =
+            GammaTradeMarketLib.validateHedgeCondition(userPosition, sqrtPrice);
 
         if (!hedgeRequired) {
             revert HedgeTriggerNotMatched();
@@ -269,10 +247,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         userPosition.lastHedgedSqrtPrice = sqrtPrice;
         userPosition.lastHedgedTime = block.timestamp;
 
-        // execute trade
         DataType.Vault memory vault = _predyPool.getVault(userPosition.vaultId);
 
-        int256 delta = _calculateDelta(sqrtPrice, vault.openPosition.sqrtPerp.amount, vault.openPosition.perp.amount);
+        int256 delta = GammaTradeMarketLib.calculateDelta(
+            sqrtPrice, userPosition.maximaDeviation, vault.openPosition.sqrtPerp.amount, vault.openPosition.perp.amount
+        );
 
         if (delta == 0) {
             revert DeltaIsZero();
@@ -286,6 +265,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
             abi.encode(CallbackData(triggerType, userPosition.owner, 0))
         );
 
+        // execute trade
         tradeResult = _predyPool.trade(tradeParams, _getSettlementDataFromV3(settlementParams, msg.sender));
 
         SlippageLib.checkPrice(sqrtPrice, tradeResult, slippageTorelance, SlippageLib.MAX_ACCEPTABLE_SQRT_PRICE_RANGE);
@@ -296,7 +276,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         returns (IPredyPool.TradeResult memory tradeResult)
     {
         // save user position
-        UserPosition memory userPosition = userPositions[positionId];
+        GammaTradeMarketLib.UserPosition memory userPosition = userPositions[positionId];
 
         if (userPosition.vaultId == 0 || positionId != userPosition.vaultId) {
             revert PositionNotFound();
@@ -305,8 +285,8 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         // check auto close condition
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
 
-        (bool closeRequired, uint256 slippageTorelance, CallbackType triggerType) =
-            _validateCloseCondition(userPosition, sqrtPrice);
+        (bool closeRequired, uint256 slippageTorelance, GammaTradeMarketLib.CallbackType triggerType) =
+            GammaTradeMarketLib.validateCloseCondition(userPosition, sqrtPrice);
 
         if (!closeRequired) {
             revert AutoCloseTriggerNotMatched();
@@ -340,7 +320,11 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
                 gammaOrder.positionId,
                 gammaOrder.quantity,
                 gammaOrder.quantitySqrt,
-                abi.encode(CallbackData(CallbackType.QUOTE, gammaOrder.info.trader, gammaOrder.marginAmount))
+                abi.encode(
+                    CallbackData(
+                        GammaTradeMarketLib.CallbackType.QUOTE, gammaOrder.info.trader, gammaOrder.marginAmount
+                    )
+                )
             ),
             _getSettlementDataFromV3(settlementParams, msg.sender)
         );
@@ -351,7 +335,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         view
         returns (bool hedgeRequired, bool closeRequired, uint256 resultPositionId)
     {
-        UserPosition memory userPosition = userPositions[positionId];
+        GammaTradeMarketLib.UserPosition memory userPosition = userPositions[positionId];
 
         DataType.Vault memory vault = _predyPool.getVault(userPosition.vaultId);
 
@@ -361,15 +345,15 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
         uint256 sqrtPrice = _predyPool.getSqrtIndexPrice(userPosition.pairId);
 
-        (hedgeRequired,,) = _validateHedgeCondition(userPosition, sqrtPrice);
+        (hedgeRequired,,) = GammaTradeMarketLib.validateHedgeCondition(userPosition, sqrtPrice);
 
-        (closeRequired,,) = _validateCloseCondition(userPosition, sqrtPrice);
+        (closeRequired,,) = GammaTradeMarketLib.validateCloseCondition(userPosition, sqrtPrice);
 
         resultPositionId = positionId;
     }
 
     struct UserPositionResult {
-        UserPosition userPosition;
+        GammaTradeMarketLib.UserPosition userPosition;
         IPredyPool.VaultStatus vaultStatus;
         DataType.Vault vault;
     }
@@ -389,7 +373,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
     }
 
     function _getUserPosition(uint256 positionId) internal returns (UserPositionResult memory result) {
-        UserPosition memory userPosition = userPositions[positionId];
+        GammaTradeMarketLib.UserPosition memory userPosition = userPositions[positionId];
 
         if (userPosition.vaultId == 0) {
             // if user has no position, return empty vault status and vault
@@ -423,7 +407,7 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
 
     function _getOrInitPosition(uint256 positionId, bool isCreatedNew, address trader, uint64 pairId)
         internal
-        returns (UserPosition storage userPosition)
+        returns (GammaTradeMarketLib.UserPosition storage userPosition)
     {
         userPosition = userPositions[positionId];
 
@@ -449,133 +433,12 @@ contract GammaTradeMarket is IFillerMarket, BaseMarketUpgradable, ReentrancyGuar
         return userPosition;
     }
 
-    function _saveUserPosition(UserPosition storage userPosition, GammaModifyInfo memory modifyInfo) internal {
-        if (!modifyInfo.isEnabled) {
-            return;
-        }
-
-        if (0 < modifyInfo.hedgeInterval && 10 minutes > modifyInfo.hedgeInterval) {
-            revert TooShortHedgeInterval();
-        }
-
-        require(modifyInfo.maxSlippageTolerance >= modifyInfo.minSlippageTolerance);
-        require(modifyInfo.maxSlippageTolerance <= 2 * Bps.ONE);
-
-        // auto close condition
-        userPosition.expiration = modifyInfo.expiration;
-        userPosition.lowerLimit = modifyInfo.lowerLimit;
-        userPosition.upperLimit = modifyInfo.upperLimit;
-
-        // auto hedge condition
-        userPosition.hedgeInterval = modifyInfo.hedgeInterval;
-        userPosition.sqrtPriceTrigger = modifyInfo.sqrtPriceTrigger;
-        userPosition.auctionParams.minSlippageTolerance = modifyInfo.minSlippageTolerance;
-        userPosition.auctionParams.maxSlippageTolerance = modifyInfo.maxSlippageTolerance;
-        userPosition.auctionParams.auctionPeriod = modifyInfo.auctionPeriod;
-        userPosition.auctionParams.auctionRange = modifyInfo.auctionRange;
-
-        emit GammaPositionModified(userPosition.owner, userPosition.pairId, userPosition.vaultId, modifyInfo);
-    }
-
-    function _calculateDelta(uint256 _sqrtPrice, int256 _sqrtAmount, int256 perpAmount)
+    function _saveUserPosition(GammaTradeMarketLib.UserPosition storage userPosition, GammaModifyInfo memory modifyInfo)
         internal
-        pure
-        returns (int256)
     {
-        // delta of 'x + 2 * sqrt(x)' is '1 + 1 / sqrt(x)'
-        return perpAmount + _sqrtAmount * int256(Constants.Q96) / int256(_sqrtPrice);
-    }
-
-    function _validateHedgeCondition(UserPosition memory userPosition, uint256 sqrtIndexPrice)
-        internal
-        view
-        returns (bool, uint256 slippageTolerance, CallbackType)
-    {
-        if (
-            userPosition.hedgeInterval > 0
-                && userPosition.lastHedgedTime + userPosition.hedgeInterval <= block.timestamp
-        ) {
-            return (
-                true,
-                GammaTradeMarketLib.calculateSlippageTolerance(
-                    userPosition.lastHedgedTime + userPosition.hedgeInterval,
-                    block.timestamp,
-                    userPosition.auctionParams
-                    ),
-                CallbackType.HEDGE_BY_TIME
-            );
+        if (GammaTradeMarketLib.saveUserPosition(userPosition, modifyInfo)) {
+            emit GammaPositionModified(userPosition.owner, userPosition.pairId, userPosition.vaultId, modifyInfo);
         }
-
-        // if sqrtPriceTrigger is 0, it means that the user doesn't want to use this feature
-        if (userPosition.sqrtPriceTrigger == 0) {
-            return (false, 0, CallbackType.NONE);
-        }
-
-        uint256 upperThreshold = userPosition.lastHedgedSqrtPrice * userPosition.sqrtPriceTrigger / Bps.ONE;
-        uint256 lowerThreshold = userPosition.lastHedgedSqrtPrice * Bps.ONE / userPosition.sqrtPriceTrigger;
-
-        if (lowerThreshold >= sqrtIndexPrice) {
-            return (
-                true,
-                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
-                    sqrtIndexPrice, lowerThreshold, userPosition.auctionParams
-                    ),
-                CallbackType.HEDGE_BY_PRICE
-            );
-        }
-
-        if (upperThreshold <= sqrtIndexPrice) {
-            return (
-                true,
-                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
-                    upperThreshold, sqrtIndexPrice, userPosition.auctionParams
-                    ),
-                CallbackType.HEDGE_BY_PRICE
-            );
-        }
-
-        return (false, 0, CallbackType.NONE);
-    }
-
-    function _validateCloseCondition(UserPosition memory userPosition, uint256 sqrtIndexPrice)
-        internal
-        view
-        returns (bool, uint256 slippageTolerance, CallbackType)
-    {
-        if (userPosition.expiration <= block.timestamp) {
-            return (
-                true,
-                GammaTradeMarketLib.calculateSlippageTolerance(
-                    userPosition.expiration, block.timestamp, userPosition.auctionParams
-                    ),
-                CallbackType.CLOSE_BY_TIME
-            );
-        }
-
-        uint256 upperThreshold = userPosition.upperLimit;
-        uint256 lowerThreshold = userPosition.lowerLimit;
-
-        if (lowerThreshold > 0 && lowerThreshold >= sqrtIndexPrice) {
-            return (
-                true,
-                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
-                    sqrtIndexPrice, lowerThreshold, userPosition.auctionParams
-                    ),
-                CallbackType.CLOSE_BY_PRICE
-            );
-        }
-
-        if (upperThreshold > 0 && upperThreshold <= sqrtIndexPrice) {
-            return (
-                true,
-                GammaTradeMarketLib.calculateSlippageToleranceByPrice(
-                    upperThreshold, sqrtIndexPrice, userPosition.auctionParams
-                    ),
-                CallbackType.CLOSE_BY_PRICE
-            );
-        }
-
-        return (false, 0, CallbackType.NONE);
     }
 
     function _verifyOrder(ResolvedOrder memory order) internal {

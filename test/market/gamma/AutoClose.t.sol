@@ -57,6 +57,7 @@ contract TestGammaAutoClose is TestGammaMarket {
                 uint64(block.timestamp + 2 hours),
                 0,
                 0,
+                0,
                 // auto hedge
                 0,
                 0,

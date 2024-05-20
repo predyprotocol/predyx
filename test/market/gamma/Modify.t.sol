@@ -58,6 +58,7 @@ contract TestGammaModify is TestGammaMarket {
                 uint64(block.timestamp + 2 hours),
                 0,
                 0,
+                0,
                 // auto hedge
                 0,
                 0,
@@ -94,6 +95,7 @@ contract TestGammaModify is TestGammaMarket {
                 uint64(block.timestamp + 2 hours),
                 0,
                 0,
+                0,
                 // auto hedge
                 0,
                 0,
@@ -121,7 +123,8 @@ contract TestGammaModify is TestGammaMarket {
                 order.modifyInfo.auctionRange
             ),
             order.modifyInfo.lowerLimit,
-            order.modifyInfo.upperLimit
+            order.modifyInfo.upperLimit,
+            order.modifyInfo.maximaDeviation
         );
 
         signature = _sign(order, fromPrivateKey1);

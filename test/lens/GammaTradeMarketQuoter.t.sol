@@ -52,6 +52,7 @@ contract TestGammaTradeMarketQuoter is TestLens {
                 0,
                 0,
                 0,
+                0,
                 // auto hedge
                 0,
                 0,
