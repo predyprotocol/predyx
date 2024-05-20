@@ -200,6 +200,7 @@ library GammaTradeMarketLib {
 
         require(modifyInfo.maxSlippageTolerance >= modifyInfo.minSlippageTolerance);
         require(modifyInfo.maxSlippageTolerance <= 2 * Bps.ONE);
+        require(-1e6 < modifyInfo.maximaDeviation && modifyInfo.maximaDeviation < 1e6);
 
         // auto close condition
         userPosition.expiration = modifyInfo.expiration;

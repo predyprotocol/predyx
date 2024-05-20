@@ -56,5 +56,24 @@ contract TestRegisterPair is TestPool {
         );
     }
 
-    // register fails if fee ratio is invalid
+    function testCannotRegisterIfNotOperator() public {
+        vm.startPrank(address(1));
+
+        vm.expectRevert(IPredyPool.CallerIsNotOperator.selector);
+        predyPool.registerPair(
+            AddPairLogic.AddPairParams(
+                address(currency1),
+                address(this),
+                address(uniswapPool),
+                address(0),
+                false,
+                0,
+                Perp.AssetRiskParams(RISK_RATIO, BASE_MIN_COLLATERAL_WITH_DEBT, 1000, 500, 10050, 10500),
+                irmParams,
+                irmParams
+            )
+        );
+
+        vm.stopPrank();
+    }
 }

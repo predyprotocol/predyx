@@ -60,7 +60,8 @@ contract TestGammaAutoHedge is TestGammaMarket {
                 true,
                 // auto close
                 uint64(block.timestamp + 2 hours),
-                0,
+                // maximumDevietion is -0.01%
+                -100,
                 0,
                 0,
                 // auto hedge
