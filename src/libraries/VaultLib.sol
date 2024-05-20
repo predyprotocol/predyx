@@ -6,7 +6,7 @@ import {DataType} from "./DataType.sol";
 import {GlobalDataLibrary} from "../types/GlobalData.sol";
 
 library VaultLib {
-    event VaultCreated(uint256 vaultId, address owner, address marginId, uint256 pairId);
+    event VaultCreated(uint256 vaultId, address owner, address quoteToken, uint256 pairId);
 
     function getVault(GlobalDataLibrary.GlobalData storage globalData, uint256 vaultId)
         internal
@@ -25,7 +25,7 @@ library VaultLib {
         internal
         returns (uint256)
     {
-        address marginId = globalData.pairs[pairId].marginId;
+        address quoteToken = globalData.pairs[pairId].quoteToken;
 
         if (vaultId == 0) {
             uint256 finalVaultId = globalData.vaultCount;
@@ -37,11 +37,11 @@ library VaultLib {
             vault.owner = msg.sender;
             vault.recipient = msg.sender;
             vault.openPosition.pairId = pairId;
-            vault.marginId = marginId;
+            vault.quoteToken = quoteToken;
 
             globalData.vaultCount++;
 
-            emit VaultCreated(vault.id, vault.owner, marginId, pairId);
+            emit VaultCreated(vault.id, vault.owner, quoteToken, pairId);
 
             return vault.id;
         } else {
@@ -52,7 +52,7 @@ library VaultLib {
                 revert IPredyPool.CallerIsNotVaultOwner();
             }
 
-            if (vault.marginId != marginId) {
+            if (vault.quoteToken != quoteToken) {
                 revert IPredyPool.VaultAlreadyHasAnotherMarginId();
             }
 

@@ -6,7 +6,7 @@ import {Perp} from "./Perp.sol";
 library DataType {
     struct PairStatus {
         uint256 id;
-        address marginId;
+        address quoteToken;
         address poolOwner;
         Perp.AssetPoolStatus quotePool;
         Perp.AssetPoolStatus basePool;
@@ -21,7 +21,7 @@ library DataType {
 
     struct Vault {
         uint256 id;
-        address marginId;
+        address quoteToken;
         address owner;
         address recipient;
         int256 margin;
