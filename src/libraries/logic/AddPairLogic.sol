@@ -15,7 +15,7 @@ import {GlobalDataLibrary} from "../../types/GlobalData.sol";
 
 library AddPairLogic {
     struct AddPairParams {
-        address marginId;
+        address quoteToken;
         address poolOwner;
         address uniswapPool;
         address priceFeed;
@@ -28,7 +28,7 @@ library AddPairLogic {
 
     error InvalidUniswapPool();
 
-    event PairAdded(uint256 pairId, address marginId, address uniswapPool);
+    event PairAdded(uint256 pairId, address quoteToken, address uniswapPool);
     event AssetRiskParamsUpdated(uint256 pairId, Perp.AssetRiskParams riskParams);
     event IRMParamsUpdated(
         uint256 pairId, InterestRateModel.IRMParams quoteIrmParams, InterestRateModel.IRMParams baseIrmParams
@@ -61,7 +61,7 @@ library AddPairLogic {
 
         IUniswapV3Pool uniswapPool = IUniswapV3Pool(_addPairParam.uniswapPool);
 
-        address stableTokenAddress = _addPairParam.marginId;
+        address stableTokenAddress = _addPairParam.quoteToken;
 
         IUniswapV3Factory uniswapV3Factory = IUniswapV3Factory(_global.uniswapFactory);
 
@@ -90,7 +90,7 @@ library AddPairLogic {
 
         _global.pairsCount++;
 
-        emit PairAdded(pairId, _addPairParam.marginId, _addPairParam.uniswapPool);
+        emit PairAdded(pairId, _addPairParam.quoteToken, _addPairParam.uniswapPool);
     }
 
     function updateFeeRatio(DataType.PairStatus storage _pairStatus, uint8 _feeRatio) external {
@@ -140,7 +140,7 @@ library AddPairLogic {
     }
 
     function _storePairStatus(
-        address marginId,
+        address quoteToken,
         mapping(uint256 => DataType.PairStatus) storage _pairs,
         uint256 _pairId,
         address _tokenAddress,
@@ -154,11 +154,11 @@ library AddPairLogic {
 
         _pairs[_pairId] = DataType.PairStatus(
             _pairId,
-            marginId,
+            quoteToken,
             _addPairParam.poolOwner,
             Perp.AssetPoolStatus(
-                marginId,
-                deploySupplyToken(marginId),
+                quoteToken,
+                deploySupplyToken(quoteToken),
                 ScaledAsset.createAssetStatus(),
                 _addPairParam.quoteIrmParams,
                 0,
