@@ -5,14 +5,11 @@ import "./Setup.t.sol";
 import "../../src/lens/PredyPoolQuoter.sol";
 import "../../src/lens/GammaTradeMarketQuoter.sol";
 import "../../src/markets/gamma/GammaTradeMarket.sol";
-import "../../src/markets/validators/GeneralDutchOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
 
 contract TestGammaTradeMarketQuoter is TestLens {
     GammaTradeMarketQuoter _quoter;
-
-    GeneralDutchOrderValidator dutchOrderValidator;
 
     address from;
 
@@ -30,8 +27,6 @@ contract TestGammaTradeMarketQuoter is TestLens {
         from = vm.addr(1);
 
         predyPool.createVault(1);
-
-        dutchOrderValidator = new GeneralDutchOrderValidator();
     }
 
     function testQuoteExecuteOrder() public {

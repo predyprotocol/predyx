@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import {ISpotMarket} from "../interfaces/ISpotMarket.sol";
 import {SpotOrder} from "../markets/spot/SpotOrder.sol";
 import {ISettlement} from "../interfaces/ISettlement.sol";
-import {ISpotOrderValidator} from "../interfaces/IOrderValidator.sol";
 import {IFillerMarket} from "../interfaces/IFillerMarket.sol";
 
 /**

@@ -10,7 +10,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ISettlement} from "../../interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../interfaces/IFillerMarket.sol";
 import {ISpotMarket} from "../../interfaces/ISpotMarket.sol";
-import {ISpotOrderValidator} from "../../interfaces/IOrderValidator.sol";
 import {Permit2Lib} from "../../libraries/orders/Permit2Lib.sol";
 import {Constants} from "../../libraries/Constants.sol";
 import {Math} from "../../libraries/math/Math.sol";
