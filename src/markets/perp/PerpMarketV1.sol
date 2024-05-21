@@ -7,7 +7,6 @@ import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "../../interfaces/IPredyPool.sol";
-import "../../interfaces/IOrderValidator.sol";
 import {BaseMarketUpgradable} from "../../base/BaseMarketUpgradable.sol";
 import {BaseHookCallbackUpgradable} from "../../base/BaseHookCallbackUpgradable.sol";
 import "../../libraries/orders/Permit2Lib.sol";

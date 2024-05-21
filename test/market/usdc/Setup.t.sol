@@ -10,7 +10,6 @@ import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PerpMarket} from "../../../src/markets/perp/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
-import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {PerpOrderV3, PerpOrderV3Lib} from "../../../src/markets/perp/PerpOrderV3.sol";
 import "../../../src/libraries/Constants.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
@@ -41,7 +40,6 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
 
     PerpMarket perpMarket;
     PredyPool _predyPool;
-    LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     uint256 pairId;
@@ -74,8 +72,6 @@ contract TestUSDCPerpMarket is Test, SigUtils, OrderValidatorUtils {
         perpMarket = new PerpMarket();
         perpMarket.initialize(_predyPool, address(_permit2), address(this), address(predyPoolQuoter));
         perpMarket.updateQuoteTokenMap(1);
-
-        limitOrderValidator = new LimitOrderValidator();
 
         _weth.approve(address(_predyPool), type(uint256).max);
         _usdc.approve(address(_predyPool), type(uint256).max);

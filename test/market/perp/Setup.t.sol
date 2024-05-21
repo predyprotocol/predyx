@@ -7,7 +7,6 @@ import "../../../src/interfaces/ISettlement.sol";
 import {IFillerMarket} from "../../../src/interfaces/IFillerMarket.sol";
 import {PerpMarket} from "../../../src/markets/perp/PerpMarket.sol";
 import "../../../src/settlements/UniswapSettlement.sol";
-import "../../../src/markets/validators/LimitOrderValidator.sol";
 import {PerpOrder, PerpOrderLib} from "../../../src/markets/perp/PerpOrder.sol";
 import {PerpOrderV3, PerpOrderV3Lib} from "../../../src/markets/perp/PerpOrderV3.sol";
 import "../../../src/libraries/Constants.sol";
@@ -21,7 +20,6 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
     UniswapSettlement settlement;
     PerpMarket perpMarket;
     IPermit2 permit2;
-    LimitOrderValidator limitOrderValidator;
     bytes32 DOMAIN_SEPARATOR;
 
     function setUp() public virtual override(TestPool) {
@@ -43,8 +41,6 @@ contract TestPerpMarket is TestPool, SigUtils, OrderValidatorUtils {
 
         currency0.approve(address(perpMarket), type(uint256).max);
         currency1.approve(address(perpMarket), type(uint256).max);
-
-        limitOrderValidator = new LimitOrderValidator();
     }
 
     function _createSignedOrder(PerpOrder memory marketOrder, uint256 fromPrivateKey)

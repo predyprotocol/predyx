@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./Setup.t.sol";
 import "../../src/lens/SpotMarketQuoter.sol";
-import "../../src/markets/validators/LimitOrderValidator.sol";
 import "../../src/markets/spot/SpotMarket.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import "../../src/settlements/UniswapSettlement.sol";

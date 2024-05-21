@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./Setup.t.sol";
 import "../../src/lens/PredyPoolQuoter.sol";
 import "../../src/lens/PerpMarketQuoter.sol";
-import "../../src/markets/validators/LimitOrderValidator.sol";
 import {OrderInfo} from "../../src/libraries/orders/OrderInfoLib.sol";
 import {Constants} from "../../src/libraries/Constants.sol";
 import {PerpOrderV3} from "../../src/markets/perp/PerpOrderV3.sol";
@@ -12,8 +11,6 @@ import {PerpMarketLib} from "../../src/markets/perp/PerpMarketLib.sol";
 
 contract TestPerpMarketQuoter is TestLens {
     PerpMarketQuoter _quoter;
-
-    LimitOrderValidator limitOrderValidator;
 
     address from;
 
@@ -33,8 +30,6 @@ contract TestPerpMarketQuoter is TestLens {
         from = vm.addr(1);
 
         predyPool.createVault(1);
-
-        limitOrderValidator = new LimitOrderValidator();
 
         currency0.approve(address(perpMarket), type(uint256).max);
         currency1.approve(address(perpMarket), type(uint256).max);
