@@ -14,7 +14,7 @@ library DataType {
         Perp.SqrtPerpAssetStatus sqrtAssetStatus;
         address priceFeed;
         bool isQuoteZero;
-        bool whitelistEnabled;
+        bool allowlistEnabled;
         uint8 feeRatio;
         uint256 lastUpdateTimestamp;
     }

@@ -243,7 +243,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice This function allows users to open or close perpetual future positions.
+     * @notice Trades perps and squarts. If vaultId is 0, it creates a new vault.
      * @param tradeParams trade details
      * @param settlementData byte data for settlement contract.
      * @return tradeResult The result of the trade.
@@ -255,7 +255,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     {
         globalData.validate(tradeParams.pairId);
 
-        if (globalData.pairs[tradeParams.pairId].whitelistEnabled && !allowedTraders[msg.sender][tradeParams.pairId]) {
+        if (globalData.pairs[tradeParams.pairId].allowlistEnabled && !allowedTraders[msg.sender][tradeParams.pairId]) {
             revert TraderNotAllowed();
         }
 
@@ -265,7 +265,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Updates margin recipient address for position liquidation
+     * @notice Updates the recipient. If the position is liquidated, the remaining margin is sent to the recipient.
      * @param vaultId The id of the vault.
      * @param recipient if recipient is zero address, protocol never transfers margin.
      */
@@ -278,12 +278,13 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Add whitelist trader
+     * @notice Sets the authorized traders. When allowlistEnabled is true, only authorized traders are allowed to trade.
      * @param pairId The id of pair
      * @param trader The address of allowed trader
+     * @param enabled Whether the trader is allowed to trade
      */
-    function updateWhitelistAddress(uint256 pairId, address trader, bool enabled) external onlyPoolOwner(pairId) {
-        require(globalData.pairs[pairId].whitelistEnabled);
+    function allowTrader(uint256 pairId, address trader, bool enabled) external onlyPoolOwner(pairId) {
+        require(globalData.pairs[pairId].allowlistEnabled);
 
         allowedTraders[trader][pairId] = enabled;
     }
@@ -304,7 +305,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Takes tokens
+     * @notice Transfers tokens. It can only be called from within the callback of the trade function invoked by the market contract.
      * @dev Only the current locker can call this function
      */
     function take(bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {

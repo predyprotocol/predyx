@@ -24,35 +24,38 @@ This project features multiple market contracts centered around PredyPool. The m
 
 ### PredyPool.sol
 
-Short ETH(Base token) flow.
+The process of shorting 1 WETH with a collateral of 100 USDC.
 
 ```mermaid
 sequenceDiagram
 autonumber
+  actor Trader
+  Trader->>Market: executeOrder(order)
   Market->>PredyPool: trade(tradeParams, settlementData)
   activate PredyPool
-  PredyPool->>Market: predySettlementCallback(data, baseAmount)
+  PredyPool->>Market: predySettlementCallback(data, 1 WETH)
   activate Market
-  Market->>PredyPool: take(to, baseAmount)
+  Market->>PredyPool: take(to=Market, amount=1 WETH)
   activate PredyPool
-  PredyPool-->>Market: 
+  PredyPool-->>Market: transfer(amount=1 WETH)
   deactivate PredyPool
-  Market->>UniswapSettlement: swapExactIn(data, baseAmount)
+  Market->>UniswapSettlement: swapExactIn(data, amount=1 WETH)
   activate UniswapSettlement
-  UniswapSettlement ->> SwapRouter: exactInput(baseAmount)
-  SwapRouter -->> UniswapSettlement: quoteAmountOut
-  UniswapSettlement ->> USDC: transfer(to=PredyPool, quoteAmountOut)
-  USDC -->> UniswapSettlement: 
+  UniswapSettlement ->> SwapRouter: exactInput(amount=1 WETH)
+  SwapRouter -->> UniswapSettlement: 1000 USDC
+  UniswapSettlement-->>PredyPool: 1000 USDC
   UniswapSettlement-->>Market: 
   deactivate UniswapSettlement
   Market -->> PredyPool: 
   deactivate Market
   PredyPool->>Market: predyTradeAfterCallback(tradeParams, tradeResult)
   activate Market
-  Market-->>PredyPool: 
+  Trader-->>Market: transferFrom(from=Trader,to=Market,amount=100 USDC)
+  Market-->>PredyPool: transfer(amount=100 USDC)
   deactivate Market
   PredyPool-->>Market: 
   deactivate PredyPool
+  Market-->>Trader: 
 ```
 
 ### PerpMarket.sol

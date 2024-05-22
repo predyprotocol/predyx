@@ -41,6 +41,7 @@ contract PriceFeed {
         _decimalsDiff = decimalsDiff;
     }
 
+    /// @notice This function returns the square root of the baseToken price quoted in quoteToken.
     function getSqrtPrice() external view returns (uint256 sqrtPrice) {
         (, int256 quoteAnswer,,,) = AggregatorV3Interface(_quotePriceFeed).latestRoundData();
 
