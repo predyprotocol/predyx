@@ -30,28 +30,30 @@ library PositionCalculator {
         int256 amountUnderlying;
     }
 
+    /// @notice Returns whether a position is liquidatable.
     function isLiquidatable(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.FeeAmount memory FeeAmount
+        DataType.FeeAmount memory feeAmount
     ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint256 twap) {
         bool hasPosition;
 
-        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _vault, FeeAmount);
+        (minMargin, vaultValue, hasPosition, twap) = calculateMinMargin(pairStatus, _vault, feeAmount);
 
         bool isSafe = vaultValue >= minMargin && _vault.margin >= 0;
 
         _isLiquidatable = !isSafe && hasPosition;
     }
 
+    /// @notice Checks if a position is safe. It reverts if the position is not safe.
     function checkSafe(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.FeeAmount memory FeeAmount
+        DataType.FeeAmount memory feeAmount
     ) internal view returns (int256 minMargin) {
         bool isSafe;
 
-        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, FeeAmount);
+        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, feeAmount);
 
         if (!isSafe) {
             revert NotSafe();
@@ -61,16 +63,16 @@ library PositionCalculator {
     function getIsSafe(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.FeeAmount memory FeeAmount
+        DataType.FeeAmount memory feeAmount
     ) internal view returns (int256 minMargin, bool isSafe, bool hasPosition) {
         int256 vaultValue;
 
-        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _vault, FeeAmount);
+        (minMargin, vaultValue, hasPosition,) = calculateMinMargin(pairStatus, _vault, feeAmount);
 
         isSafe = vaultValue >= minMargin && _vault.margin >= 0;
     }
 
-    function calculateMinDeposit(
+    function calculateMinMargin(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory vault,
         DataType.FeeAmount memory feeAmount

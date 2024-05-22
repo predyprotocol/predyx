@@ -19,7 +19,10 @@ library ApplyInterestLib {
         uint256 protocolFeeBase
     );
 
-    /// @notice Each time the user touches the contract, the interest rate is applied
+    /**
+     * @notice Each time a user interacts with the contract, interest and premium from the previous interaction to the current one are applied.
+     * This increases the amount available for withdrawal by the lender and the premium income for Squart.
+     */
     function applyInterestForToken(mapping(uint256 => DataType.PairStatus) storage pairs, uint256 pairId) internal {
         DataType.PairStatus storage pairStatus = pairs[pairId];
 

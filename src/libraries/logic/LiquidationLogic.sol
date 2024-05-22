@@ -73,7 +73,7 @@ library LiquidationLogic {
         bool hasPosition;
 
         (tradeResult.minMargin,, hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         // Check if the price is within the slippage tolerance range to ensure that the price does not become
         // excessively favorable to the liquidator.

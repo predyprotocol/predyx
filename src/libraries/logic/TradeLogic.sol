@@ -44,7 +44,7 @@ library TradeLogic {
         globalData.vaults[tradeParams.vaultId].margin +=
             tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
 
-        (tradeResult.minMargin,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinDeposit(
+        (tradeResult.minMargin,,, tradeResult.sqrtTwap) = PositionCalculator.calculateMinMargin(
             pairStatus, globalData.vaults[tradeParams.vaultId], DataType.FeeAmount(0, 0)
         );
 
