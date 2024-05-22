@@ -1,22 +1,28 @@
-predyx
+predy6
 =====
 
 ![](https://github.com/predyprotocol/predyx/workflows/test/badge.svg)
 
+[![X](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20Predy)](https://x.com/predyfinance)
+
 ## Overview
 
-TBD
+Predy is an on-chain exchange for trading Gamma and Perpetuals. It features Squart, which allows trading of perpetuals with gamma exposure covered by Uniswap V3.
+
+- [Website](https://www.predy.finance)
+- [Documentation](https://docs.predy.finance)
+- [Blog](https://predyfinance.medium.com/)
 
 ## Development
 
 ```
 # Installing dependencies
+npm i
 forge install
 
 # Testing
 forge test
 ```
-
 
 ## Architecture
 
