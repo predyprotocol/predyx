@@ -23,35 +23,37 @@ library PositionCalculator {
 
     struct PositionParams {
         // x^0
-        int256 amountStable;
+        int256 amountQuote;
         // 2x^0.5
         int256 amountSqrt;
         // x^1
-        int256 amountUnderlying;
+        int256 amountBase;
     }
 
+    /// @notice Returns whether a position is liquidatable.
     function isLiquidatable(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.FeeAmount memory FeeAmount
-    ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint256 twap) {
+        DataType.FeeAmount memory feeAmount
+    ) internal view returns (bool _isLiquidatable, int256 minMargin, int256 vaultValue, uint256 sqrtOraclePrice) {
         bool hasPosition;
 
-        (minMargin, vaultValue, hasPosition, twap) = calculateMinDeposit(pairStatus, _vault, FeeAmount);
+        (minMargin, vaultValue, hasPosition, sqrtOraclePrice) = calculateMinMargin(pairStatus, _vault, feeAmount);
 
         bool isSafe = vaultValue >= minMargin && _vault.margin >= 0;
 
         _isLiquidatable = !isSafe && hasPosition;
     }
 
+    /// @notice Checks if a position is safe. It reverts if the position is not safe.
     function checkSafe(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.FeeAmount memory FeeAmount
+        DataType.FeeAmount memory feeAmount
     ) internal view returns (int256 minMargin) {
         bool isSafe;
 
-        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, FeeAmount);
+        (minMargin, isSafe,) = getIsSafe(pairStatus, _vault, feeAmount);
 
         if (!isSafe) {
             revert NotSafe();
@@ -61,27 +63,30 @@ library PositionCalculator {
     function getIsSafe(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory _vault,
-        DataType.FeeAmount memory FeeAmount
+        DataType.FeeAmount memory feeAmount
     ) internal view returns (int256 minMargin, bool isSafe, bool hasPosition) {
         int256 vaultValue;
 
-        (minMargin, vaultValue, hasPosition,) = calculateMinDeposit(pairStatus, _vault, FeeAmount);
+        (minMargin, vaultValue, hasPosition,) = calculateMinMargin(pairStatus, _vault, feeAmount);
 
         isSafe = vaultValue >= minMargin && _vault.margin >= 0;
     }
 
-    function calculateMinDeposit(
+    function calculateMinMargin(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory vault,
         DataType.FeeAmount memory feeAmount
-    ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint256 twap) {
+    ) internal view returns (int256 minMargin, int256 vaultValue, bool hasPosition, uint256 sqrtOraclePrice) {
         int256 minValue;
         uint256 debtValue;
 
-        twap = getSqrtIndexPrice(pairStatus);
+        sqrtOraclePrice = getSqrtIndexPrice(pairStatus);
 
         (minValue, vaultValue, debtValue, hasPosition) = calculateMinValue(
-            vault.margin, getPositionWithFeeAmount(vault.openPosition, feeAmount), twap, pairStatus.riskParams.riskRatio
+            vault.margin,
+            getPositionWithFeeAmount(vault.openPosition, feeAmount),
+            sqrtOraclePrice,
+            pairStatus.riskParams.riskRatio
         );
 
         int256 minMinValue =
@@ -168,14 +173,14 @@ library PositionCalculator {
     }
 
     function getHasPositionFlag(PositionParams memory _positionParams) internal pure returns (bool) {
-        return _positionParams.amountSqrt != 0 || _positionParams.amountUnderlying != 0;
+        return _positionParams.amountSqrt != 0 || _positionParams.amountBase != 0;
     }
 
     /**
      * @notice Calculates min position value in the range `p/r` to `rp`.
      * MinValue := Min(v(rp), v(p/r), v((b/a)^2))
-     * where `a` is underlying asset amount, `b` is Sqrt perp amount
-     * and `c` is Stable asset amount.
+     * where `a` is base asset amount, `b` is Sqrt perp amount
+     * and `c` is quote asset amount.
      * r is risk parameter.
      */
     function calculateMinValue(uint256 _sqrtPrice, PositionParams memory _positionParams, uint256 _riskRatio)
@@ -202,10 +207,10 @@ library PositionCalculator {
             }
         }
 
-        if (_positionParams.amountSqrt < 0 && _positionParams.amountUnderlying > 0) {
+        if (_positionParams.amountSqrt < 0 && _positionParams.amountBase > 0) {
             // amountSqrt * 2^96 is fits in 256 bits
             uint256 minSqrtPrice =
-                (uint256(-_positionParams.amountSqrt) * Constants.Q96) / uint256(_positionParams.amountUnderlying);
+                (uint256(-_positionParams.amountSqrt) * Constants.Q96) / uint256(_positionParams.amountBase);
 
             if (lowerPrice < minSqrtPrice && minSqrtPrice < upperPrice) {
                 int256 v = calculateValue(minSqrtPrice, _positionParams);
@@ -220,15 +225,14 @@ library PositionCalculator {
     /**
      * @notice Calculates position value.
      * PositionValue = a * x+2 * b * sqrt(x) + c.
-     * where `a` is underlying asset amount, `b` is liquidity amount of Uni LP Position
-     * and `c` is Stable asset amount
+     * where `a` is base asset amount, `b` is liquidity amount of Uni LP Position
+     * and `c` is quote asset amount
      */
     function calculateValue(uint256 _sqrtPrice, PositionParams memory _positionParams) internal pure returns (int256) {
         uint256 price = Math.calSqrtPriceToPrice(_sqrtPrice);
 
-        return Math.fullMulDivInt256(_positionParams.amountUnderlying, price, Constants.Q96)
-            + Math.fullMulDivInt256(2 * _positionParams.amountSqrt, _sqrtPrice, Constants.Q96)
-            + _positionParams.amountStable;
+        return Math.fullMulDivInt256(_positionParams.amountBase, price, Constants.Q96)
+            + Math.fullMulDivInt256(2 * _positionParams.amountSqrt, _sqrtPrice, Constants.Q96) + _positionParams.amountQuote;
     }
 
     function calculateSquartDebtValue(uint256 _sqrtPrice, PositionParams memory positionParams)

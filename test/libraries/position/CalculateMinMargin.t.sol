@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "./Setup.t.sol";
 import "../../../src/libraries/PositionCalculator.sol";
 
-contract CalculateMinDepositTest is TestPositionCalculator {
+contract CalculateMinMarginTest is TestPositionCalculator {
     DataType.PairStatus pairStatus;
 
     function setUp() public override {
@@ -33,7 +33,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
 
     function testCalculateMinDepositZero() public {
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, getVault(0, 0, 0, 0), DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, getVault(0, 0, 0, 0), DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 0);
         assertEq(vaultValue, 0);
@@ -41,14 +41,13 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     }
 
     function testCalculateMinDepositStable(uint256 _amountStable) public {
-        int256 amountStable = int256(bound(_amountStable, 0, 1e36));
+        int256 amountQuote = int256(bound(_amountStable, 0, 1e36));
 
-        (int256 minDeposit, int256 vaultValue, bool hasPosition,) = PositionCalculator.calculateMinDeposit(
-            pairStatus, getVault(amountStable, 0, 0, 0), DataType.FeeAmount(0, 0)
-        );
+        (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
+            PositionCalculator.calculateMinMargin(pairStatus, getVault(amountQuote, 0, 0, 0), DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 0);
-        assertEq(vaultValue, amountStable);
+        assertEq(vaultValue, amountQuote);
         assertFalse(hasPosition);
     }
 
@@ -56,7 +55,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
         DataType.Vault memory vault = getVault(-1000, 0, 1000, 0);
 
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 1000000);
         assertEq(vaultValue, 0);
@@ -70,7 +69,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaShort() public {
         DataType.Vault memory vault = getVault(-2 * 1e8, 1e8, 0, 0);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 17425814);
         assertEq(vaultValue, 0);
@@ -86,7 +85,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaShortSafe() public {
         DataType.Vault memory vault = getVault(-2 * 1e8, 1e8, 0, 20000000);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 17425814);
         assertEq(vaultValue, 20000000);
@@ -99,7 +98,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaLong() public {
         DataType.Vault memory vault = getVault(2 * 1e8, -1e8, 0, 0);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 19489021);
         assertEq(vaultValue, 0);
@@ -115,7 +114,7 @@ contract CalculateMinDepositTest is TestPositionCalculator {
     function testCalculateMinDepositGammaLongSafe() public {
         DataType.Vault memory vault = getVault(2 * 1e8, -1e8, 0, 22000000);
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, vault, DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 19489021);
         assertEq(vaultValue, 22000000);

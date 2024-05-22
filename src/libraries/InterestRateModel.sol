@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.17;
 
+/**
+ * @title InterestRateModel
+ * @notice This library is used to define the interest rate curve, which determines the interest rate based on utilization.
+ */
 library InterestRateModel {
     struct IRMParams {
         uint256 baseRate;

@@ -158,8 +158,14 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
         AddPairLogic.updatePoolOwner(globalData.pairs[pairId], poolOwner);
     }
 
-    function updatePriceOracle(uint256 pairId, address priceOracle) external onlyPoolOwner(pairId) {
-        AddPairLogic.updatePriceOracle(globalData.pairs[pairId], priceOracle);
+    /**
+     * @notice Updates price oracle
+     * @dev The function can be called by pool owner.
+     * @param pairId The id of pair to update oracle.
+     * @param priceFeed The address of price feed
+     */
+    function updatePriceOracle(uint256 pairId, address priceFeed) external onlyPoolOwner(pairId) {
+        AddPairLogic.updatePriceOracle(globalData.pairs[pairId], priceFeed);
     }
 
     /**
@@ -207,7 +213,11 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Supplies liquidity to the lending pool
+     * @notice Supplies either the quoteToken or the baseToken to the lending pool.
+     * In return, the lender receives bond tokens.
+     * @param pairId The id of pair to supply liquidity
+     * @param isQuoteAsset Whether the token is quote or base
+     * @param supplyAmount The amount of tokens to supply
      */
     function supply(uint256 pairId, bool isQuoteAsset, uint256 supplyAmount)
         external
@@ -218,7 +228,11 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Withdraws liquidity from the lending pool
+     * @notice Withdraws either the quoteToken or the baseToken from the lending pool.
+     * In return, the lender burns the bond tokens.
+     * @param pairId The id of pair to withdraw liquidity
+     * @param isQuoteAsset Whether the token is quote or base
+     * @param withdrawAmount The amount of tokens to withdraw
      */
     function withdraw(uint256 pairId, bool isQuoteAsset, uint256 withdrawAmount)
         external
@@ -229,7 +243,7 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Reallocates the range of concentrated liquidity provider position
+     * @notice Reallocates the range of concentrated liquidity provider position to be in-range.
      * @param pairId The id of pair to reallocate the range.
      * @param settlementData byte data for settlement contract.
      * @return relocationOccurred Whether relocation occurred.
@@ -305,8 +319,12 @@ contract PredyPool is IPredyPool, IUniswapV3MintCallback, Initializable, Reentra
     }
 
     /**
-     * @notice Transfers tokens. It can only be called from within the callback of the trade function invoked by the market contract.
+     * @notice Transfers tokens. It can only be called from within the `predySettlementCallback` and
+     * `predyTradeAfterCallback` of the contract that invoked the trade function.
      * @dev Only the current locker can call this function
+     * @param isQuoteAsset Whether the token is quote or base
+     * @param to The address to transfer the tokens to
+     * @param amount The amount of tokens to transfer
      */
     function take(bool isQuoteAsset, address to, uint256 amount) external onlyByLocker {
         globalData.take(isQuoteAsset, to, amount);

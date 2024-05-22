@@ -33,7 +33,7 @@ library ReaderLogic {
             PerpFee.computeUserFee(pairStatus, globalData.rebalanceFeeGrowthCache, vault.openPosition);
 
         (int256 minMargin, int256 vaultValue,, uint256 oraclePice) =
-            PositionCalculator.calculateMinDeposit(pairStatus, vault, feeAmount);
+            PositionCalculator.calculateMinMargin(pairStatus, vault, feeAmount);
 
         revertVaultStatus(
             IPredyPool.VaultStatus(vaultId, vaultValue, minMargin, oraclePice, feeAmount, getPosition(vault, feeAmount))
@@ -49,7 +49,7 @@ library ReaderLogic {
             PositionCalculator.getPositionWithFeeAmount(vault.openPosition, feeAmount);
 
         return IPredyPool.Position(
-            vault.margin, positionParams.amountStable, positionParams.amountSqrt, positionParams.amountUnderlying
+            vault.margin, positionParams.amountQuote, positionParams.amountSqrt, positionParams.amountBase
         );
     }
 
