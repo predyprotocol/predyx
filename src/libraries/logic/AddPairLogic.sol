@@ -19,7 +19,7 @@ library AddPairLogic {
         address poolOwner;
         address uniswapPool;
         address priceFeed;
-        bool whitelistEnabled;
+        bool allowlistEnabled;
         uint8 fee;
         Perp.AssetRiskParams assetRiskParams;
         InterestRateModel.IRMParams quoteIrmParams;
@@ -180,7 +180,7 @@ library AddPairLogic {
             ),
             _addPairParam.priceFeed,
             _isQuoteZero,
-            _addPairParam.whitelistEnabled,
+            _addPairParam.allowlistEnabled,
             _addPairParam.fee,
             block.timestamp
         );
