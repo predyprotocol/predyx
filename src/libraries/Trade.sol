@@ -84,9 +84,9 @@ library Trade {
         int256 totalBaseAmount = swapParams.amountPerp + swapParams.amountSqrtPerp + swapParams.fee;
 
         if (totalBaseAmount == 0) {
-            int256 amountStable = calculateStableAmount(sqrtPrice, 1e18).toInt256();
+            int256 amountQuote = calculateStableAmount(sqrtPrice, 1e18).toInt256();
 
-            return divToStable(swapParams, int256(1e18), amountStable, 0);
+            return divToStable(swapParams, int256(1e18), amountQuote, 0);
         }
 
         globalData.initializeLock(pairId);
@@ -121,15 +121,15 @@ library Trade {
 
     function divToStable(
         SwapStableResult memory swapParams,
-        int256 amountUnderlying,
-        int256 amountStable,
+        int256 amountBase,
+        int256 amountQuote,
         int256 totalAmountStable
     ) internal pure returns (SwapStableResult memory swapResult) {
-        swapResult.amountPerp = amountStable * swapParams.amountPerp / amountUnderlying;
-        swapResult.amountSqrtPerp = amountStable * swapParams.amountSqrtPerp / amountUnderlying;
+        swapResult.amountPerp = amountQuote * swapParams.amountPerp / amountBase;
+        swapResult.amountSqrtPerp = amountQuote * swapParams.amountSqrtPerp / amountBase;
         swapResult.fee = totalAmountStable - swapResult.amountPerp - swapResult.amountSqrtPerp;
 
-        swapResult.averagePrice = amountStable * int256(Constants.Q96) / Math.abs(amountUnderlying).toInt256();
+        swapResult.averagePrice = amountQuote * int256(Constants.Q96) / Math.abs(amountBase).toInt256();
     }
 
     function settleUserBalanceAndFee(

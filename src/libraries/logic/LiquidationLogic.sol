@@ -53,7 +53,7 @@ library LiquidationLogic {
         Perp.updateRebalanceInterestGrowth(pairStatus, pairStatus.sqrtAssetStatus);
 
         // Checks the vault is danger
-        (uint256 sqrtTwap, uint256 slippageTolerance) =
+        (uint256 sqrtOraclePrice, uint256 slippageTolerance) =
             checkVaultIsDanger(pairStatus, vault, globalData.rebalanceFeeGrowthCache);
 
         IPredyPool.TradeParams memory tradeParams = IPredyPool.TradeParams(
@@ -68,7 +68,7 @@ library LiquidationLogic {
 
         vault.margin += tradeResult.fee + tradeResult.payoff.perpPayoff + tradeResult.payoff.sqrtPayoff;
 
-        tradeResult.sqrtTwap = sqrtTwap;
+        tradeResult.sqrtTwap = sqrtOraclePrice;
 
         bool hasPosition;
 
@@ -78,7 +78,7 @@ library LiquidationLogic {
         // Check if the price is within the slippage tolerance range to ensure that the price does not become
         // excessively favorable to the liquidator.
         SlippageLib.checkPrice(
-            sqrtTwap,
+            sqrtOraclePrice,
             tradeResult,
             slippageTolerance,
             tradeParams.tradeAmountSqrt == 0 ? 0 : _MAX_ACCEPTABLE_SQRT_PRICE_RANGE
@@ -123,14 +123,14 @@ library LiquidationLogic {
      * @param pairStatus The pair status
      * @param vault The vault object
      * @param rebalanceFeeGrowthCache rebalance fee growth
-     * @return sqrtTwap The square root of time weighted average price used for value calculation
+     * @return sqrtOraclePrice The square root of oracle price used for value calculation
      * @return slippageTolerance slippage tolerance calculated by minMargin and vault value
      */
     function checkVaultIsDanger(
         DataType.PairStatus memory pairStatus,
         DataType.Vault memory vault,
         mapping(uint256 => DataType.RebalanceFeeGrowthCache) storage rebalanceFeeGrowthCache
-    ) internal view returns (uint256 sqrtTwap, uint256 slippageTolerance) {
+    ) internal view returns (uint256 sqrtOraclePrice, uint256 slippageTolerance) {
         bool isLiquidatable;
         int256 minMargin;
         int256 vaultValue;
@@ -138,7 +138,7 @@ library LiquidationLogic {
         DataType.FeeAmount memory FeeAmount =
             PerpFee.computeUserFee(pairStatus, rebalanceFeeGrowthCache, vault.openPosition);
 
-        (isLiquidatable, minMargin, vaultValue, sqrtTwap) =
+        (isLiquidatable, minMargin, vaultValue, sqrtOraclePrice) =
             PositionCalculator.isLiquidatable(pairStatus, vault, FeeAmount);
 
         if (!isLiquidatable) {

@@ -41,13 +41,13 @@ contract CalculateMinMarginTest is TestPositionCalculator {
     }
 
     function testCalculateMinDepositStable(uint256 _amountStable) public {
-        int256 amountStable = int256(bound(_amountStable, 0, 1e36));
+        int256 amountQuote = int256(bound(_amountStable, 0, 1e36));
 
         (int256 minDeposit, int256 vaultValue, bool hasPosition,) =
-            PositionCalculator.calculateMinMargin(pairStatus, getVault(amountStable, 0, 0, 0), DataType.FeeAmount(0, 0));
+            PositionCalculator.calculateMinMargin(pairStatus, getVault(amountQuote, 0, 0, 0), DataType.FeeAmount(0, 0));
 
         assertEq(minDeposit, 0);
-        assertEq(vaultValue, amountStable);
+        assertEq(vaultValue, amountQuote);
         assertFalse(hasPosition);
     }
 

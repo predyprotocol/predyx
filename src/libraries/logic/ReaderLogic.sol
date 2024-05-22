@@ -49,7 +49,7 @@ library ReaderLogic {
             PositionCalculator.getPositionWithFeeAmount(vault.openPosition, feeAmount);
 
         return IPredyPool.Position(
-            vault.margin, positionParams.amountStable, positionParams.amountSqrt, positionParams.amountUnderlying
+            vault.margin, positionParams.amountQuote, positionParams.amountSqrt, positionParams.amountBase
         );
     }
 
